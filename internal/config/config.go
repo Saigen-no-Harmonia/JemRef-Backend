@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -15,13 +16,29 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	_ = godotenv.Load()
+	if os.Getenv("ENV") == "local" {
+		_ = godotenv.Load()
+	}
+
+	host := mustGetEnv("DB_HOST")
+	user := mustGetEnv("DB_USER")
+	port := mustGetEnv("DB_PORT")
+	password := mustGetEnv("DB_PASSWORD")
+	name := mustGetEnv("DB_NAME")
 
 	return &Config{
-		DBHost:     os.Getenv("DB_HOST"),
-		DBUser:     os.Getenv("DB_USER"),
-		DBPort:     os.Getenv("DB_PORT"),
-		DBPassword: os.Getenv("DB_PASS"),
-		DBName:     os.Getenv("DB_NAME"),
+		DBHost:     host,
+		DBUser:     user,
+		DBPort:     port,
+		DBPassword: password,
+		DBName:     name,
 	}, nil
+}
+
+func mustGetEnv(key string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		log.Fatalf("%s is required", key)
+	}
+	return v
 }

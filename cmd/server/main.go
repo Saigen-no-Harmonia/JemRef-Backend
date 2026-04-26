@@ -19,12 +19,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("DB_HOST=%s, DB_Port=%s, DB_Name=%s, DB_User=%s, DB_Password=%s",
+	log.Printf("DB_HOST=%s, DB_Port=%s, DB_Name=%s, DB_User=%s",
 		cfg.DBHost,
 		cfg.DBPort,
 		cfg.DBName,
 		cfg.DBUser,
-		cfg.DBPassword,
 	)
 
 	log.Print("finish configuration")
