@@ -15,6 +15,7 @@ func NewRecordHandler(uc *usecase.RecordUsecase) *RecordHandler {
 	return &RecordHandler{usecase: uc}
 }
 
+// 共通認証ルート
 func (h *RecordHandler) RegisterRoutes(r *gin.RouterGroup) {
 	// 	r.GET("/records", h.GetRecords)
 	// 	r.GET("/records/:id", h.GetRecord)
@@ -23,6 +24,8 @@ func (h *RecordHandler) RegisterRoutes(r *gin.RouterGroup) {
 	// r.DELETE("/records/:id", h.DeleteRecord)
 }
 
+// [REF-API-003] 書誌情報登録 /records POST
+// リクエストされたレコードを作成する
 func (h *RecordHandler) CreateRecord(c *gin.Context) {
 	var req CreateRecordRequest
 
@@ -40,15 +43,16 @@ func (h *RecordHandler) CreateRecord(c *gin.Context) {
 		return
 	}
 
-	res := RecordResponse{
+	res := CreateRecordResponse{
 		UserId: output.UserId,
 	}
 
 	c.JSON(201, res)
 }
 
+// Usecase用の構造体にマッピングする
 func toCreateRecordInput(req CreateRecordRequest) usecase.CreateRecordInput {
-	// TODO not implemented
+	//. TODO not implemented
 	return usecase.CreateRecordInput{
 		UserId:    req.Record.UserId,
 		MainTitle: req.Record.MainTitle,

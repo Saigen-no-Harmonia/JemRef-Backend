@@ -2,6 +2,7 @@ package main
 
 import (
 	"jemref_go/internal/config"
+	"jemref_go/internal/domain/id"
 	"jemref_go/internal/infrastructure/mock"
 	"jemref_go/internal/interface/handler"
 	"jemref_go/internal/middleware"
@@ -37,7 +38,7 @@ func main() {
 
 	// ハンドラ呼び出し
 	recordHandler := NewRecordHandler()
-	// userHandler := NewUserHandler(db)
+	userHandler := NewUserHandler()
 
 	// ルーティング設定
 	r := gin.Default()
@@ -50,7 +51,7 @@ func main() {
 	auth.Use(middleware.Auth())
 
 	recordHandler.RegisterRoutes(auth)
-	// userHandler.RegisterRoutes(auth)
+	userHandler.RegisterRoutes(auth)
 
 	log.Print("finsh routing")
 
@@ -60,7 +61,16 @@ func main() {
 }
 
 func NewRecordHandler() *handler.RecordHandler {
+	// repositoryはmock
 	repo := mock.NewRecordRepositoryMock()
 	uc := usecase.NewRecordUsecase(repo)
 	return handler.NewRecordHandler(uc)
+}
+
+func NewUserHandler() *handler.UserHandler {
+	// repositoryはmock
+	repo := mock.NewUserRepositoryMock()
+	idGen := id.NewUlidGenerator()
+	uc := usecase.NewUserUsecase(repo, idGen)
+	return handler.NewUserHandler(uc)
 }

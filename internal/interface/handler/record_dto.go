@@ -1,5 +1,6 @@
 package handler
 
+// TODO フラット化する
 type CreateRecordRequest struct {
 	Record RecordRequest `json:"record" binding:"required"`
 }
@@ -26,6 +27,6 @@ type AuthorRequest struct {
 	Role     string `json:"role"`
 }
 
-type RecordResponse struct {
+type CreateRecordResponse struct {
 	UserId string `json:"user_id"`
 }

@@ -16,14 +16,16 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	if os.Getenv("ENV") == "local" {
-		_ = godotenv.Load()
-	}
+	// if os.Getenv("ENV") == "local" {
+	// 	_ = godotenv.Load()
+	// }
+
+	_ = godotenv.Load()
 
 	host := mustGetEnv("DB_HOST")
 	user := mustGetEnv("DB_USER")
 	port := mustGetEnv("DB_PORT")
-	password := mustGetEnv("DB_PASSWORD")
+	password := mustGetEnv("DB_PASS")
 	name := mustGetEnv("DB_NAME")
 
 	return &Config{

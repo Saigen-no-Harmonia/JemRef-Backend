@@ -1,3 +1,1 @@
 package infrastructure
-
-// TODO スケルトン

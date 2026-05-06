@@ -7,6 +7,7 @@ import (
 
 type RecordUsecase struct {
 	repo repository.RecordRepository
+	// txManager repository.TxManager
 }
 
 func NewRecordUsecase(r repository.RecordRepository) *RecordUsecase {
