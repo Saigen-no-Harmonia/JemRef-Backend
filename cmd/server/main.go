@@ -38,13 +38,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := db.Ping(); err != nil {
-		log.Fatal(err)
-	}
-
 	log.Print("initializing routing")
 
 	// ハンドラ呼び出し
+	healthHandler := handler.NewHealthHandler(db)
 	recordHandler := NewRecordHandler()
 	userHandler := NewUserHandler(db)
 
@@ -52,7 +49,7 @@ func main() {
 	r := gin.Default()
 
 	// 認証なしルート（health check）
-	r.GET("/health", handler.Health)
+	r.GET("/health", healthHandler.Health)
 
 	// 認証ありルート
 	auth := r.Group("/api")
