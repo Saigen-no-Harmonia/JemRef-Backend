@@ -2,7 +2,6 @@ package domain
 
 import "time"
 
-// TODO 最低限のスケルトン
 type User struct {
 	InternalUserId        string
 	PublicUserId          string

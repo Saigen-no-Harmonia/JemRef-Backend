@@ -26,37 +26,9 @@ func (r *UserRepositoryImpl) Create(
 	user *domain.User,
 ) error {
 
-	query := `
-		insert into m_users (
-			PUBLIC_ID,
-			FIREBASE_ID,
-			EMAIL,
-			TERMS_AGREED_DT,
-			TERMS_VERSION,
-			PRIVACY_POLICY_AGREED_DT,
-			PRIVACY_POLICY_VERSION,
-			INS_PG,
-			INS_ID,
-			UPD_PG,
-			UPD_ID
-		)
-		values (
-			?,
-			?,
-			?,
-			?,
-			?,
-			?,
-			?,
-			'system',
-			'MEM-API-002',
-			'system',
-			'MEM-API-002'
-		)
-	`
 	_, err := r.db.ExecContext(
 		ctx,
-		query,
+		createUserQuery,
 		user.PublicUserId,
 		user.FirebaseUserId,
 		user.Email,
