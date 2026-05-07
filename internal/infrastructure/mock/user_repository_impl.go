@@ -1,6 +1,9 @@
 package mock
 
-import "jemref_go/internal/domain"
+import (
+	"context"
+	"jemref_go/internal/domain"
+)
 
 type UserRepositoryMock struct {
 	PublicUserId   string
@@ -16,7 +19,7 @@ func NewUserRepositoryMock() *UserRepositoryMock {
 	}
 }
 
-func (m *UserRepositoryMock) Create(u *domain.User) error {
+func (m *UserRepositoryMock) Create(ctx context.Context, u *domain.User) error {
 	// mockなので保存はしない
 	u.PublicUserId = m.PublicUserId
 	u.FirebaseUserId = m.FirebaseUserId

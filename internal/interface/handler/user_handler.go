@@ -28,14 +28,6 @@ func (h *UserHandler) RegisterRoutes(r *gin.RouterGroup) {
 // リクエストされたユーザを作成する
 func (h *UserHandler) CreateUser(c *gin.Context) {
 
-	var req CreateUserRequest
-
-	// if err := c.ShouldBindJSON(&req); err != nil {
-	// 	c.JSON(400, gin.H{"error": err.Error()})
-	// 	logger.Info("failed to bind request")
-	// 	return
-	// }
-
 	// firebaseユーザIDを受け取る
 	firebaseUserId, ok := ctxutil.GetUserId(c)
 	if !ok {
@@ -51,9 +43,9 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	}
 
 	// usecase用構造体を作成
-	input := createUserInput(req, firebaseUserId, email)
+	input := createUserInput(firebaseUserId, email)
 
-	output, err := h.usecase.CreateUser(input)
+	output, err := h.usecase.CreateUser(c.Request.Context(), input)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -68,7 +60,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 }
 
 // Useacse用の構造体にマッピングする
-func createUserInput(req CreateUserRequest, firebaseUserId string, email string) usecase.CreateUserInput {
+func createUserInput(firebaseUserId string, email string) usecase.CreateUserInput {
 	return usecase.CreateUserInput{
 		FirebaseUserId: firebaseUserId,
 		Email:          email,

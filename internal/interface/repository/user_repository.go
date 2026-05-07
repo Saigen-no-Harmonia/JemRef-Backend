@@ -1,7 +1,10 @@
 package repository
 
-import "jemref_go/internal/domain"
+import (
+	"context"
+	"jemref_go/internal/domain"
+)
 
 type UserRepository interface {
-	Create(u *domain.User) error
+	Create(ctx context.Context, u *domain.User) error
 }
