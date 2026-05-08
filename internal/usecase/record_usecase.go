@@ -1,8 +1,8 @@
 package usecase
 
 import (
-	"jemref_go/internal/domain"
-	"jemref_go/internal/interface/repository"
+	"jemref_go/internal/domain/record"
+	"jemref_go/internal/repository"
 )
 
 type RecordUsecase struct {
@@ -17,7 +17,7 @@ func NewRecordUsecase(r repository.RecordRepository) *RecordUsecase {
 func (r *RecordUsecase) CreateRecord(ci CreateRecordInput) (*CreateRecordOutput, error) {
 
 	// 引数をマッピング
-	record := &domain.UserRecordEntry{
+	record := &record.UserRecordEntry{
 		UserId:    ci.UserId,
 		MainTitle: ci.MainTitle,
 	}

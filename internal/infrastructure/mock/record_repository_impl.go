@@ -1,6 +1,6 @@
 package mock
 
-import "jemref_go/internal/domain"
+import "jemref_go/internal/domain/record"
 
 type RecordRepositoryMock struct {
 	UserId string
@@ -14,7 +14,7 @@ func NewRecordRepositoryMock() *RecordRepositoryMock {
 	}
 }
 
-func (m *RecordRepositoryMock) Create(ur *domain.UserRecordEntry) error {
+func (m *RecordRepositoryMock) Create(ur *record.UserRecordEntry) error {
 	// mockなので保存はしない
 	ur.UserId = m.UserId
 	ur.MainTitle = m.Title

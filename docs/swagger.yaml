@@ -1,0 +1,269 @@
+basePath: /
+definitions:
+  dto.AgreementPolicyRequest:
+    properties:
+      policy_id:
+        description: 規約ID
+        example: privacy_policy
+        type: string
+      version:
+        description: 規約バージョン
+        example: "1.4"
+        type: string
+    required:
+    - policy_id
+    - version
+    type: object
+  dto.CreateUserResponse:
+    properties:
+      user_id:
+        description: 公開用ユーザID(28文字固定ULID）
+        type: string
+    required:
+    - user_id
+    type: object
+  dto.ErrorResponse:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
+  dto.GetUserAgreementsResponse:
+    properties:
+      agreements:
+        items:
+          $ref: '#/definitions/dto.UserAgreementResponse'
+        type: array
+    type: object
+  dto.StatusResponse:
+    properties:
+      status:
+        type: string
+    type: object
+  dto.UpdateUserAgreementsRequest:
+    properties:
+      policies:
+        items:
+          $ref: '#/definitions/dto.AgreementPolicyRequest'
+        type: array
+    required:
+    - policies
+    type: object
+  dto.UserAgreementResponse:
+    properties:
+      agreed_version:
+        description: 同意バージョン
+        example: "1.0"
+        type: string
+      label:
+        description: 規約ラベル（表示名）
+        example: プライバシーポリシー
+        type: string
+      latest_version:
+        description: 最新バージョン
+        example: "1.2"
+        type: string
+      policy_id:
+        description: 規約ID
+        example: privacy_policy
+        type: string
+      status:
+        description: 同意ステータス
+        example: update_required
+        type: string
+    required:
+    - agreed_version
+    - label
+    - latest_version
+    - policy_id
+    - status
+    type: object
+  dto.UserLoginResponse:
+    properties:
+      user_id:
+        description: 公開用ユーザID（28文字固定ULID）
+        example: 001JSUFP94SNN~
+        type: string
+    required:
+    - user_id
+    type: object
+host: localhost:8080/api/v0
+info:
+  contact: {}
+  description: JemRef backend API
+  license:
+    name: Capra
+  title: JemRef Beta API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Health
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.StatusResponse'
+      summary: Health
+      tags:
+      - health
+  /users:
+    delete:
+      consumes:
+      - application/json
+      description: ユーザ情報を論理削除する。
+      parameters:
+      - description: Bearer <firebase_id_token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: (公開用)ユーザID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[MEM-API-004] ユーザ退会'
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: ユーザを作成する。ユーザ情報はfirebase tokenから取得する。
+      parameters:
+      - description: Bearer <firebase_id_token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CreateUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[MEM-API-002] ユーザ情報登録'
+      tags:
+      - users
+  /users/agreements:
+    get:
+      consumes:
+      - application/json
+      description: 指定したユーザの規約同意状況を参照する。ユーザ情報はヘッダから取得する。
+      parameters:
+      - description: Bearer <firebase_id_token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.GetUserAgreementsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[MEM-API-005] ユーザ規約同意状況参照'
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: 指定したユーザの規約同意状況を更新する。ユーザ情報はヘッダから取得する。
+      parameters:
+      - description: Bearer <firebase_id_token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 規約同意更新
+        in: body
+        name: Policies
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateUserAgreementsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[MEM-API-006] ユーザ規約同意状況更新'
+      tags:
+      - users
+  /users/login:
+    put:
+      consumes:
+      - application/json
+      description: ユーザログイン処理を実施する。Ph0では公開用ユーザIDを返却するだけ。
+      parameters:
+      - description: Bearer <firebase_id_token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserLoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[MEM-API-007]ユーザログイン'
+      tags:
+      - users
+swagger: "2.0"

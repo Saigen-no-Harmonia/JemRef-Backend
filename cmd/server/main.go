@@ -1,18 +1,29 @@
 package main
 
+// @title JemRef Beta API
+// @version 1.0
+// @license.name Capra
+// @description JemRef backend API
+// @host localhost:8080/api/v0
+// @BasePath /
+
 import (
 	"database/sql"
 	"jemref_go/internal/config"
 	"jemref_go/internal/domain/id"
+	"jemref_go/internal/handler"
 	"jemref_go/internal/infrastructure"
 	infraDB "jemref_go/internal/infrastructure/db"
 	"jemref_go/internal/infrastructure/mock"
-	"jemref_go/internal/interface/handler"
 	"jemref_go/internal/middleware"
 	"jemref_go/internal/usecase"
 	"log"
 
+	_ "jemref_go/docs"
+
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func main() {
@@ -48,11 +59,17 @@ func main() {
 	// ルーティング設定
 	r := gin.Default()
 
-	// 認証なしルート（health check）
-	r.GET("/health", healthHandler.Health)
+	//Swagger用ルート
+	r.GET(
+		"/swagger/*any",
+		ginSwagger.WrapHandler(swaggerFiles.Handler),
+	)
+
+	// 認証なしルート
+	r.GET("/api/v0/health", healthHandler.Health)
 
 	// 認証ありルート
-	auth := r.Group("/api")
+	auth := r.Group("/api/v0")
 	auth.Use(middleware.Auth())
 
 	recordHandler.RegisterRoutes(auth)
@@ -61,6 +78,7 @@ func main() {
 	log.Print("finsh routing")
 
 	log.Print("server starting")
+
 	// 実行
 	r.Run("0.0.0.0:8080")
 }

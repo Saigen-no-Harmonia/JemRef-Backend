@@ -1,4 +1,4 @@
-package handler
+package dto
 
 // TODO フラット化する
 type CreateRecordRequest struct {

@@ -2,9 +2,9 @@ package usecase
 
 import (
 	"context"
-	"jemref_go/internal/domain"
 	"jemref_go/internal/domain/id"
-	"jemref_go/internal/interface/repository"
+	"jemref_go/internal/domain/user"
+	"jemref_go/internal/repository"
 	"time"
 )
 
@@ -34,7 +34,7 @@ func (u *UserUsecase) CreateUser(ctx context.Context, cu CreateUserInput) (*Crea
 	privacyPolicyVersion := "1.0"
 
 	// 引数をマッピング
-	user := &domain.User{
+	user := &user.User{
 		PublicUserId:          publicUserId,
 		FirebaseUserId:        cu.FirebaseUserId,
 		Email:                 cu.Email,

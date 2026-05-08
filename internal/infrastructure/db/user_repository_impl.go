@@ -5,7 +5,7 @@ package db
 import (
 	"context"
 	"database/sql"
-	"jemref_go/internal/domain"
+	domain "jemref_go/internal/domain/user"
 
 	_ "github.com/go-sql-driver/mysql"
 )

@@ -4,6 +4,7 @@ package handler
 
 import (
 	"database/sql"
+	"jemref_go/internal/handler/dto"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -19,17 +20,26 @@ func NewHealthHandler(db *sql.DB) *HealthHandler {
 	}
 }
 
+// Healthエンドポイント
+//
+// @Summary Health
+// @Description Health
+// @Tags health
+// @Accept json
+// @Produce json
+// @Success 200 {object} dto.StatusResponse
+// @Router /health [get]
 func (h *HealthHandler) Health(c *gin.Context) {
 
 	// DB疎通確認
 	err := h.db.PingContext(c.Request.Context())
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status": "NG",
+		c.JSON(http.StatusInternalServerError, dto.StatusResponse{
+			Status: "NG",
 		})
 		return
 	}
 
-	c.JSON(200, gin.H{"status": "OK"})
+	c.JSON(200, dto.StatusResponse{Status: "OK"})
 }

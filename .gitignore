@@ -1,3 +1,4 @@
 /sql/private
 *.env
 設計書
+makefile
