@@ -3,7 +3,7 @@ package dto
 import "jemref_go/internal/domain/user"
 
 type CreateUserResponse struct {
-	// 公開用ユーザID(28文字固定ULID）
+	// 公開用ユーザID(26文字固定ULID）
 	PublicUserId string `json:"user_id" binding:"required"`
 }
 
@@ -36,6 +36,6 @@ type AgreementPolicyRequest struct {
 }
 
 type UserLoginResponse struct {
-	// 公開用ユーザID（28文字固定ULID）
+	// 公開用ユーザID（26文字固定ULID）
 	UserId string `json:"user_id" binding:"required" example:"001JSUFP94SNN~"`
 }

@@ -14,10 +14,159 @@ definitions:
     - policy_id
     - version
     type: object
+  dto.ContainerDetailItem:
+    properties:
+      contributers:
+        description: 貢献者情報
+        items:
+          $ref: '#/definitions/dto.ContributerInfo'
+        type: array
+      issue:
+        description: 号
+        example: 第11号
+        type: string
+      main_title:
+        description: 主題
+        example: 第1章 「学校」制度の境界線
+        type: string
+      option_value:
+        allOf:
+        - $ref: '#/definitions/dto.OptionValues'
+        description: オプション書誌項目値情報
+      read_status:
+        description: 既読ステータス
+        enum:
+        - unread
+        - reading
+        - partially_read
+        - read
+        type: string
+      sub_title:
+        description: 副題
+        example: その形成と展開
+        type: string
+      volume:
+        description: 巻
+        example: 日本教育史講座第1巻
+        type: string
+    type: object
+  dto.ContainerListItem:
+    properties:
+      contributers:
+        description: 収録物貢献者情報
+        items:
+          $ref: '#/definitions/dto.ContributerInfo'
+        type: array
+      issue:
+        description: 号
+        example: 第11号
+        type: string
+      main_title:
+        description: 収録物主題
+        example: 境界線の学校史
+        type: string
+      sub_title:
+        description: 収録物副題
+        example: 戦後日本の学校か社会の周辺と周縁
+        type: string
+      volume:
+        description: 巻
+        example: 日本教育史講座第1巻
+        type: string
+    type: object
+  dto.ContributerInfo:
+    properties:
+      name:
+        example: 木村元
+        type: string
+      role:
+        enum:
+        - author
+        - interpreter
+        - compiler
+        - compiler_author
+        type: string
+    type: object
+  dto.CreateRecordRequest:
+    properties:
+      container:
+        allOf:
+        - $ref: '#/definitions/dto.ContainerDetailItem'
+        description: 収録物詳細情報
+      contributers:
+        description: 貢献者情報
+        items:
+          $ref: '#/definitions/dto.ContributerInfo'
+        type: array
+      main_title:
+        description: 主題
+        example: 第1章 「学校」制度の境界線
+        type: string
+      memos:
+        description: メモ情報
+        items:
+          $ref: '#/definitions/dto.MemoInfo'
+        type: array
+      option_value:
+        allOf:
+        - $ref: '#/definitions/dto.OptionValues'
+        description: オプション書誌項目値情報
+      page_range:
+        description: ページ数
+        example: 15-46
+        type: string
+      publication_date:
+        description: 出版年（月日）
+        example: "2022-11-30"
+        type: string
+      publisher:
+        description: 出版社/出版者
+        example: 東京大学出版会
+        type: string
+      read_status:
+        description: 既読ステータス
+        enum:
+        - unread
+        - reading
+        - partially_read
+        - read
+        type: string
+      sub_title:
+        description: 副題
+        example: その形成と展開
+        type: string
+      type:
+        description: 書誌タイプ
+        enum:
+        - monograph
+        - journal_article
+        - compilation_article
+        type: string
+      urls:
+        description: URL情報
+        items:
+          $ref: '#/definitions/dto.UrlInfo'
+        type: array
+    required:
+    - main_title
+    - type
+    type: object
+  dto.CreateRecordResponse:
+    properties:
+      record_id:
+        description: 公開用ユーザID
+        type: string
+      user_id:
+        description: 公開用ユーザID（26桁固定ULID）
+        type: string
+    required:
+    - record_id
+    - user_id
+    type: object
   dto.CreateUserResponse:
     properties:
       user_id:
-        description: 公開用ユーザID(28文字固定ULID）
+        description: 公開用ユーザID(26文字固定ULID）
         type: string
     required:
     - user_id
@@ -29,6 +178,87 @@ definitions:
       message:
         type: string
     type: object
+  dto.GetRecordResponse:
+    properties:
+      container:
+        allOf:
+        - $ref: '#/definitions/dto.ContainerDetailItem'
+        description: 収録物詳細情報
+      contributers:
+        description: 貢献者情報
+        items:
+          $ref: '#/definitions/dto.ContributerInfo'
+        type: array
+      main_title:
+        description: 主題
+        example: 第1章 「学校」制度の境界線
+        type: string
+      memos:
+        description: メモ情報
+        items:
+          $ref: '#/definitions/dto.MemoInfo'
+        type: array
+      option_value:
+        allOf:
+        - $ref: '#/definitions/dto.OptionValues'
+        description: オプション書誌項目値情報
+      page_range:
+        description: ページ数
+        example: 15-46
+        type: string
+      publication_date:
+        description: 出版年（月日）
+        example: "2022-11-30"
+        type: string
+      publisher:
+        description: 出版社/出版者
+        example: 東京大学出版会
+        type: string
+      read_status:
+        description: 既読ステータス
+        enum:
+        - unread
+        - reading
+        - partially_read
+        - read
+        type: string
+      record_id:
+        description: ユーザ書誌ID(36桁固定文字列)
+        example: AHIF98DJ0SJUFY874H...
+        type: string
+      sub_title:
+        description: 副題
+        example: その形成と展開
+        type: string
+      type:
+        description: 書誌タイプ
+        enum:
+        - monograph
+        - journal_article
+        - compilation_article
+        type: string
+      urls:
+        description: URL情報
+        items:
+          $ref: '#/definitions/dto.UrlInfo'
+        type: array
+    required:
+    - main_title
+    - record_id
+    - type
+    type: object
+  dto.GetRecordsResponse:
+    properties:
+      count:
+        type: integer
+      records:
+        items:
+          $ref: '#/definitions/dto.RecordListItemResponse'
+        type: array
+    required:
+    - count
+    - records
+    type: object
   dto.GetUserAgreementsResponse:
     properties:
       agreements:
@@ -36,10 +266,152 @@ definitions:
           $ref: '#/definitions/dto.UserAgreementResponse'
         type: array
     type: object
+  dto.MemoInfo:
+    properties:
+      content:
+        description: メモの内容
+        example: 学校の戦後史。少し難しい。
+        type: string
+      label:
+        description: ラベル
+        example: 要約
+        type: string
+    type: object
+  dto.OptionValues:
+    properties:
+      edition:
+        example: 第２版
+        type: string
+      isbn:
+        example: "9784130513555"
+        type: string
+      original_title:
+        example: History of School of Boundary
+        type: string
+    type: object
+  dto.RecordListItemResponse:
+    properties:
+      container:
+        allOf:
+        - $ref: '#/definitions/dto.ContainerListItem'
+        description: 収録物情報
+      contributers:
+        description: 貢献者情報
+        items:
+          $ref: '#/definitions/dto.ContributerInfo'
+        type: array
+      main_title:
+        description: 主題
+        example: 第1章 「学校」制度の境界線
+        type: string
+      page_range:
+        description: ページ数
+        example: 15-46
+        type: string
+      publication_date:
+        description: 出版年（月日）
+        example: "2022-11-30"
+        type: string
+      publisher:
+        description: 出版社/出版者
+        example: 東京大学出版会
+        type: string
+      read_status:
+        description: 既読ステータス
+        enum:
+        - unread
+        - reading
+        - partially_read
+        - read
+        type: string
+      record_id:
+        description: ユーザ書誌ID(36桁固定文字列)
+        example: AHIF98DJ0SJUFY874H...
+        type: string
+      sub_title:
+        description: 副題
+        example: その形成と展開
+        type: string
+      type:
+        description: 書誌タイプ
+        enum:
+        - monograph
+        - journal_article
+        - compilation_article
+        type: string
+    required:
+    - main_title
+    - record_id
+    - type
+    type: object
   dto.StatusResponse:
     properties:
       status:
         type: string
+    type: object
+  dto.UpdateRecordRequest:
+    properties:
+      container:
+        allOf:
+        - $ref: '#/definitions/dto.ContainerDetailItem'
+        description: 収録物詳細情報
+      contributers:
+        description: 貢献者情報
+        items:
+          $ref: '#/definitions/dto.ContributerInfo'
+        type: array
+      main_title:
+        description: 主題
+        example: 第1章 「学校」制度の境界線
+        type: string
+      memos:
+        description: メモ情報
+        items:
+          $ref: '#/definitions/dto.MemoInfo'
+        type: array
+      option_value:
+        allOf:
+        - $ref: '#/definitions/dto.OptionValues'
+        description: オプション書誌項目値情報
+      page_range:
+        description: ページ数
+        example: 15-46
+        type: string
+      publication_date:
+        description: 出版年（月日）
+        example: "2022-11-30"
+        type: string
+      publisher:
+        description: 出版社/出版者
+        example: 東京大学出版会
+        type: string
+      read_status:
+        description: 既読ステータス
+        enum:
+        - unread
+        - reading
+        - partially_read
+        - read
+        type: string
+      sub_title:
+        description: 副題
+        example: その形成と展開
+        type: string
+      type:
+        description: 書誌タイプ
+        enum:
+        - monograph
+        - journal_article
+        - compilation_article
+        type: string
+      urls:
+        description: URL情報
+        items:
+          $ref: '#/definitions/dto.UrlInfo'
+        type: array
+    required:
+    - main_title
+    - type
     type: object
   dto.UpdateUserAgreementsRequest:
     properties:
@@ -49,6 +421,17 @@ definitions:
         type: array
     required:
     - policies
+    type: object
+  dto.UrlInfo:
+    properties:
+      label:
+        description: ラベル
+        example: オンラインPDFのリンク
+        type: string
+      value:
+        description: URL
+        example: https://example.com/sample
+        type: string
     type: object
   dto.UserAgreementResponse:
     properties:
@@ -82,7 +465,7 @@ definitions:
   dto.UserLoginResponse:
     properties:
       user_id:
-        description: 公開用ユーザID（28文字固定ULID）
+        description: 公開用ユーザID（26文字固定ULID）
         example: 001JSUFP94SNN~
         type: string
     required:
@@ -112,7 +495,243 @@ paths:
       summary: Health
       tags:
       - health
+  /records:
+    get:
+      consumes:
+      - application/json
+      description: ユーザに紐づく書誌情報をリストで返却する。ユーザ情報はfirebase tokenから取得する。
+      parameters:
+      - description: Bearer <firebase_id_token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 名前（検索用：部分一致）
+        in: query
+        name: contributerName
+        type: string
+      - default: 20
+        description: リミット
+        example: 50
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: オフセット
+        example: 20
+        in: query
+        name: offset
+        type: integer
+      - description: 出版年（検索用）
+        example: "2026"
+        in: query
+        name: publish_year
+        type: string
+      - default: publish_yaer
+        description: 並びかえキー (出版年、登録日)
+        example: insert_date
+        in: query
+        name: sort_key
+        type: string
+      - default: asc
+        description: 並び順（asc または desc）
+        example: desc
+        in: query
+        name: sort_type
+        type: string
+      - description: タイトル（検索用：主題または副題の部分一致）
+        example: 音楽
+        in: query
+        name: title
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.GetRecordsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[REF-API-001] 書誌一覧参照'
+      tags:
+      - records
+    post:
+      consumes:
+      - application/json
+      description: ユーザに紐づく書誌情報を登録する。ユーザ情報はfirebase tokenから取得する。
+      parameters:
+      - description: Bearer <firebase_id_token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 書誌情報登録リクエスト
+        in: body
+        name: record
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateRecordRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CreateRecordResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[REF-API-003] 書誌情報登録'
+      tags:
+      - records
+  /records/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: ユーザに紐づく書誌情報を論理削除する。ユーザ情報はfirebase tokenから取得する。<br>
+      parameters:
+      - description: Bearer <firebase_id_token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ユーザ書誌ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[REF-API-005] 書誌情報削除'
+      tags:
+      - records
+    get:
+      consumes:
+      - application/json
+      description: ユーザに紐づく書誌詳細情報を１件返却する。ユーザ情報はfirebase tokenから取得する。
+      parameters:
+      - description: Bearer <firebase_id_token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ユーザ書誌ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.GetRecordResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[REF-API-002] 書誌詳細参照'
+      tags:
+      - records
+    put:
+      consumes:
+      - application/json
+      description: ユーザに紐づく書誌情報を更新する。ユーザ情報はfirebase tokenから取得する。<br>
+      parameters:
+      - description: Bearer <firebase_id_token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ユーザ書誌ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 書誌情報更新リクエスト
+        in: body
+        name: Policies
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateRecordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[REF-API-004] 書誌情報更新'
+      tags:
+      - records
   /users:
+    post:
+      consumes:
+      - application/json
+      description: ユーザを作成する。ユーザ情報はfirebase tokenから取得する。
+      parameters:
+      - description: Bearer <firebase_id_token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CreateUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[MEM-API-002] ユーザ情報登録'
+      tags:
+      - users
+  /users/{id}:
     delete:
       consumes:
       - application/json
@@ -144,34 +763,6 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
       summary: '[MEM-API-004] ユーザ退会'
-      tags:
-      - users
-    post:
-      consumes:
-      - application/json
-      description: ユーザを作成する。ユーザ情報はfirebase tokenから取得する。
-      parameters:
-      - description: Bearer <firebase_id_token>
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/dto.CreateUserResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      summary: '[MEM-API-002] ユーザ情報登録'
       tags:
       - users
   /users/agreements:
@@ -213,9 +804,9 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: 規約同意更新
+      - description: 規約同意更新リクエスト
         in: body
-        name: Policies
+        name: policies
         required: true
         schema:
           $ref: '#/definitions/dto.UpdateUserAgreementsRequest'

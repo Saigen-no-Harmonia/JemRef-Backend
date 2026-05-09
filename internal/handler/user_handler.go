@@ -98,7 +98,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 // @Success 200 {object} dto.StatusResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
-// @Router /users [delete]
+// @Router /users/{id} [delete]
 func (h *UserHandler) DeleteUser(c *gin.Context) {}
 
 // [MEM-API-005] ユーザ規約同意状況参照 /users/agreements GET
@@ -123,7 +123,7 @@ func (h *UserHandler) GetUserAgreements(c *gin.Context) {}
 // @Accept json
 // @Produce json
 // @Param Authorization  header string true "Bearer <firebase_id_token>"
-// @Param Policies body dto.UpdateUserAgreementsRequest true "規約同意更新"
+// @Param policies body dto.UpdateUserAgreementsRequest true "規約同意更新リクエスト"
 // @Success 200 {object} dto.StatusResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
