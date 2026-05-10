@@ -71,7 +71,12 @@ func (h *RecordHandler) CreateRecord(c *gin.Context) {
 	var req dto.CreateRecordRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(400,
+			dto.ErrorResponse{
+				Code:    "仮",
+				Message: "failed to get request param",
+			},
+		)
 		return
 	}
 
@@ -103,7 +108,7 @@ func (h *RecordHandler) CreateRecord(c *gin.Context) {
 // @Produce json
 // @Param Authorization  header string true "Bearer <firebase_id_token>"
 // @Param id path string true "ユーザ書誌ID"
-// @Param Policies body dto.UpdateRecordRequest true "書誌情報更新リクエスト"
+// @Param Record body dto.UpdateRecordRequest true "書誌情報更新リクエスト"
 // @Success 200 {object} dto.StatusResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse

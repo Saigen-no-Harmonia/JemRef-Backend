@@ -1,6 +1,8 @@
 package dto
 
 type ErrorResponse struct {
-	Code    string `json:"code"`
+	// エラーコード（業務エラーコード）
+	Code string `json:"code"`
+	// エラーメッセージ
 	Message string `json:"message"`
 }

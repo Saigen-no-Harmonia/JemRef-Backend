@@ -4,8 +4,8 @@ package main
 // @version 1.0
 // @license.name Capra
 // @description JemRef backend API
-// @host localhost:8080/api/v0
-// @BasePath /
+// @host localhost:8080
+// @BasePath /api/v0
 
 import (
 	"database/sql"
@@ -53,6 +53,7 @@ func main() {
 
 	// ハンドラ呼び出し
 	healthHandler := handler.NewHealthHandler(db)
+	generalHandler := NewGeneralHandler(db)
 	recordHandler := NewRecordHandler()
 	userHandler := NewUserHandler(db)
 
@@ -67,6 +68,7 @@ func main() {
 
 	// 認証なしルート
 	r.GET("/api/v0/health", healthHandler.Health)
+	r.GET("/api/v0/policies", generalHandler.GetPolicies)
 
 	// 認証ありルート
 	auth := r.Group("/api/v0")
@@ -95,4 +97,10 @@ func NewUserHandler(db *sql.DB) *handler.UserHandler {
 	idGen := id.NewUlidGenerator()
 	uc := usecase.NewUserUsecase(repo, idGen)
 	return handler.NewUserHandler(uc)
+}
+
+func NewGeneralHandler(db *sql.DB) *handler.GeneralHandler {
+	repo := infraDB.NewGeneralRepositoryImpl(db)
+	uc := usecase.NewGeneralUsecase(repo)
+	return handler.NewGeneralHandler(uc)
 }

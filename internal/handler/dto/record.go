@@ -22,10 +22,47 @@ type GetRecordsRequest struct {
 
 // [REF-API-001] 書誌一覧参照 レスポンス
 type GetRecordsResponse struct {
-	Count   int                      `json:"count" binding:"required"`
+	// 件数
+	Count   int                      `json:"count" binding:"required" example:"1"`
 	Records []RecordListItemResponse `json:"records" binding:"required"`
 }
 
+// [REF-API-002] 書誌詳細参照　レスポンス
+type GetRecordResponse struct {
+	// ユーザ書誌ID(36桁固定文字列)
+	RecordId string `json:"record_id" binding:"required" example:"AHIF98DJ0SJUFY874H..."`
+	// 書誌詳細情報
+	RecordDetailItem `binding:"required"`
+	// 収録物詳細情報
+	ContainerDetailItem ContainerDetailItem `json:"container"`
+}
+
+// [REF-API-003] 書誌情報登録　リクエスト
+type CreateRecordRequest struct {
+	// 書誌詳細情報
+	RecordDetailItem `binding:"required"`
+	// 収録物詳細情報
+	ContainerDetailItem ContainerDetailItem `json:"container"`
+}
+
+// [REF-API-003] 書誌情報登録　レスポンス
+type CreateRecordResponse struct {
+	// 公開用ユーザID（26桁固定ULID）
+	PublicUserId string `json:"user_id" binding:"required"`
+	// 公開用書誌ID
+	PublicRecordId string `json:"record_id" binding:"required"`
+}
+
+// [REF-API-004] 書誌情報更新　リクエスト
+type UpdateRecordRequest struct {
+	// 書誌詳細情報
+	RecordDetailItem `binding:"required"`
+	// 収録物詳細情報
+	ContainerDetailItem ContainerDetailItem `json:"container"`
+}
+
+// レコード関係共通DTO-------------------------------------------
+// 書誌リスト用レコード情報
 type RecordListItemResponse struct {
 	// ユーザ書誌ID(36桁固定文字列)
 	RecordId string `json:"record_id" binding:"required" example:"AHIF98DJ0SJUFY874H..."`
@@ -46,11 +83,11 @@ type RecordListItemResponse struct {
 	// 貢献者情報
 	Contributors []ContributerInfo `json:"contributers"`
 	// 収録物情報
-	ContainerListItem ContainerListItem `json:"container"`
+	ContainerListItem ContainerListItemResponse `json:"container"`
 }
 
-// 収録物情報
-type ContainerListItem struct {
+// 書誌リスト用収録物情報
+type ContainerListItemResponse struct {
 	// 収録物主題
 	MainTitle string `json:"main_title" example:"境界線の学校史"`
 	// 収録物副題
@@ -63,42 +100,7 @@ type ContainerListItem struct {
 	Contributors []ContributerInfo `json:"contributers"`
 }
 
-// [REF-API-002] 書誌詳細参照　レスポンス
-type GetRecordResponse struct {
-	// ユーザ書誌ID(36桁固定文字列)
-	RecordId string `json:"record_id" binding:"required" example:"AHIF98DJ0SJUFY874H..."`
-	// 書誌詳細
-	RecordDetailItem `binding:"required"`
-	// 収録物詳細情報
-	ContainerDetailItem ContainerDetailItem `json:"container"`
-}
-
-// [REF-API-003] 書誌情報登録　リクエスト
-type CreateRecordRequest struct {
-	// 書誌詳細情報
-	RecordDetailItem `binding:"required"`
-	// 収録物詳細情報
-	ContainerDetailItem ContainerDetailItem `json:"container"`
-}
-
-// [REF-API-003] 書誌情報登録　レスポンス
-type CreateRecordResponse struct {
-	// 公開用ユーザID（26桁固定ULID）
-	PublicUserId string `json:"user_id" binding:"required"`
-	// 公開用ユーザID
-	PublicRecordId string `json:"record_id" binding:"required"`
-}
-
-// [REF-API-004] 書誌情報更新　リクエスト
-type UpdateRecordRequest struct {
-	// 書誌詳細情報
-	RecordDetailItem `binding:"required"`
-	// 収録物詳細情報
-	ContainerDetailItem ContainerDetailItem `json:"container"`
-}
-
-// レコード関係共通DTO-------------------------------------------
-// 書誌詳細情報
+// 書誌詳細用レコード情報
 type RecordDetailItem struct {
 	// 書誌タイプ
 	Type string `json:"type" binding:"required" enums:"monograph,journal_article,compilation_article"`
@@ -124,7 +126,7 @@ type RecordDetailItem struct {
 	OptionValues OptionValues `json:"option_value"`
 }
 
-// 書誌詳細用コンテナ情報
+// 書誌詳細用収録物情報
 type ContainerDetailItem struct {
 	// 主題
 	MainTitle string `json:"main_title" example:"第1章 「学校」制度の境界線"`
@@ -144,7 +146,9 @@ type ContainerDetailItem struct {
 
 // 貢献者情報
 type ContributerInfo struct {
-	Name string                 `json:"name" example:"木村元"`
+	// 貢献者名（人物名、研究会名など）
+	Name string `json:"name" example:"木村元"`
+	// 役割
 	Role record.ContributerRole `json:"role" enums:"author,interpreter,compiler,compiler_author"`
 }
 
@@ -170,5 +174,3 @@ type OptionValues struct {
 	Edition       string `json:"edition" example:"第２版"`
 	OriginalTitle string `json:"original_title" example:"School History of Boundary"`
 }
-
-// TODO -------------------スケルトン用なので削除予定-------------------

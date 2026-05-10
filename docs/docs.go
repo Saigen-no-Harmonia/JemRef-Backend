@@ -41,6 +41,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/policies": {
+            "get": {
+                "description": "指定された規約情報を１件返却する。規約本文は改行文字入りのテキストとなる。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "policies"
+                ],
+                "summary": "[GEN-API-001] ユーザ規約参照",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.GetPoliciesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/records": {
             "get": {
                 "description": "ユーザに紐づく書誌情報をリストで返却する。ユーザ情報はfirebase tokenから取得する。",
@@ -267,7 +302,7 @@ const docTemplate = `{
                     },
                     {
                         "description": "書誌情報更新リクエスト",
-                        "name": "Policies",
+                        "name": "Record",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -651,7 +686,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.ContainerListItem": {
+        "dto.ContainerListItemResponse": {
             "type": "object",
             "properties": {
                 "contributers": {
@@ -687,10 +722,12 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "name": {
+                    "description": "貢献者名（人物名、研究会名など）",
                     "type": "string",
                     "example": "木村元"
                 },
                 "role": {
+                    "description": "役割",
                     "type": "string",
                     "enum": [
                         "author",
@@ -799,7 +836,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "record_id": {
-                    "description": "公開用ユーザID",
+                    "description": "公開用書誌ID",
                     "type": "string"
                 },
                 "user_id": {
@@ -824,10 +861,52 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
+                    "description": "エラーコード（業務エラーコード）",
                     "type": "string"
                 },
                 "message": {
+                    "description": "エラーメッセージ",
                     "type": "string"
+                }
+            }
+        },
+        "dto.GetPoliciesResponse": {
+            "type": "object",
+            "required": [
+                "content",
+                "label",
+                "latest_version",
+                "policy_id",
+                "update_date"
+            ],
+            "properties": {
+                "content": {
+                    "description": "規約本文（改行文字入りテキスト）",
+                    "type": "string",
+                    "example": "第１条〜¥n第２条〜〜2026年9月30日"
+                },
+                "label": {
+                    "description": "ラベル（表示名）",
+                    "type": "string",
+                    "example": "利用規約"
+                },
+                "latest_version": {
+                    "description": "最新バージョン",
+                    "type": "string",
+                    "example": "1.2"
+                },
+                "policy_id": {
+                    "description": "規約ID",
+                    "type": "string",
+                    "enum": [
+                        "terms",
+                        "privacy_policy"
+                    ]
+                },
+                "update_date": {
+                    "description": "更新日時（yyyy-mm-dd hh:MM:ss）",
+                    "type": "string",
+                    "example": "2026-09-30 10:00:00"
                 }
             }
         },
@@ -935,7 +1014,9 @@ const docTemplate = `{
             ],
             "properties": {
                 "count": {
-                    "type": "integer"
+                    "description": "件数",
+                    "type": "integer",
+                    "example": 1
                 },
                 "records": {
                     "type": "array",
@@ -984,7 +1065,7 @@ const docTemplate = `{
                 },
                 "original_title": {
                     "type": "string",
-                    "example": "History of School of Boundary"
+                    "example": "School History of Boundary"
                 }
             }
         },
@@ -1000,7 +1081,7 @@ const docTemplate = `{
                     "description": "収録物情報",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/dto.ContainerListItem"
+                            "$ref": "#/definitions/dto.ContainerListItemResponse"
                         }
                     ]
                 },
@@ -1066,6 +1147,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "status": {
+                    "description": "ステータス（OK, Createdなど）",
                     "type": "string"
                 }
             }
@@ -1222,7 +1304,10 @@ const docTemplate = `{
                 "status": {
                     "description": "同意ステータス",
                     "type": "string",
-                    "example": "update_required"
+                    "enum": [
+                        "agreed",
+                        "update_required"
+                    ]
                 }
             }
         },
@@ -1245,8 +1330,8 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080/api/v0",
-	BasePath:         "/",
+	Host:             "localhost:8080",
+	BasePath:         "/api/v0",
 	Schemes:          []string{},
 	Title:            "JemRef Beta API",
 	Description:      "JemRef backend API",

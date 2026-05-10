@@ -18,8 +18,8 @@ func (r *RecordUsecase) CreateRecord(ci CreateRecordInput) (*CreateRecordOutput,
 
 	// 引数をマッピング
 	record := &record.UserRecordEntry{
-		UserId:    ci.UserId,
-		MainTitle: ci.MainTitle,
+		PublicUserId: ci.UserId,
+		MainTitle:    ci.MainTitle,
 	}
 
 	// DBに登録
@@ -28,5 +28,5 @@ func (r *RecordUsecase) CreateRecord(ci CreateRecordInput) (*CreateRecordOutput,
 	}
 
 	// レスポンス
-	return &CreateRecordOutput{UserId: record.UserId}, nil
+	return &CreateRecordOutput{UserId: record.PublicUserId}, nil
 }

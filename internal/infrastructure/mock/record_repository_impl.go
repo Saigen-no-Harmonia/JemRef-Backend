@@ -16,7 +16,7 @@ func NewRecordRepositoryMock() *RecordRepositoryMock {
 
 func (m *RecordRepositoryMock) Create(ur *record.UserRecordEntry) error {
 	// mockなので保存はしない
-	ur.UserId = m.UserId
+	ur.PublicUserId = m.UserId
 	ur.MainTitle = m.Title
 	return nil
 }

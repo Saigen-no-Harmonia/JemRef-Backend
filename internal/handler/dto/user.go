@@ -21,7 +21,7 @@ type UserAgreementResponse struct {
 	// 同意バージョン
 	AgreedVersion string `json:"agreed_version" binding:"required" example:"1.0"`
 	// 同意ステータス
-	Status user.PolicyAgreementStatus `json:"status" binding:"required" example:"update_required"`
+	Status user.PolicyAgreementStatus `json:"status" binding:"required" enums:"agreed,update_required"`
 }
 
 type UpdateUserAgreementsRequest struct {

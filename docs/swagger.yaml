@@ -1,4 +1,4 @@
-basePath: /
+basePath: /api/v0
 definitions:
   dto.AgreementPolicyRequest:
     properties:
@@ -50,7 +50,7 @@ definitions:
         example: 日本教育史講座第1巻
         type: string
     type: object
-  dto.ContainerListItem:
+  dto.ContainerListItemResponse:
     properties:
       contributers:
         description: 収録物貢献者情報
@@ -77,9 +77,11 @@ definitions:
   dto.ContributerInfo:
     properties:
       name:
+        description: 貢献者名（人物名、研究会名など）
         example: 木村元
         type: string
       role:
+        description: 役割
         enum:
         - author
         - interpreter
@@ -154,7 +156,7 @@ definitions:
   dto.CreateRecordResponse:
     properties:
       record_id:
-        description: 公開用ユーザID
+        description: 公開用書誌ID
         type: string
       user_id:
         description: 公開用ユーザID（26桁固定ULID）
@@ -174,9 +176,42 @@ definitions:
   dto.ErrorResponse:
     properties:
       code:
+        description: エラーコード（業務エラーコード）
         type: string
       message:
+        description: エラーメッセージ
         type: string
+    type: object
+  dto.GetPoliciesResponse:
+    properties:
+      content:
+        description: 規約本文（改行文字入りテキスト）
+        example: 第１条〜¥n第２条〜〜2026年9月30日
+        type: string
+      label:
+        description: ラベル（表示名）
+        example: 利用規約
+        type: string
+      latest_version:
+        description: 最新バージョン
+        example: "1.2"
+        type: string
+      policy_id:
+        description: 規約ID
+        enum:
+        - terms
+        - privacy_policy
+        type: string
+      update_date:
+        description: 更新日時（yyyy-mm-dd hh:MM:ss）
+        example: "2026-09-30 10:00:00"
+        type: string
+    required:
+    - content
+    - label
+    - latest_version
+    - policy_id
+    - update_date
     type: object
   dto.GetRecordResponse:
     properties:
@@ -250,6 +285,8 @@ definitions:
   dto.GetRecordsResponse:
     properties:
       count:
+        description: 件数
+        example: 1
         type: integer
       records:
         items:
@@ -286,14 +323,14 @@ definitions:
         example: "9784130513555"
         type: string
       original_title:
-        example: History of School of Boundary
+        example: School History of Boundary
         type: string
     type: object
   dto.RecordListItemResponse:
     properties:
       container:
         allOf:
-        - $ref: '#/definitions/dto.ContainerListItem'
+        - $ref: '#/definitions/dto.ContainerListItemResponse'
         description: 収録物情報
       contributers:
         description: 貢献者情報
@@ -347,6 +384,7 @@ definitions:
   dto.StatusResponse:
     properties:
       status:
+        description: ステータス（OK, Createdなど）
         type: string
     type: object
   dto.UpdateRecordRequest:
@@ -453,7 +491,9 @@ definitions:
         type: string
       status:
         description: 同意ステータス
-        example: update_required
+        enum:
+        - agreed
+        - update_required
         type: string
     required:
     - agreed_version
@@ -471,7 +511,7 @@ definitions:
     required:
     - user_id
     type: object
-host: localhost:8080/api/v0
+host: localhost:8080
 info:
   contact: {}
   description: JemRef backend API
@@ -495,6 +535,29 @@ paths:
       summary: Health
       tags:
       - health
+  /policies:
+    get:
+      consumes:
+      - application/json
+      description: 指定された規約情報を１件返却する。規約本文は改行文字入りのテキストとなる。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.GetPoliciesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[GEN-API-001] ユーザ規約参照'
+      tags:
+      - policies
   /records:
     get:
       consumes:
@@ -680,7 +743,7 @@ paths:
         type: string
       - description: 書誌情報更新リクエスト
         in: body
-        name: Policies
+        name: Record
         required: true
         schema:
           $ref: '#/definitions/dto.UpdateRecordRequest'
