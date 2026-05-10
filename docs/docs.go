@@ -43,7 +43,7 @@ const docTemplate = `{
         },
         "/policies": {
             "get": {
-                "description": "指定された規約情報を１件返却する。規約本文は改行文字入りのテキストとなる。",
+                "description": "指定された規約について、最新版の情報を１件返却する。規約本文は改行文字入りのテキストとなる。",
                 "consumes": [
                     "application/json"
                 ],
@@ -53,7 +53,7 @@ const docTemplate = `{
                 "tags": [
                     "policies"
                 ],
-                "summary": "[GEN-API-001] ユーザ規約参照",
+                "summary": "[GEN-API-001] 規約情報参照",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -620,12 +620,12 @@ const docTemplate = `{
         "dto.AgreementPolicyRequest": {
             "type": "object",
             "required": [
-                "policy_id",
+                "policy_type",
                 "version"
             ],
             "properties": {
-                "policy_id": {
-                    "description": "規約ID",
+                "policy_type": {
+                    "description": "規約タイプ",
                     "type": "string",
                     "example": "privacy_policy"
                 },
@@ -874,16 +874,21 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "content",
+                "effective_date",
                 "label",
                 "latest_version",
-                "policy_id",
-                "update_date"
+                "policy_type"
             ],
             "properties": {
                 "content": {
                     "description": "規約本文（改行文字入りテキスト）",
                     "type": "string",
                     "example": "第１条〜¥n第２条〜〜2026年9月30日"
+                },
+                "effective_date": {
+                    "description": "発効日（yyyy-mm-dd）",
+                    "type": "string",
+                    "example": "2026-09-30"
                 },
                 "label": {
                     "description": "ラベル（表示名）",
@@ -895,18 +900,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "1.2"
                 },
-                "policy_id": {
-                    "description": "規約ID",
+                "policy_type": {
+                    "description": "規約タイプ",
                     "type": "string",
                     "enum": [
                         "terms",
                         "privacy_policy"
                     ]
-                },
-                "update_date": {
-                    "description": "更新日時（yyyy-mm-dd hh:MM:ss）",
-                    "type": "string",
-                    "example": "2026-09-30 10:00:00"
                 }
             }
         },
@@ -1277,7 +1277,7 @@ const docTemplate = `{
                 "agreed_version",
                 "label",
                 "latest_version",
-                "policy_id",
+                "policy_type",
                 "status"
             ],
             "properties": {
@@ -1296,8 +1296,8 @@ const docTemplate = `{
                     "type": "string",
                     "example": "1.2"
                 },
-                "policy_id": {
-                    "description": "規約ID",
+                "policy_type": {
+                    "description": "規約タイプ",
                     "type": "string",
                     "example": "privacy_policy"
                 },

@@ -12,8 +12,8 @@ type GetUserAgreementsResponse struct {
 }
 
 type UserAgreementResponse struct {
-	// 規約ID
-	PolicyId string `json:"policy_id" binding:"required" required:"true" example:"privacy_policy"`
+	// 規約タイプ
+	PolicyType string `json:"policy_type" binding:"required" required:"true" example:"privacy_policy"`
 	// 規約ラベル（表示名）
 	Label string `json:"label" binding:"required" example:"プライバシーポリシー"`
 	// 最新バージョン
@@ -29,8 +29,8 @@ type UpdateUserAgreementsRequest struct {
 }
 
 type AgreementPolicyRequest struct {
-	// 規約ID
-	PolicyId string `json:"policy_id" binding:"required" example:"privacy_policy"`
+	// 規約タイプ
+	PolicyType string `json:"policy_type" binding:"required" example:"privacy_policy"`
 	// 規約バージョン
 	Version string `json:"version" binding:"required" example:"1.4"`
 }
