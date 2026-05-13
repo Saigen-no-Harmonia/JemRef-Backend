@@ -401,6 +401,15 @@ const docTemplate = `{
                         "name": "Authorization",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "description": "ユーザ情報登録リクエスト",
+                        "name": "param",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateUserRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -842,6 +851,24 @@ const docTemplate = `{
                 "user_id": {
                     "description": "公開用ユーザID（26桁固定ULID）",
                     "type": "string"
+                }
+            }
+        },
+        "dto.CreateUserRequest": {
+            "type": "object",
+            "required": [
+                "privacy_policy_agreed_version",
+                "terms_agreed_version"
+            ],
+            "properties": {
+                "privacy_policy_agreed_version": {
+                    "type": "string",
+                    "example": "1.4"
+                },
+                "terms_agreed_version": {
+                    "description": "ユーザ規約同意バージョン",
+                    "type": "string",
+                    "example": "1.2"
                 }
             }
         },

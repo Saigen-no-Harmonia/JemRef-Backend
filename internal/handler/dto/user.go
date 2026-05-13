@@ -2,9 +2,15 @@ package dto
 
 import "jemref_go/internal/domain/user"
 
+type CreateUserRequest struct {
+	// ユーザ規約同意バージョン
+	TermsAgreedVersion         string `json:"terms_agreed_version" binding:"required" example:"1.2"`
+	PrivacyPolicyAgreedVersion string `json:"privacy_policy_agreed_version" binding:"required" example:"1.4"`
+}
+
 type CreateUserResponse struct {
 	// 公開用ユーザID(26文字固定ULID）
-	PublicUserId string `json:"user_id" binding:"required"`
+	PublicUserId string `json:"user_id" binding:"required" example:"001JSUFP94SNN~"`
 }
 
 type GetUserAgreementsResponse struct {

@@ -165,6 +165,19 @@ definitions:
     - record_id
     - user_id
     type: object
+  dto.CreateUserRequest:
+    properties:
+      privacy_policy_agreed_version:
+        example: "1.4"
+        type: string
+      terms_agreed_version:
+        description: ユーザ規約同意バージョン
+        example: "1.2"
+        type: string
+    required:
+    - privacy_policy_agreed_version
+    - terms_agreed_version
+    type: object
   dto.CreateUserResponse:
     properties:
       user_id:
@@ -776,6 +789,12 @@ paths:
         name: Authorization
         required: true
         type: string
+      - description: ユーザ情報登録リクエスト
+        in: body
+        name: param
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateUserRequest'
       produces:
       - application/json
       responses:

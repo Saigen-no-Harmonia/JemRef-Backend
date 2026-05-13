@@ -37,6 +37,7 @@ func (h *UserHandler) RegisterRoutes(r *gin.RouterGroup) {
 // @Accept json
 // @Produce json
 // @Param Authorization  header string true "Bearer <firebase_id_token>"
+// @Param param body dto.CreateUserRequest true "ユーザ情報登録リクエスト"
 // @Success 201 {object} dto.CreateUserResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
