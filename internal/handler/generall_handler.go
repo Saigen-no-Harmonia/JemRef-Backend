@@ -29,12 +29,13 @@ func NewGeneralHandler(uc *usecase.GeneralUsecase) *GeneralHandler {
 // @Tags policies
 // @Accept json
 // @Produce json
+// @Param policytype path string true "規約タイプ"
 // @Success 200 {object} dto.GetPoliciesResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
-// @Router /policies [get]
+// @Router /policies/:policy_type [get]
 func (h *GeneralHandler) GetPolicies(c *gin.Context) {
-	targetPolicy := c.Param(ParamPolicyId)
+	targetPolicy := c.Param(ParamPolicyType)
 	// パラメータに規約IDがなかった場合
 	if targetPolicy == "" {
 		c.JSON(400, handlerdto.ErrorResponse{
@@ -84,7 +85,6 @@ func (h *GeneralHandler) GetPolicies(c *gin.Context) {
 	}
 
 	res := createGetPoliciesResponse(*output)
-
 	c.JSON(200, res)
 }
 

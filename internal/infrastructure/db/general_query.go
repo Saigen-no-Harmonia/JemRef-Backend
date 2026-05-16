@@ -12,7 +12,7 @@ where
 	DEL_FLG=0
 and
 	ID = ?
--- 最新の１件のみ取得
-order_by effective_dt desc
+-- 最新の1件のみを取得
+order by effective_dt desc
 limit 1
 `

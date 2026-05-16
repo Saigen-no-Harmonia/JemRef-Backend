@@ -1,11 +1,5 @@
 package dto
 
-// [GEN-API-001] ユーザ規約参照 リクエスト
-type GetPoliciesRequest struct {
-	// 規約ID
-	PolicyType string `json:"policy_type" binding:"required" enums:"terms,privacy_policy"`
-}
-
 // [GEN-API-001] ユーザ規約参照 レスポンス
 type GetPoliciesResponse struct {
 	// 規約タイプ

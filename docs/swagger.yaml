@@ -182,6 +182,7 @@ definitions:
     properties:
       user_id:
         description: 公開用ユーザID(26文字固定ULID）
+        example: 001JSUFP94SNN~
         type: string
     required:
     - user_id
@@ -548,11 +549,17 @@ paths:
       summary: Health
       tags:
       - health
-  /policies:
+  /policies/:policy_type:
     get:
       consumes:
       - application/json
       description: 指定された規約について、最新版の情報を１件返却する。規約本文は改行文字入りのテキストとなる。
+      parameters:
+      - description: 規約タイプ
+        in: path
+        name: policytype
+        required: true
+        type: string
       produces:
       - application/json
       responses:

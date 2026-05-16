@@ -7,5 +7,5 @@ import (
 
 type GeneralRepository interface {
 	// 規約IDをもとに、規約１件を取得する
-	SelectById(context.Context, string) (*policy.Policy, error)
+	SelectLatestById(context.Context, string) (*policy.Policy, error)
 }

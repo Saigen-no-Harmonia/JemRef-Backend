@@ -23,7 +23,7 @@ func NewGeneralRepositoryImpl(db *sql.DB) *GeneralRepositoryImpl {
 }
 
 // SelectById 規約IDをキーとして、最新の規約情報１件を返却する
-func (r *GeneralRepositoryImpl) SelectById(ctx context.Context, id string) (*policy.Policy, error) {
+func (r *GeneralRepositoryImpl) SelectLatestById(ctx context.Context, id string) (*policy.Policy, error) {
 
 	var p policy.Policy
 

@@ -20,7 +20,7 @@ func NewGeneralUsecase(r repository.GeneralRepository) *GeneralUsecase {
 // 規約情報取得Usecase
 func (g *GeneralUsecase) GetPolicies(ctx context.Context, gp dto.GetPoliciesInput) (*dto.GetPoliciesOutput, error) {
 	// 規約情報を取得
-	p, err := g.generalRepo.SelectById(ctx, gp.PolicyId)
+	p, err := g.generalRepo.SelectLatestById(ctx, gp.PolicyId)
 	if err != nil {
 		return nil, err
 	}

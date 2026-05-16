@@ -68,7 +68,7 @@ func main() {
 
 	// 認証なしルート
 	r.GET("/api/v0/health", healthHandler.Health)
-	r.GET("/api/v0/policies", generalHandler.GetPolicies)
+	r.GET("/api/v0/policies/:"+handler.ParamPolicyType, generalHandler.GetPolicies)
 
 	// 認証ありルート
 	auth := r.Group("/api/v0")

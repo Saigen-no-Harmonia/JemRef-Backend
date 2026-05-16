@@ -41,7 +41,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/policies": {
+        "/policies/:policy_type": {
             "get": {
                 "description": "指定された規約について、最新版の情報を１件返却する。規約本文は改行文字入りのテキストとなる。",
                 "consumes": [
@@ -54,6 +54,15 @@ const docTemplate = `{
                     "policies"
                 ],
                 "summary": "[GEN-API-001] 規約情報参照",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "規約タイプ",
+                        "name": "policytype",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -880,7 +889,8 @@ const docTemplate = `{
             "properties": {
                 "user_id": {
                     "description": "公開用ユーザID(26文字固定ULID）",
-                    "type": "string"
+                    "type": "string",
+                    "example": "001JSUFP94SNN~"
                 }
             }
         },
