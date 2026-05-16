@@ -24,6 +24,7 @@ var codeToTypeMap = map[string]PolicyType{
 	PolicyIdPrivacyPolicy:  PolicyTypePrivacyPolicy,
 }
 
+// GetId 規約タイプのIDを返却する
 func (t PolicyType) GetId() (string, error) {
 	code, ok := typeToCodeMap[t]
 
@@ -34,6 +35,7 @@ func (t PolicyType) GetId() (string, error) {
 	return code, nil
 }
 
+// PolicyTypeFromCode 規約タイプIDをもとに規約タイプを返却する
 func PolicyTypeFromCode(code string) (PolicyType, error) {
 	policyType, ok := codeToTypeMap[code]
 
@@ -44,6 +46,7 @@ func PolicyTypeFromCode(code string) (PolicyType, error) {
 	return policyType, nil
 }
 
+// IsValid 規約タイプが正しいものであればtrueを返却する
 func (t PolicyType) IsValid() bool {
 	_, ok := typeToCodeMap[t]
 	return ok

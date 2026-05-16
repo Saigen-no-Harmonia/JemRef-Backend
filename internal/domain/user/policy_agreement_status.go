@@ -3,16 +3,6 @@ package user
 type PolicyAgreementStatus string
 
 const (
-	PolicyAgreementStatusAgreed         = "agreed"
-	PolicyAgreementStatusUpdateRequired = "update_required"
+	PolicyAgreementStatusAgreed         PolicyAgreementStatus = "agreed"
+	PolicyAgreementStatusUpdateRequired PolicyAgreementStatus = "update_required"
 )
-
-func (s PolicyAgreementStatus) IsValid() bool {
-	switch s {
-	case PolicyAgreementStatusAgreed,
-		PolicyAgreementStatusUpdateRequired:
-		return true
-	default:
-		return false
-	}
-}

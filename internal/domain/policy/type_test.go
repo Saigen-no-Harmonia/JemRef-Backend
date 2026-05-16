@@ -33,7 +33,6 @@ func TestType_Isvalid(t *testing.T) {
 	for _, tt := range tests {
 
 		t.Run(tt.name, func(t *testing.T) {
-
 			actual := tt.input.IsValid()
 
 			assert.Equal(t, tt.expected, actual)
