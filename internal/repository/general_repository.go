@@ -1,7 +1,11 @@
 package repository
 
-import "jemref_go/internal/domain/policy"
+import (
+	"context"
+	"jemref_go/internal/domain/policy"
+)
 
 type GeneralRepository interface {
-	GetPolicies(p *policy.Policy) error
+	// 規約IDをもとに、規約１件を取得する
+	SelectById(context.Context, string) (*policy.Policy, error)
 }

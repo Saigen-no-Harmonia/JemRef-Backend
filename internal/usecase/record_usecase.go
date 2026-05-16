@@ -3,6 +3,7 @@ package usecase
 import (
 	"jemref_go/internal/domain/record"
 	"jemref_go/internal/repository"
+	"jemref_go/internal/usecase/dto"
 )
 
 type RecordUsecase struct {
@@ -14,7 +15,7 @@ func NewRecordUsecase(r repository.RecordRepository) *RecordUsecase {
 	return &RecordUsecase{repo: r}
 }
 
-func (r *RecordUsecase) CreateRecord(ci CreateRecordInput) (*CreateRecordOutput, error) {
+func (r *RecordUsecase) CreateRecord(ci dto.CreateRecordInput) (*dto.CreateRecordOutput, error) {
 
 	// 引数をマッピング
 	record := &record.UserRecordEntry{
@@ -28,5 +29,5 @@ func (r *RecordUsecase) CreateRecord(ci CreateRecordInput) (*CreateRecordOutput,
 	}
 
 	// レスポンス
-	return &CreateRecordOutput{UserId: record.PublicUserId}, nil
+	return &dto.CreateRecordOutput{UserId: record.PublicUserId}, nil
 }

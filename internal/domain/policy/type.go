@@ -24,7 +24,7 @@ var codeToTypeMap = map[string]PolicyType{
 	PolicyIdPrivacyPolicy:  PolicyTypePrivacyPolicy,
 }
 
-func (t PolicyType) Code() (string, error) {
+func (t PolicyType) GetId() (string, error) {
 	code, ok := typeToCodeMap[t]
 
 	if !ok {

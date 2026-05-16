@@ -4,6 +4,7 @@ import (
 	ctxutil "jemref_go/internal/context"
 	"jemref_go/internal/handler/dto"
 	"jemref_go/internal/usecase"
+	usecaseDto "jemref_go/internal/usecase/dto"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -146,8 +147,8 @@ func (h *UserHandler) UpdateUserAgreements(c *gin.Context) {}
 func (h *UserHandler) Login(c *gin.Context) {}
 
 // Useacse用の構造体にマッピングする
-func createUserInput(firebaseUserId string, email string) usecase.CreateUserInput {
-	return usecase.CreateUserInput{
+func createUserInput(firebaseUserId string, email string) usecaseDto.CreateUserInput {
+	return usecaseDto.CreateUserInput{
 		FirebaseUserId: firebaseUserId,
 		Email:          email,
 	}

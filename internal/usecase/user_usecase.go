@@ -1,10 +1,13 @@
 package usecase
 
+// ユーザUsecase実装
+
 import (
 	"context"
 	"jemref_go/internal/domain/id"
 	"jemref_go/internal/domain/user"
 	"jemref_go/internal/repository"
+	"jemref_go/internal/usecase/dto"
 	"time"
 )
 
@@ -15,6 +18,7 @@ type UserUsecase struct {
 	// txManager repository.TxManager
 }
 
+// コンストラクタ
 func NewUserUsecase(r repository.UserRepository, g id.Generator) *UserUsecase {
 	return &UserUsecase{
 		userRepo: r,
@@ -22,7 +26,8 @@ func NewUserUsecase(r repository.UserRepository, g id.Generator) *UserUsecase {
 	}
 }
 
-func (u *UserUsecase) CreateUser(ctx context.Context, cu CreateUserInput) (*CreateUserOutput, error) {
+// ユーザ情報登録Usecase
+func (u *UserUsecase) CreateUser(ctx context.Context, cu dto.CreateUserInput) (*dto.CreateUserOutput, error) {
 
 	// 公開用ユーザIDを生成
 	publicUserId := u.idGen.Generate()
@@ -50,7 +55,7 @@ func (u *UserUsecase) CreateUser(ctx context.Context, cu CreateUserInput) (*Crea
 	}
 
 	// レスポンス
-	return &CreateUserOutput{
+	return &dto.CreateUserOutput{
 		PublicUserId: publicUserId,
 	}, nil
 }

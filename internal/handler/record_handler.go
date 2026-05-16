@@ -2,7 +2,9 @@ package handler
 
 import (
 	"jemref_go/internal/handler/dto"
+	handlerdto "jemref_go/internal/handler/dto"
 	"jemref_go/internal/usecase"
+	usecasedto "jemref_go/internal/usecase/dto"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -68,11 +70,11 @@ func (h *RecordHandler) GetRecord(c *gin.Context) {}
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /records [post]
 func (h *RecordHandler) CreateRecord(c *gin.Context) {
-	var req dto.CreateRecordRequest
+	var req handlerdto.CreateRecordRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400,
-			dto.ErrorResponse{
+			handlerdto.ErrorResponse{
 				Code:    "仮",
 				Message: "failed to get request param",
 			},
@@ -92,7 +94,7 @@ func (h *RecordHandler) CreateRecord(c *gin.Context) {
 	// 仮
 	log.Print(output)
 
-	res := dto.CreateRecordResponse{
+	res := handlerdto.CreateRecordResponse{
 		PublicUserId:   "sample_public_user_id",
 		PublicRecordId: "sample_public_record_id",
 	}
@@ -130,9 +132,9 @@ func (h *RecordHandler) UpdateRecord(c *gin.Context) {}
 func (h *RecordHandler) DeleteRecord(c *gin.Context) {}
 
 // Usecase用の構造体にマッピングする
-func toCreateRecordInput(req dto.CreateRecordRequest) usecase.CreateRecordInput {
+func toCreateRecordInput(req dto.CreateRecordRequest) usecasedto.CreateRecordInput {
 	//. TODO not implemented
-	return usecase.CreateRecordInput{
+	return usecasedto.CreateRecordInput{
 		MainTitle: req.RecordDetailItem.MainTitle,
 	}
 }

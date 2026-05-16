@@ -1,15 +1,15 @@
-package usecase
+package dto
 
 import "time"
 
 // 規約取得Usecase Input
 type GetPoliciesInput struct {
-	PolicyType string
+	PolicyId string
 }
 
 // 規約取得Usecase Output
 type GetPoliciesOutput struct {
-	PolicyType    string
+	PolicyId      string
 	Label         string
 	LatestVersion string
 	EffectiveDate time.Time

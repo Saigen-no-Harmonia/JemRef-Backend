@@ -3,10 +3,13 @@ package handler
 // 一般ハンドラ実装
 
 import (
+	"errors"
 	"fmt"
 	"jemref_go/internal/domain/policy"
-	"jemref_go/internal/handler/dto"
+	handlerdto "jemref_go/internal/handler/dto"
+	"jemref_go/internal/infrastructure/db"
 	"jemref_go/internal/usecase"
+	usecasedto "jemref_go/internal/usecase/dto"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -34,7 +37,7 @@ func (h *GeneralHandler) GetPolicies(c *gin.Context) {
 	targetPolicy := c.Param(ParamPolicyId)
 	// パラメータに規約IDがなかった場合
 	if targetPolicy == "" {
-		c.JSON(400, dto.ErrorResponse{
+		c.JSON(400, handlerdto.ErrorResponse{
 			Code: "E0002",
 			Message: fmt.Sprintf(
 				"必須パラメータがありません。%s",
@@ -47,7 +50,7 @@ func (h *GeneralHandler) GetPolicies(c *gin.Context) {
 	// 規約IDが不正だった場合
 	policyType := policy.PolicyType(targetPolicy)
 	if !policyType.IsValid() {
-		c.JSON(400, dto.ErrorResponse{
+		c.JSON(400, handlerdto.ErrorResponse{
 			Code: "E0003",
 			Message: fmt.Sprintf(
 				"規約IDが不正です。policy_id=%s",
@@ -58,62 +61,55 @@ func (h *GeneralHandler) GetPolicies(c *gin.Context) {
 	}
 
 	// Usecase呼び出し
-	input, err := createGetPolicyInput(policyType)
-	// TODO エラー処理
+	input := createGetPolicyInput(policyType)
+	output, err := h.usecase.GetPolicies(c.Request.Context(), input)
 	if err != nil {
 		log.Println(err)
-		c.JSON(500, dto.ErrorResponse{
-			Code:    "A001",
-			Message: "Server Error",
-		})
+
+		// リクエストされた規約が存在しない場合
+		if errors.Is(err, db.ErrPolicyNotFound) {
+			c.JSON(404, handlerdto.ErrorResponse{
+				Code:    "E0006",
+				Message: "リクエストされた規約は存在しません。policy_type={}",
+			})
+		} else {
+			// DB接続エラーなど
+			c.JSON(500, handlerdto.ErrorResponse{
+				Code:    "A0001",
+				Message: "Fatal: internal server error",
+			})
+		}
+
 		return
 	}
 
-	output, err := h.usecase.GetPolicies(input)
-	// TODO エラー処理
-	if err != nil {
-		log.Println(err)
-		// TODO レスポンスをswitch?
-		return
-	}
-
-	res, err := createGetPoliciesResponse(*output)
-	// TODO エラー処理
-	if err != nil {
-		log.Println(err)
-		c.JSON(500, dto.ErrorResponse{
-			Code:    "A001",
-			Message: "Server Error",
-		})
-		return
-	}
+	res := createGetPoliciesResponse(*output)
 
 	c.JSON(200, res)
 }
 
-func createGetPolicyInput(tp policy.PolicyType) (usecase.GetPoliciesInput, error) {
-	// 規約タイプが正しいことはチェック済み
-	policyId, _ := tp.Code()
-	return usecase.GetPoliciesInput{
-		PolicyType: policyId,
-	}, nil
+// createGetPolicyInput Usecase用Input構造体を作成
+func createGetPolicyInput(tp policy.PolicyType) usecasedto.GetPoliciesInput {
+	policyId, _ := tp.GetId()
+	return usecasedto.GetPoliciesInput{
+		PolicyId: policyId,
+	}
 }
 
-func createGetPoliciesResponse(o usecase.GetPoliciesOutput) (dto.GetPoliciesResponse, error) {
-	// DBの規約IDを規約タイプ名称に変換
-	policyType, err := policy.PolicyTypeFromCode(o.PolicyType)
+// createGetPoliciesResponse レスポンス用構造体を作成
+func createGetPoliciesResponse(o usecasedto.GetPoliciesOutput) handlerdto.GetPoliciesResponse {
+	// DBの規約IDを、レスポンス用に規約タイプ名称へと変換
+	policyType, err := policy.PolicyTypeFromCode(o.PolicyId)
 	if err != nil {
 		log.Println(err)
-		return dto.GetPoliciesResponse{}, err
+		panic(err)
 	}
-	policyTypeStr := string(policyType)
 
-	// レスポンスオブジェクトに詰めて返却
-	return dto.GetPoliciesResponse{
-		PolicyType:    policyTypeStr,
+	return handlerdto.GetPoliciesResponse{
+		PolicyType:    string(policyType),
 		Label:         o.Label,
 		LatestVersion: o.LatestVersion,
 		EffectiveDate: o.EffectiveDate.Format("yyyy-mm-dd"),
 		Content:       o.Content,
-	}, nil
+	}
 }

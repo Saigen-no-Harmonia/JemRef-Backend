@@ -1,17 +1,36 @@
 package usecase
 
-import "jemref_go/internal/repository"
+// 一般Usecase実装
+
+import (
+	"context"
+	"jemref_go/internal/repository"
+	"jemref_go/internal/usecase/dto"
+)
 
 type GeneralUsecase struct {
-	repo repository.GeneralRepository
+	generalRepo repository.GeneralRepository
 }
 
+// コンストラクタ
 func NewGeneralUsecase(r repository.GeneralRepository) *GeneralUsecase {
-	return &GeneralUsecase{repo: r}
+	return &GeneralUsecase{generalRepo: r}
 }
 
-func (g *GeneralUsecase) GetPolicies(gi GetPoliciesInput) (*GetPoliciesOutput, error) {
+// 規約情報取得Usecase
+func (g *GeneralUsecase) GetPolicies(ctx context.Context, gp dto.GetPoliciesInput) (*dto.GetPoliciesOutput, error) {
+	// 規約情報を取得
+	p, err := g.generalRepo.SelectById(ctx, gp.PolicyId)
+	if err != nil {
+		return nil, err
+	}
 
-	// スケルトン
-	return &GetPoliciesOutput{}, nil
+	// 規約情報を返却
+	return &dto.GetPoliciesOutput{
+		PolicyId:      p.Id,
+		Label:         p.Name,
+		LatestVersion: p.Version,
+		EffectiveDate: p.EffectiveDate,
+		Content:       p.Content,
+	}, nil
 }
