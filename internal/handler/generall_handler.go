@@ -109,7 +109,7 @@ func createGetPoliciesResponse(o usecasedto.GetPoliciesOutput) handlerdto.GetPol
 		PolicyType:    string(policyType),
 		Label:         o.Label,
 		LatestVersion: o.LatestVersion,
-		EffectiveDate: o.EffectiveDate.Format("yyyy-mm-dd"),
+		EffectiveDate: o.EffectiveDate.Format("2006-01-02"),
 		Content:       o.Content,
 	}
 }
