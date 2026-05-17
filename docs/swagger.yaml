@@ -34,13 +34,14 @@ definitions:
         - $ref: '#/definitions/dto.OptionValues'
         description: オプション書誌項目値情報
       read_status:
+        allOf:
+        - $ref: '#/definitions/record.ReadStatus'
         description: 既読ステータス
         enum:
         - unread
         - reading
         - partially_read
         - read
-        type: string
       sub_title:
         description: 副題
         example: その形成と展開
@@ -81,13 +82,14 @@ definitions:
         example: 木村元
         type: string
       role:
+        allOf:
+        - $ref: '#/definitions/record.ContributerRole'
         description: 役割
         enum:
         - author
         - interpreter
         - compiler
         - compiler_author
-        type: string
     type: object
   dto.CreateRecordRequest:
     properties:
@@ -126,13 +128,14 @@ definitions:
         example: 東京大学出版会
         type: string
       read_status:
+        allOf:
+        - $ref: '#/definitions/record.ReadStatus'
         description: 既読ステータス
         enum:
         - unread
         - reading
         - partially_read
         - read
-        type: string
       sub_title:
         description: 副題
         example: その形成と展開
@@ -264,13 +267,14 @@ definitions:
         example: 東京大学出版会
         type: string
       read_status:
+        allOf:
+        - $ref: '#/definitions/record.ReadStatus'
         description: 既読ステータス
         enum:
         - unread
         - reading
         - partially_read
         - read
-        type: string
       record_id:
         description: ユーザ書誌ID(36桁固定文字列)
         example: AHIF98DJ0SJUFY874H...
@@ -368,13 +372,14 @@ definitions:
         example: 東京大学出版会
         type: string
       read_status:
+        allOf:
+        - $ref: '#/definitions/record.ReadStatus'
         description: 既読ステータス
         enum:
         - unread
         - reading
         - partially_read
         - read
-        type: string
       record_id:
         description: ユーザ書誌ID(36桁固定文字列)
         example: AHIF98DJ0SJUFY874H...
@@ -438,13 +443,14 @@ definitions:
         example: 東京大学出版会
         type: string
       read_status:
+        allOf:
+        - $ref: '#/definitions/record.ReadStatus'
         description: 既読ステータス
         enum:
         - unread
         - reading
         - partially_read
         - read
-        type: string
       sub_title:
         description: 副題
         example: その形成と展開
@@ -504,11 +510,12 @@ definitions:
         example: privacy_policy
         type: string
       status:
+        allOf:
+        - $ref: '#/definitions/user.PolicyAgreementStatus'
         description: 同意ステータス
         enum:
         - agreed
         - update_required
-        type: string
     required:
     - agreed_version
     - label
@@ -525,6 +532,38 @@ definitions:
     required:
     - user_id
     type: object
+  record.ContributerRole:
+    enum:
+    - author
+    - interpreter
+    - compiler
+    - compiler_author
+    type: string
+    x-enum-varnames:
+    - ContributerRoleAuthor
+    - ContributerRoleInterpreter
+    - ContributerRoleCompiler
+    - ContributerRoleCompilerAuthor
+  record.ReadStatus:
+    enum:
+    - read
+    - unread
+    - reading
+    - partial_read
+    type: string
+    x-enum-varnames:
+    - ReadStatusRead
+    - ReadStatusUnread
+    - ReadStatusReading
+    - ReadStatusPertialRead
+  user.PolicyAgreementStatus:
+    enum:
+    - agreed
+    - update_required
+    type: string
+    x-enum-varnames:
+    - PolicyAgreementStatusAgreed
+    - PolicyAgreementStatusUpdateRequired
 host: localhost:8080
 info:
   contact: {}
@@ -569,6 +608,10 @@ paths:
             $ref: '#/definitions/dto.GetPoliciesResponse'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
         "500":

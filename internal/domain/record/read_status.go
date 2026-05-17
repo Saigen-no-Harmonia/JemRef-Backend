@@ -1,7 +1,5 @@
 package record
 
-import "fmt"
-
 type ReadStatus string
 
 const (
@@ -33,25 +31,25 @@ var idToStatusMap = map[int]ReadStatus{
 }
 
 // GetId 既読ステータスのIDを返却する
-func (s ReadStatus) GetId() (int, error) {
+func (s ReadStatus) GetId() int {
 	id, ok := statusToIdMap[s]
 
 	if !ok {
-		return 0, fmt.Errorf("invalid read status: %s", s)
+		panic("invalid status")
 	}
 
-	return id, nil
+	return id
 }
 
 // ReadStatusFromId 既読ステータスIDをもとに既読ステータスを返却する
-func ReadStatusFromId(id int) (ReadStatus, error) {
+func ReadStatusFromId(id int) ReadStatus {
 	readStatus, ok := idToStatusMap[id]
 
 	if !ok {
-		return "", fmt.Errorf("invalid read status id: %d", id)
+		panic("invalid status id")
 	}
 
-	return readStatus, nil
+	return readStatus
 }
 
 // IsValid 既読ステータスが正しいものであればtrueを返却する

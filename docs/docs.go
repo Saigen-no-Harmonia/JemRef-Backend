@@ -76,6 +76,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -684,12 +690,16 @@ const docTemplate = `{
                 },
                 "read_status": {
                     "description": "既読ステータス",
-                    "type": "string",
                     "enum": [
                         "unread",
                         "reading",
                         "partially_read",
                         "read"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/record.ReadStatus"
+                        }
                     ]
                 },
                 "sub_title": {
@@ -746,12 +756,16 @@ const docTemplate = `{
                 },
                 "role": {
                     "description": "役割",
-                    "type": "string",
                     "enum": [
                         "author",
                         "interpreter",
                         "compiler",
                         "compiler_author"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/record.ContributerRole"
+                        }
                     ]
                 }
             }
@@ -815,12 +829,16 @@ const docTemplate = `{
                 },
                 "read_status": {
                     "description": "既読ステータス",
-                    "type": "string",
                     "enum": [
                         "unread",
                         "reading",
                         "partially_read",
                         "read"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/record.ReadStatus"
+                        }
                     ]
                 },
                 "sub_title": {
@@ -1007,12 +1025,16 @@ const docTemplate = `{
                 },
                 "read_status": {
                     "description": "既読ステータス",
-                    "type": "string",
                     "enum": [
                         "unread",
                         "reading",
                         "partially_read",
                         "read"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/record.ReadStatus"
+                        }
                     ]
                 },
                 "record_id": {
@@ -1151,12 +1173,16 @@ const docTemplate = `{
                 },
                 "read_status": {
                     "description": "既読ステータス",
-                    "type": "string",
                     "enum": [
                         "unread",
                         "reading",
                         "partially_read",
                         "read"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/record.ReadStatus"
+                        }
                     ]
                 },
                 "record_id": {
@@ -1248,12 +1274,16 @@ const docTemplate = `{
                 },
                 "read_status": {
                     "description": "既読ステータス",
-                    "type": "string",
                     "enum": [
                         "unread",
                         "reading",
                         "partially_read",
                         "read"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/record.ReadStatus"
+                        }
                     ]
                 },
                 "sub_title": {
@@ -1340,10 +1370,14 @@ const docTemplate = `{
                 },
                 "status": {
                     "description": "同意ステータス",
-                    "type": "string",
                     "enum": [
                         "agreed",
                         "update_required"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/user.PolicyAgreementStatus"
+                        }
                     ]
                 }
             }
@@ -1360,6 +1394,47 @@ const docTemplate = `{
                     "example": "001JSUFP94SNN~"
                 }
             }
+        },
+        "record.ContributerRole": {
+            "type": "string",
+            "enum": [
+                "author",
+                "interpreter",
+                "compiler",
+                "compiler_author"
+            ],
+            "x-enum-varnames": [
+                "ContributerRoleAuthor",
+                "ContributerRoleInterpreter",
+                "ContributerRoleCompiler",
+                "ContributerRoleCompilerAuthor"
+            ]
+        },
+        "record.ReadStatus": {
+            "type": "string",
+            "enum": [
+                "read",
+                "unread",
+                "reading",
+                "partial_read"
+            ],
+            "x-enum-varnames": [
+                "ReadStatusRead",
+                "ReadStatusUnread",
+                "ReadStatusReading",
+                "ReadStatusPertialRead"
+            ]
+        },
+        "user.PolicyAgreementStatus": {
+            "type": "string",
+            "enum": [
+                "agreed",
+                "update_required"
+            ],
+            "x-enum-varnames": [
+                "PolicyAgreementStatusAgreed",
+                "PolicyAgreementStatusUpdateRequired"
+            ]
         }
     }
 }`

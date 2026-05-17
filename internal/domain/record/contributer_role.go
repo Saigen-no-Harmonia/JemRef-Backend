@@ -1,7 +1,5 @@
 package record
 
-import "fmt"
-
 type ContributerRole string
 
 const (
@@ -33,23 +31,23 @@ var idToRoleMap = map[string]ContributerRole{
 }
 
 // GetId 貢献者役割のIDを返却する
-func (r ContributerRole) GetId() (string, error) {
+func (r ContributerRole) GetId() string {
 	id, ok := roleToIdMap[r]
 	if !ok {
-		return "", fmt.Errorf("invalid role id: %s", r)
+		panic("invalid role")
 	}
 
-	return id, nil
+	return id
 }
 
 // RoleFromId 貢献者役割IDをもとに貢献者役割を返却する
-func RoleFromId(id string) (ContributerRole, error) {
+func RoleFromId(id string) ContributerRole {
 	role, ok := idToRoleMap[id]
 	if !ok {
-		return "", fmt.Errorf("invalid role id: %s", id)
+		panic("invalid role id")
 	}
 
-	return role, nil
+	return role
 }
 
 // IsValid 役割が正しい値であればtrueを返却する
