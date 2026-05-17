@@ -2,3 +2,5 @@
 *.env
 設計書
 makefile
+*.out
+.DS_Store
