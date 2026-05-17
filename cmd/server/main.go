@@ -101,6 +101,6 @@ func NewUserHandler(db *sql.DB) *handler.UserHandler {
 
 func NewGeneralHandler(db *sql.DB) *handler.GeneralHandler {
 	repo := infraDB.NewGeneralRepositoryImpl(db)
-	uc := usecase.NewGeneralUsecase(repo)
+	uc := usecase.NewGeneralUsecaseImpl(repo)
 	return handler.NewGeneralHandler(uc)
 }

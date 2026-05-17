@@ -11,15 +11,16 @@ import (
 	"jemref_go/internal/usecase"
 	usecasedto "jemref_go/internal/usecase/dto"
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 type GeneralHandler struct {
-	usecase *usecase.GeneralUsecase
+	usecase usecase.GeneralUsecase
 }
 
-func NewGeneralHandler(uc *usecase.GeneralUsecase) *GeneralHandler {
+func NewGeneralHandler(uc usecase.GeneralUsecase) *GeneralHandler {
 	return &GeneralHandler{usecase: uc}
 }
 
@@ -32,32 +33,24 @@ func NewGeneralHandler(uc *usecase.GeneralUsecase) *GeneralHandler {
 // @Param policytype path string true "規約タイプ"
 // @Success 200 {object} dto.GetPoliciesResponse
 // @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /policies/:policy_type [get]
 func (h *GeneralHandler) GetPolicies(c *gin.Context) {
+	// パスパラメータ取得
 	targetPolicy := c.Param(ParamPolicyType)
-	// パラメータに規約IDがなかった場合
-	if targetPolicy == "" {
-		c.JSON(400, handlerdto.ErrorResponse{
-			Code: "E0002",
-			Message: fmt.Sprintf(
-				"必須パラメータがありません。%s",
-				targetPolicy,
-			),
-		})
-		return
-	}
-
-	// 規約IDが不正だった場合
 	policyType := policy.PolicyType(targetPolicy)
+
 	if !policyType.IsValid() {
-		c.JSON(400, handlerdto.ErrorResponse{
-			Code: "E0003",
-			Message: fmt.Sprintf(
-				"規約IDが不正です。policy_id=%s",
-				targetPolicy,
-			),
-		})
+		c.JSON(
+			http.StatusBadRequest,
+			handlerdto.ErrorResponse{
+				Code: "E0003",
+				Message: fmt.Sprintf(
+					"規約IDが不正です。policy_id=%s",
+					targetPolicy,
+				),
+			})
 		return
 	}
 
@@ -69,47 +62,44 @@ func (h *GeneralHandler) GetPolicies(c *gin.Context) {
 
 		// リクエストされた規約が存在しない場合
 		if errors.Is(err, db.ErrPolicyNotFound) {
-			c.JSON(404, handlerdto.ErrorResponse{
-				Code:    "E0006",
-				Message: "リクエストされた規約は存在しません。policy_type={}",
-			})
+			c.JSON(
+				http.StatusNotFound,
+				handlerdto.ErrorResponse{
+					Code: "E0006",
+					Message: fmt.Sprintf("リクエストされた規約が存在しません。policy_type=%s",
+						targetPolicy,
+					),
+				},
+			)
 		} else {
-			// DB接続エラーなど
-			c.JSON(500, handlerdto.ErrorResponse{
-				Code:    "A0001",
-				Message: "Fatal: internal server error",
-			})
+			// 意図しないエラー
+			c.JSON(
+				http.StatusInternalServerError,
+				handlerdto.ErrorResponse{
+					Code:    "A0001",
+					Message: "Fatal: internal server error",
+				},
+			)
 		}
 
 		return
 	}
 
 	res := createGetPoliciesResponse(*output)
-	c.JSON(200, res)
+	c.JSON(http.StatusOK, res)
 }
 
 // createGetPolicyInput Usecase用Input構造体を作成
 func createGetPolicyInput(tp policy.PolicyType) usecasedto.GetPoliciesInput {
-	// 規約タイプ（規約名）を規約IDに変換
-	policyId, err := tp.GetId()
-	if err != nil {
-		log.Println(err)
-		panic(err)
-	}
-
 	return usecasedto.GetPoliciesInput{
-		PolicyId: policyId,
+		PolicyId: tp.GetId(),
 	}
 }
 
 // createGetPoliciesResponse レスポンス用構造体を作成
 func createGetPoliciesResponse(o usecasedto.GetPoliciesOutput) handlerdto.GetPoliciesResponse {
 	// DBの規約IDを、レスポンス用に規約タイプ名称へと変換
-	policyType, err := policy.PolicyTypeFromCode(o.PolicyId)
-	if err != nil {
-		log.Println(err)
-		panic(err)
-	}
+	policyType := policy.PolicyTypeFromCode(o.PolicyId)
 
 	return handlerdto.GetPoliciesResponse{
 		PolicyType:    string(policyType),

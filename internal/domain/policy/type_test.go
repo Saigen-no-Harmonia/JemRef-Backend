@@ -46,25 +46,25 @@ func TestType_GetId(t *testing.T) {
 		name        string
 		input       PolicyType
 		expected    string
-		expectError bool
+		expectPanic bool
 	}{
 		{
 			name:        "正常_ユーザ利用規約をIDに変換",
 			input:       PolicyTypeTermsOfService,
 			expected:    string(PolicyIdTermsOfService),
-			expectError: false,
+			expectPanic: false,
 		},
 		{
 			name:        "正常_プライバシーポリシーをIDに変換",
 			input:       PolicyTypePrivacyPolicy,
 			expected:    string(PolicyIdPrivacyPolicy),
-			expectError: false,
+			expectPanic: false,
 		},
 		{
 			name:        "異常_不正値を変換",
 			input:       PolicyType("invalid"),
 			expected:    "",
-			expectError: true,
+			expectPanic: true,
 		},
 	}
 
@@ -72,14 +72,14 @@ func TestType_GetId(t *testing.T) {
 
 		t.Run(tt.name, func(t *testing.T) {
 
-			actual, err := tt.input.GetId()
-
-			if tt.expectError {
-				assert.Error(t, err)
+			if tt.expectPanic {
+				assert.Panics(t, func() {
+					tt.input.GetId()
+				})
 				return
 			}
 
-			assert.NoError(t, err)
+			actual := tt.input.GetId()
 			assert.Equal(t, actual, tt.expected)
 		})
 	}
@@ -91,38 +91,39 @@ func TestType_PoliicyTypeFromCode(t *testing.T) {
 		name        string
 		input       string
 		expected    PolicyType
-		expectError bool
+		expectPanic bool
 	}{
 		{
 			name:        "正常_ユーザ利用規約",
 			input:       PolicyIdTermsOfService,
 			expected:    PolicyTypeTermsOfService,
-			expectError: false,
+			expectPanic: false,
 		},
 		{
 			name:        "正常_プライバシーポリシー",
 			input:       PolicyIdPrivacyPolicy,
 			expected:    PolicyTypePrivacyPolicy,
-			expectError: false,
+			expectPanic: false,
 		},
 		{
 			name:        "異常_想定外の値",
 			input:       "invavlid",
 			expected:    "",
-			expectError: true,
+			expectPanic: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual, err := PolicyTypeFromCode(tt.input)
 
-			if tt.expectError {
-				assert.Error(t, err)
+			if tt.expectPanic {
+				assert.Panics(t, func() {
+					PolicyTypeFromCode(tt.input)
+				})
 				return
 			}
 
-			assert.NoError(t, err)
+			actual := PolicyTypeFromCode(tt.input)
 			assert.Equal(t, actual, tt.expected)
 		})
 	}

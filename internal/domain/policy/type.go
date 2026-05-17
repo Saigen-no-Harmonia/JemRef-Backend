@@ -1,7 +1,5 @@
 package policy
 
-import "fmt"
-
 type PolicyType string
 
 const (
@@ -25,25 +23,25 @@ var codeToTypeMap = map[string]PolicyType{
 }
 
 // GetId 規約タイプのIDを返却する
-func (t PolicyType) GetId() (string, error) {
+func (t PolicyType) GetId() string {
 	code, ok := typeToCodeMap[t]
 
 	if !ok {
-		return "", fmt.Errorf("invalid policy type: %s", t)
+		panic("invalid policy type")
 	}
 
-	return code, nil
+	return code
 }
 
 // PolicyTypeFromCode 規約タイプIDをもとに規約タイプを返却する
-func PolicyTypeFromCode(code string) (PolicyType, error) {
+func PolicyTypeFromCode(code string) PolicyType {
 	policyType, ok := codeToTypeMap[code]
 
 	if !ok {
-		return "", fmt.Errorf("invalid policy code: %s", code)
+		panic("invalid policy code")
 	}
 
-	return policyType, nil
+	return policyType
 }
 
 // IsValid 規約タイプが正しいものであればtrueを返却する

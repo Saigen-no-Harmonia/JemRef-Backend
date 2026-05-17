@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGeneralUsecase_GetPolicies(t *testing.T) {
+func TestGeneralUsecaseImpl_GetPolicies(t *testing.T) {
 
 	tests := []struct {
 		name          string
@@ -95,7 +95,7 @@ func TestGeneralUsecase_GetPolicies(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := NewGeneralUsecase(tt.mockRepo)
+			u := NewGeneralUsecaseImpl(tt.mockRepo)
 
 			actual, err := u.GetPolicies(
 				context.Background(),
