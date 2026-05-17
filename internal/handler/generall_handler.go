@@ -90,7 +90,13 @@ func (h *GeneralHandler) GetPolicies(c *gin.Context) {
 
 // createGetPolicyInput Usecase用Input構造体を作成
 func createGetPolicyInput(tp policy.PolicyType) usecasedto.GetPoliciesInput {
-	policyId, _ := tp.GetId()
+	// 規約タイプ（規約名）を規約IDに変換
+	policyId, err := tp.GetId()
+	if err != nil {
+		log.Println(err)
+		panic(err)
+	}
+
 	return usecasedto.GetPoliciesInput{
 		PolicyId: policyId,
 	}
