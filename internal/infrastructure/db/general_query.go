@@ -13,6 +13,8 @@ where
 and
 	ID = ?
 -- 最新の1件のみを取得
+and
+	EFFECTIVE_DT < now()
 order by effective_dt desc
 limit 1
 `
