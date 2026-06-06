@@ -1,4 +1,5 @@
 package context
 
-const ContextKeyUserId = "firebase_user_id"
-const ContextKeyEmail = "firebase_user_email"
+const CtxKeyFirebaseUid = "firebase_user_id"
+const CtxKeyUid = "user_id"
+const CtxtKeyEmail = "firebase_user_email"
