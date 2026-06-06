@@ -216,10 +216,6 @@ CREATE TABLE e_records (
   INDEX idx_user_type (USER_ID, TYPE_ID, DEL_FLG)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='ユーザ入力書誌エントリ';
 
-
-ALTER TABLE e_records ADD COLUMN VOLUME  VARCHAR(20) NULL COMMENT '巻' AFTER PAGE_RANGE;
-ALTER TABLE e_records ADD COLUMN ISSUE  VARCHAR(20) NULL COMMENT '号' AFTER VOLUME;
-
 -- ------------------------------------------------------------
 
 CREATE TABLE e_contributors (
