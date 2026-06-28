@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"jemref_go/internal/domain/policy"
 	handlerdto "jemref_go/internal/handler/dto"
-	"jemref_go/internal/infrastructure/db"
+	"jemref_go/internal/usecase"
 	usecasedto "jemref_go/internal/usecase/dto"
 	"net/http"
 	"net/http/httptest"
@@ -77,7 +77,7 @@ func TestGeneralHandler_GetPolicies(t *testing.T) {
 					ctx context.Context,
 					gpi usecasedto.GetPoliciesInput,
 				) (*usecasedto.GetPoliciesOutput, error) {
-					return nil, db.ErrPolicyNotFound
+					return nil, usecase.ErrPolicyNotFound
 				},
 			},
 			expectedStatus: http.StatusNotFound,

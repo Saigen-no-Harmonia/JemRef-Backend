@@ -3,12 +3,13 @@ package user
 import "time"
 
 type User struct {
-	InternalUserId        string
+	InternalUserId        uint64
 	PublicUserId          string
 	FirebaseUserId        string
 	Email                 string
-	TermsAgreedDt         time.Time
+	TermsAgreedDt         *time.Time
 	TermsVersion          string
-	PrivacyPolicyAgreedDt time.Time
+	PrivacyPolicyAgreedDt *time.Time
 	PrivacyPolicyVersion  string
+	DeletedAt             *time.Time
 }

@@ -43,5 +43,5 @@ type AgreementPolicyRequest struct {
 
 type UserLoginResponse struct {
 	// 公開用ユーザID（26文字固定ULID）
-	UserId string `json:"user_id" binding:"required" example:"001JSUFP94SNN~"`
+	PublicUserId string `json:"user_id" binding:"required" example:"001JSUFP94SNN~"`
 }

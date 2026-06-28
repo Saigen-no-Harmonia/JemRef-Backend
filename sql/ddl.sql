@@ -17,6 +17,7 @@ CREATE TABLE m_users (
   TERMS_VERSION            VARCHAR(20) NOT NULL               COMMENT '利用規約同意バージョン',
   PRIVACY_POLICY_AGREED_DT DATETIME(6) NOT NULL               COMMENT 'プライバシーポリシー同意日時',
   PRIVACY_POLICY_VERSION   VARCHAR(20) NOT NULL               COMMENT 'プライバシーポリシー同意バージョン',
+  DELETED_AT   DATETIME(6) NULL                               COMMENT '削除日時',
   DEL_FLG      TINYINT     NOT NULL DEFAULT 0                 COMMENT '削除フラグ',
   INS_PG       VARCHAR(64) NOT NULL                           COMMENT '作成プログラム',
   INS_ID       VARCHAR(64) NOT NULL                           COMMENT '作成者ID',
@@ -27,7 +28,7 @@ CREATE TABLE m_users (
   PRIMARY KEY (ID),
   UNIQUE KEY uk_public_id (PUBLIC_ID),  
   UNIQUE KEY uk_firebase_id (FIREBASE_ID),
-  UNIQUE KEY uk_email (EMAIL, DEL_FLG)
+  UNIQUE KEY uk_email (EMAIL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='ユーザマスタ';
 
 -- ------------------------------------------------------------

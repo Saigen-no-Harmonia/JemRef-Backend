@@ -7,10 +7,8 @@ import (
 	"database/sql"
 	"errors"
 	"jemref_go/internal/domain/policy"
+	"jemref_go/internal/repository"
 )
-
-// 取得件数0件の場合のエラー
-var ErrPolicyNotFound = errors.New("policy not found")
 
 type GeneralRepositoryImpl struct {
 	db *sql.DB
@@ -43,7 +41,7 @@ func (r *GeneralRepositoryImpl) SelectLatestById(ctx context.Context, id string)
 
 		// 取得件数が0件の場合
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrPolicyNotFound
+			return nil, repository.ErrPolicyNotFound
 		}
 
 		return nil, err

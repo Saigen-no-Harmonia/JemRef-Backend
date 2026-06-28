@@ -1,7 +1,13 @@
-/sql/private
 *.env
+/sql/private
 設計書
 makefile
 *.out
 .DS_Store
 .vscode
+# Firebase Admin SDK
+serviceAccountKey.json
+firebase-adminsdk-*.json
+# Firebase Agent Skills
+.agents/
+skills-lock.json

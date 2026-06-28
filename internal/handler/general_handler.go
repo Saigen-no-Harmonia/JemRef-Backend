@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"jemref_go/internal/domain/policy"
 	handlerdto "jemref_go/internal/handler/dto"
-	"jemref_go/internal/infrastructure/db"
 	"jemref_go/internal/usecase"
 	usecasedto "jemref_go/internal/usecase/dto"
 	"log"
@@ -61,7 +60,7 @@ func (h *GeneralHandler) GetPolicies(c *gin.Context) {
 		log.Println(err)
 
 		// リクエストされた規約が存在しない場合
-		if errors.Is(err, db.ErrPolicyNotFound) {
+		if errors.Is(err, usecase.ErrPolicyNotFound) {
 			c.JSON(
 				http.StatusNotFound,
 				handlerdto.ErrorResponse{

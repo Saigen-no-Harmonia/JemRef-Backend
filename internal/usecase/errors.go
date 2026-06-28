@@ -1,0 +1,15 @@
+package usecase
+
+import "errors"
+
+// ErrUserNotFound ユーザが存在しない
+var ErrUserNotFound = errors.New("user not found")
+
+// ErrPolicyNotFound 規約が存在しない
+var ErrPolicyNotFound = errors.New("policy not found")
+
+// ErrUserDeleted ユーザ退会済み
+var ErrUserDeleted = errors.New("user has deleted")
+
+// ErrInvalidUser ユーザデータ不整合
+var ErrInvalidUser = errors.New("invalid user data")

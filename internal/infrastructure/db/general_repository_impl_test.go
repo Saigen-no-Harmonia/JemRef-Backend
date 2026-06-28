@@ -6,6 +6,7 @@ package db
 
 import (
 	"context"
+	"jemref_go/internal/repository"
 	"jemref_go/internal/testutil"
 	"testing"
 
@@ -36,7 +37,7 @@ func TestGeneralRepository_SelectLatestById_準正常_該当レコードなし(t
 		context.Background(),
 		"P999",
 	)
-	require.ErrorIs(t, err, ErrPolicyNotFound)
+	require.ErrorIs(t, err, repository.ErrPolicyNotFound)
 	assert.Nil(t, actual)
 }
 
@@ -47,7 +48,7 @@ func TestGeneralRepository_SelectLatestById_準正常_引数なし(t *testing.T)
 		context.Background(),
 		"",
 	)
-	require.ErrorIs(t, err, ErrPolicyNotFound)
+	require.ErrorIs(t, err, repository.ErrPolicyNotFound)
 	assert.Nil(t, actual)
 }
 

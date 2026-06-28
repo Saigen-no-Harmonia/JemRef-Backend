@@ -4,6 +4,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"jemref_go/internal/repository"
 	"jemref_go/internal/usecase/dto"
 )
@@ -12,12 +13,11 @@ type GeneralUsecaseImpl struct {
 	generalRepo repository.GeneralRepository
 }
 
-// コンストラクタ
 func NewGeneralUsecaseImpl(r repository.GeneralRepository) *GeneralUsecaseImpl {
 	return &GeneralUsecaseImpl{generalRepo: r}
 }
 
-// 規約情報取得Usecase
+// GetPolicies 最新の規約情報１件を返却する
 func (g *GeneralUsecaseImpl) GetPolicies(
 	ctx context.Context,
 	gp dto.GetPoliciesInput,
@@ -25,6 +25,10 @@ func (g *GeneralUsecaseImpl) GetPolicies(
 	// 規約情報を取得
 	p, err := g.generalRepo.SelectLatestById(ctx, gp.PolicyId)
 	if err != nil {
+		if errors.Is(err, repository.ErrPolicyNotFound) {
+			return nil, ErrPolicyNotFound
+		}
+
 		return nil, err
 	}
 
