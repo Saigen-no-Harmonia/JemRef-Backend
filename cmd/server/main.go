@@ -8,6 +8,7 @@ package main
 // @BasePath /api/v0
 
 import (
+	"context"
 	"database/sql"
 	"jemref_go/internal/config"
 	"jemref_go/internal/domain/id"
@@ -21,19 +22,23 @@ import (
 
 	_ "jemref_go/docs"
 
+	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/auth"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func main() {
-	// 初期化DI
+
 	log.Print("initializing config")
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// DB初期化
+	log.Print("initializing database")
 	log.Printf("DB_HOST=%s, DB_Port=%s, DB_Name=%s, DB_User=%s",
 		cfg.DBHost,
 		cfg.DBPort,
@@ -41,66 +46,87 @@ func main() {
 		cfg.DBUser,
 	)
 
-	log.Print("initializing database")
-
-	// DB接続
 	db, err := infrastructure.NewDB(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// firebase初期化
 	log.Print("initializing routing")
+	app, err := firebase.NewApp(context.Background(), nil)
+	if err != nil {
+		log.Fatalf("error initializing firebase app: %v", err)
+	}
+	client, err := app.Auth(context.Background())
+	if err != nil {
+		log.Fatalf("error initializing firebase client: %v", err)
+	}
 
-	// ハンドラ呼び出し
+	// ルーティング
+	log.Print("initializing routing")
 	healthHandler := handler.NewHealthHandler(db)
-	generalHandler := NewGeneralHandler(db)
-	recordHandler := NewRecordHandler()
-	userHandler := NewUserHandler(db)
+	generalHandler := newGeneralHandler(db)
+	recordHandler := newRecordHandler()
+	userHandler := newUserHandler(db, client)
 
-	// ルーティング設定
+	// 認証なしルート ------------------------------------------------------
 	r := gin.Default()
-
-	//Swagger用ルート
-	r.GET(
-		"/swagger/*any",
-		ginSwagger.WrapHandler(swaggerFiles.Handler),
-	)
-
-	// 認証なしルート
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	r.GET("/api/v0/health", healthHandler.Health)
 	r.GET("/api/v0/policies/:"+handler.ParamPolicyType, generalHandler.GetPolicies)
 
-	// 認証ありルート
-	auth := r.Group("/api/v0")
-	auth.Use(middleware.Auth())
+	// 認証ありルート ------------------------------------------------------
 
+	authUC := newAuthUsecase(db, client)
+	// 会員登録用
+	join := r.Group("/api/v0")
+	join.Use(
+		middleware.FirebaseAuth(app),
+		middleware.ChkUnregistered(authUC),
+	)
+	join.POST("/join", userHandler.CreateUser)
+
+	// 共通認証
+	auth := r.Group("/api/v0")
+	auth.Use(
+		middleware.FirebaseAuth(app),
+		middleware.FindCurrentUser(authUC),
+	)
+
+	// ルーティング登録
 	recordHandler.RegisterRoutes(auth)
 	userHandler.RegisterRoutes(auth)
-
 	log.Print("finsh routing")
 
-	log.Print("server starting")
-
 	// 実行
+	log.Print("server starting")
 	r.Run("0.0.0.0:8080")
 }
 
-func NewRecordHandler() *handler.RecordHandler {
+func newRecordHandler() *handler.RecordHandler {
 	// repositoryはmock
 	repo := mock.NewRecordRepositoryMock()
 	uc := usecase.NewRecordUsecase(repo)
 	return handler.NewRecordHandler(uc)
 }
 
-func NewUserHandler(db *sql.DB) *handler.UserHandler {
-	repo := infraDB.NewUserRepositoryImpl(db)
+func newUserHandler(db *sql.DB, client *auth.Client) *handler.UserHandler {
+	userRepo := infraDB.NewUserRepositoryImpl(db)
+	termsRepo := infraDB.NewGeneralRepositoryImpl(db)
+	firebaseRepo := infraDB.NewFirebaseRepositoryImpl(client)
 	idGen := id.NewUlidGenerator()
-	uc := usecase.NewUserUsecase(repo, idGen)
+	uc := usecase.NewUserUsecase(userRepo, termsRepo, firebaseRepo, idGen)
 	return handler.NewUserHandler(uc)
 }
 
-func NewGeneralHandler(db *sql.DB) *handler.GeneralHandler {
+func newGeneralHandler(db *sql.DB) *handler.GeneralHandler {
 	repo := infraDB.NewGeneralRepositoryImpl(db)
 	uc := usecase.NewGeneralUsecaseImpl(repo)
 	return handler.NewGeneralHandler(uc)
+}
+
+func newAuthUsecase(db *sql.DB, c *auth.Client) *usecase.AuthUsecaseImpl {
+	userRepo := infraDB.NewUserRepositoryImpl(db)
+	FirebaseRepo := infraDB.NewFirebaseRepositoryImpl(c)
+	return usecase.NewAuthUsecaseImpl(userRepo, FirebaseRepo)
 }

@@ -1,0 +1,15 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "JemRef backend API",
+        "title": "JemRef Beta API",
+        "contact": {},
+        "license": {
+            "name": "Capra"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v0",
+    "paths": {}
+}
