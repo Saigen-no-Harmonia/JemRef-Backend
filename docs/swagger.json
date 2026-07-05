@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "JemRef backend API",
+        "description": "JemRef Beta backend API\nThis API requires a valid Firebase ID Token.\nRequests without authentication will be rejected.",
         "title": "JemRef Beta API",
         "contact": {},
         "license": {

@@ -1440,7 +1440,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/api/v0",
 	Schemes:          []string{},
 	Title:            "JemRef Beta API",
-	Description:      "JemRef backend API",
+	Description:      "JemRef Beta backend API\nThis API requires a valid Firebase ID Token.\nRequests without authentication will be rejected.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

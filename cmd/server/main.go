@@ -1,7 +1,9 @@
 // @title JemRef Beta API
 // @version 1.0
 // @license.name Capra
-// @description JemRef backend API
+// @description JemRef Beta backend API
+// @description This API requires a valid Firebase ID Token.
+// @description Requests without authentication will be rejected.
 // @host localhost:8080
 // @BasePath /api/v0
 package main

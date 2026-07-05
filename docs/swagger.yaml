@@ -567,7 +567,10 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  description: JemRef backend API
+  description: |-
+    JemRef Beta backend API
+    This API requires a valid Firebase ID Token.
+    Requests without authentication will be rejected.
   license:
     name: Capra
   title: JemRef Beta API

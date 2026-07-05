@@ -12,10 +12,10 @@ swagger:
 
 docs:
 	rm -rf public
-	mkdir public
-	cp site/index.html public/
-	cp docs/swagger.yaml public/
-	cp docs/swagger.json public/
+	mkdir -p public/docs/api/
+	cp site/index.html public/docs/api/
+	cp docs/swagger.yaml public/docs/api/
+	cp docs/swagger.json public/docs/api/
 
 run:
 	go run cmd/server/main.go
