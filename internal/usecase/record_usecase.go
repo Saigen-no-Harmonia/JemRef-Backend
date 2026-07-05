@@ -24,7 +24,9 @@ func (r *RecordUsecase) CreateRecord(ci dto.CreateRecordInput) (*dto.CreateRecor
 	}
 
 	// DBに登録
-	if err := r.repo.Create(record); err != nil {
+	err := r.repo.Create(record)
+
+	if err != nil {
 		return nil, err
 	}
 

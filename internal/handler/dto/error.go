@@ -6,3 +6,10 @@ type ErrorResponse struct {
 	// エラーメッセージ
 	Message string `json:"message"`
 }
+
+func NewErrorResponse(code string, message string) *ErrorResponse {
+	return &ErrorResponse{
+		Code:    code,
+		Message: message,
+	}
+}

@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetUserId(c *gin.Context) (uint64, bool) {
+func GetUserId(c *gin.Context) (int64, bool) {
 	// 存在チェック
 	val, exists := c.Get(CtxKeyUid)
 	if !exists {
@@ -12,7 +12,10 @@ func GetUserId(c *gin.Context) (uint64, bool) {
 	}
 
 	// 型チェック
-	uid, ok := val.(uint64)
+	uid, ok := val.(int64)
+	if val == 0 {
+		return 0, false
+	}
 	return uid, ok
 }
 
@@ -24,6 +27,10 @@ func GetFirebaseUid(c *gin.Context) (string, bool) {
 	}
 
 	firebaseUid, ok := val.(string)
+	if val == "" {
+		return "", false
+	}
+
 	return firebaseUid, ok
 }
 
@@ -35,6 +42,10 @@ func GetPublicUid(c *gin.Context) (string, bool) {
 	}
 
 	publicUid, ok := val.(string)
+	if val == "" {
+		return "", false
+	}
+
 	return publicUid, ok
 }
 
@@ -47,5 +58,8 @@ func GetEmail(c *gin.Context) (string, bool) {
 
 	// 型チェック
 	email, ok := val.(string)
+	if val == "" {
+		return "", false
+	}
 	return email, ok
 }

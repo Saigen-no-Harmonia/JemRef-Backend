@@ -3,7 +3,7 @@ package user
 import "time"
 
 type User struct {
-	InternalUserId        uint64
+	InternalUserId        int64
 	PublicUserId          string
 	FirebaseUserId        string
 	Email                 string

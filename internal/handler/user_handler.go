@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"jemref_go/internal/context"
 	ctxutil "jemref_go/internal/context"
 	"jemref_go/internal/handler/dto"
@@ -15,11 +16,11 @@ import (
 )
 
 type UserHandler struct {
-	usecase *usecase.UserUsecase
+	usecase usecase.UserUsecase
 }
 
 // コンストラクタ
-func NewUserHandler(uc *usecase.UserUsecase) *UserHandler {
+func NewUserHandler(uc usecase.UserUsecase) *UserHandler {
 	return &UserHandler{usecase: uc}
 }
 
@@ -51,9 +52,9 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	// firebaseユーザIDを受け取る
 	firebaseUserId, ok := ctxutil.GetFirebaseUid(c)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "F0001",
-			Message: "FirebaseUIDの取得処理に異常があります。",
+		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Code:    "A0001",
+			Message: "fatal:FirebaseUIDの取得処理に異常があります。",
 		})
 		return
 	}
@@ -61,9 +62,9 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	// メールアドレスを受け取る
 	email, ok := ctxutil.GetEmail(c)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "F0002",
-			Message: "Eメールアドレスの取得処理に異常があります。"})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Code:    "A0001",
+			Message: "fatal:Eメールアドレスの取得処理に異常があります。"})
 		return
 	}
 
@@ -76,11 +77,18 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		log.Println(err)
 
 		// 既存ユーザがいた場合
+		if errors.Is(err, usecase.ErrUserAlreadyExists) {
+			c.AbortWithStatusJSON(http.StatusConflict, dto.ErrorResponse{
+				Code:    "E0005",
+				Message: fmt.Sprintf("すでに存在するFirebase UIDまたはEmailです。FirebaseUID: %s, Email: %s", firebaseUserId, email),
+			})
+			return
+		}
 
 		// 上記以外の場合
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "F0003",
-			Message: "ユーザ作成処理に失敗しました。",
+		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Code:    "A0001",
+			Message: "fatal:ユーザ作成処理に失敗しました。",
 		})
 		return
 	}
@@ -105,23 +113,25 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 // @Success 200 {object}
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
-// @Router /users/{id} [delete]
+// @Router /users [delete]
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	internalUid, ok := ctxutil.GetUserId(c)
 	if !ok {
 		log.Print("internal user idの取得に失敗")
 		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "F0001",
-			Message: "failed to get internal user id",
+			Code:    "A0001",
+			Message: "fatal:ユーザID取得処理に異常があります。",
 		})
+		return
 	}
 	firebaseUid, ok := ctxutil.GetFirebaseUid(c)
 	if !ok {
 		log.Print("firebase user idの取得に失敗")
 		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "F0001",
-			Message: "failed to get firebase user id",
+			Code:    "A0001",
+			Message: "firebaseユーザID取得処理に異常があります。",
 		})
+		return
 	}
 
 	input := createDeleteUserInput(internalUid, firebaseUid)
@@ -131,24 +141,25 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		// FirebaseユーザはいるがDBにデータが物理的に存在しない：未入会
 		if errors.Is(err, usecase.ErrUserNotFound) {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, dto.ErrorResponse{
-				Code:    "Exxxx",
-				Message: "Unauthorized",
+				Code:    "E0010",
+				Message: "未登録ユーザです。ユーザ登録を行ってください。",
 			})
 			return
 		}
 		// ユーザ情報に不整合がある場合
 		if errors.Is(err, usecase.ErrInvalidUser) {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
-				Code:    "F0001",
-				Message: "fatal: invalid user data",
+				Code:    "A0001",
+				Message: "fatal: ユーザデータに不整合があります。",
 			})
 			return
 		}
 
 		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "F0001",
+			Code:    "A0001",
 			Message: "fatal: internal server error",
 		})
+		return
 	}
 
 	c.Status(http.StatusOK)
@@ -206,7 +217,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 			http.StatusInternalServerError,
 			handlerDto.ErrorResponse{
 				Code:    "F0001",
-				Message: "fatal: internal server error",
+				Message: "fatal: 公開用ユーザID取得処理に異常があります。",
 			},
 		)
 		return
@@ -225,7 +236,7 @@ func createUserInput(firebaseUserId string, email string) usecaseDto.CreateUserI
 }
 
 // createDeleteUserInput ユーザ削除Usecaseの引数を作成
-func createDeleteUserInput(internalUid uint64, firebaseUid string) usecaseDto.DeleteUserInput {
+func createDeleteUserInput(internalUid int64, firebaseUid string) usecaseDto.DeleteUserInput {
 	return usecaseDto.DeleteUserInput{
 		InternalUserid: internalUid,
 		FirebaseUserId: firebaseUid,

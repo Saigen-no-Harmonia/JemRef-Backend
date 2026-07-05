@@ -13,3 +13,6 @@ var ErrUserDeleted = errors.New("user has deleted")
 
 // ErrInvalidUser ユーザデータ不整合
 var ErrInvalidUser = errors.New("invalid user data")
+
+// ErrUserAlreadyExists 既存のユーザあり
+var ErrUserAlreadyExists = errors.New("duplicate user registration")

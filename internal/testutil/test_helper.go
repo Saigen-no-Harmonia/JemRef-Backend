@@ -1,8 +1,15 @@
 package testutil
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
+	"net/http/httptest"
 	"os"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // loadFixture テストデータの読み込み
@@ -35,4 +42,30 @@ func TruncateTable(
 	)
 
 	return err
+}
+
+// NewJsonReader handlerテスト用JSONReader作成メソッド
+func NewJsonReader(
+	t *testing.T,
+	body any,
+) *bytes.Reader {
+	t.Helper()
+
+	jsonBody, err := json.Marshal(body)
+	require.NoError(t, err)
+
+	return bytes.NewReader(jsonBody)
+}
+
+// AssertResponse HandlerテストのレスポンスJSONを検証する
+func AssertResponse[T any](t *testing.T, rec *httptest.ResponseRecorder, expectBody T) {
+	t.Helper()
+
+	var actual T
+	err := json.Unmarshal(
+		rec.Body.Bytes(),
+		&actual,
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, expectBody, actual)
 }

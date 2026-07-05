@@ -13,9 +13,11 @@ import (
 	"jemref_go/internal/usecase/dto"
 	"log"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
 )
 
-type UserUsecase struct {
+type UserUsecaseImpl struct {
 	userRepo     repository.UserRepository
 	firebaseRepo repository.FirebaseRepository
 	idGen        id.Generator
@@ -23,8 +25,8 @@ type UserUsecase struct {
 	// txManager repository.TxManager
 }
 
-func NewUserUsecase(ur repository.UserRepository, gr repository.GeneralRepository, fr repository.FirebaseRepository, g id.Generator) *UserUsecase {
-	return &UserUsecase{
+func NewUserUsecase(ur repository.UserRepository, gr repository.GeneralRepository, fr repository.FirebaseRepository, g id.Generator) UserUsecase {
+	return &UserUsecaseImpl{
 		userRepo:     ur,
 		generalRepo:  gr,
 		firebaseRepo: fr,
@@ -34,7 +36,7 @@ func NewUserUsecase(ur repository.UserRepository, gr repository.GeneralRepositor
 
 // ユーザ情報登録Usecase
 // CreateUser ユーザを作成し、公開用UIDを返却する
-func (u *UserUsecase) CreateUser(ctx context.Context, cu dto.CreateUserInput) (*dto.CreateUserOutput, error) {
+func (u *UserUsecaseImpl) CreateUser(ctx context.Context, cu dto.CreateUserInput) (*dto.CreateUserOutput, error) {
 	log.Printf("ユーザ情報登録usecase 処理開始: firebase uid: %s", cu.FirebaseUserId)
 
 	// 公開用ユーザIDを生成
@@ -76,7 +78,14 @@ func (u *UserUsecase) CreateUser(ctx context.Context, cu dto.CreateUserInput) (*
 	}
 
 	// DBに登録
-	if err := u.userRepo.Create(ctx, user); err != nil {
+	err = u.userRepo.Create(ctx, user)
+
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+		return nil, ErrUserAlreadyExists
+	}
+
+	if err != nil {
 		return nil, err
 	}
 
@@ -89,7 +98,7 @@ func (u *UserUsecase) CreateUser(ctx context.Context, cu dto.CreateUserInput) (*
 }
 
 // DeleteUser DBのユーザと Firebaseユーザを削除する
-func (u *UserUsecase) DeleteUser(ctx context.Context, ud dto.DeleteUserInput) error {
+func (u *UserUsecaseImpl) DeleteUser(ctx context.Context, ud dto.DeleteUserInput) error {
 
 	internalUid := ud.InternalUserid
 	firebaseUid := ud.FirebaseUserId
@@ -133,13 +142,13 @@ func (u *UserUsecase) DeleteUser(ctx context.Context, ud dto.DeleteUserInput) er
 }
 
 // Login ユーザログイン処理 Ph0では公開用UIDを返却するだけ
-func (uu *UserUsecase) Login(ctx context.Context, ui dto.UserLoginInput) (*dto.UserLoginOutput, error) {
+func (uu *UserUsecaseImpl) Login(ctx context.Context, ui dto.UserLoginInput) (*dto.UserLoginOutput, error) {
 	uid := ui.InternalUserId
 	log.Printf("ユーザログインusecase 処理開始: internal uid: %d", uid)
 
 	u, err := uu.userRepo.SelectByInternalUid(ctx, uid)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return nil, ErrUserNotFound
 		}
 		return nil, err

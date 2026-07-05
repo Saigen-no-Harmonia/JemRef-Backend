@@ -41,7 +41,7 @@ func (r *GeneralRepositoryImpl) SelectLatestById(ctx context.Context, id string)
 
 		// 取得件数が0件の場合
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, repository.ErrPolicyNotFound
+			return nil, repository.ErrNotFound
 		}
 
 		return nil, err

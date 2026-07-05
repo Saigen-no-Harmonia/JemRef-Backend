@@ -37,7 +37,7 @@ func TestGeneralRepository_SelectLatestById_準正常_該当レコードなし(t
 		context.Background(),
 		"P999",
 	)
-	require.ErrorIs(t, err, repository.ErrPolicyNotFound)
+	require.ErrorIs(t, err, repository.ErrNotFound)
 	assert.Nil(t, actual)
 }
 
@@ -48,7 +48,7 @@ func TestGeneralRepository_SelectLatestById_準正常_引数なし(t *testing.T)
 		context.Background(),
 		"",
 	)
-	require.ErrorIs(t, err, repository.ErrPolicyNotFound)
+	require.ErrorIs(t, err, repository.ErrNotFound)
 	assert.Nil(t, actual)
 }
 

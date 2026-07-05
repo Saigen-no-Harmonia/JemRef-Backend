@@ -25,7 +25,7 @@ func (g *GeneralUsecaseImpl) GetPolicies(
 	// 規約情報を取得
 	p, err := g.generalRepo.SelectLatestById(ctx, gp.PolicyId)
 	if err != nil {
-		if errors.Is(err, repository.ErrPolicyNotFound) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return nil, ErrPolicyNotFound
 		}
 

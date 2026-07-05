@@ -10,12 +10,12 @@ type CreateUserOutput struct {
 }
 
 type DeleteUserInput struct {
-	InternalUserid uint64
+	InternalUserid int64
 	FirebaseUserId string
 }
 
 type UserLoginInput struct {
-	InternalUserId uint64
+	InternalUserId int64
 }
 
 type UserLoginOutput struct {
@@ -23,7 +23,7 @@ type UserLoginOutput struct {
 }
 
 type AuthUserOutput struct {
-	InternalUserId uint64
+	InternalUserId int64
 	FirebaseUserId string
 	PublicUserId   string
 }

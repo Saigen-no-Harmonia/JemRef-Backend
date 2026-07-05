@@ -30,7 +30,7 @@ func (a *AuthUsecaseImpl) Authenticate(
 
 	// ユーザ情報が取得できなかった場合
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return nil, ErrUserNotFound
 		}
 		return nil, err

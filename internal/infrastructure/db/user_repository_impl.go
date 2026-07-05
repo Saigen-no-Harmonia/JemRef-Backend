@@ -9,6 +9,7 @@ import (
 	"jemref_go/internal/domain/user"
 	"jemref_go/internal/repository"
 
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -41,6 +42,11 @@ func (r *UserRepositoryImpl) Create(
 	)
 
 	if err != nil {
+		var mysqlErr *mysql.MySQLError
+		// キー重複エラー
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+			return repository.ErrDuplicateEntry
+		}
 		return err
 	}
 
@@ -50,12 +56,12 @@ func (r *UserRepositoryImpl) Create(
 // Delete ユーザ削除
 func (r *UserRepositoryImpl) Delete(
 	ctx context.Context,
-	uid uint64,
+	internalUid int64,
 ) error {
 	_, err := r.db.ExecContext(
 		ctx,
 		deleteUserQuery,
-		uid,
+		internalUid,
 	)
 
 	if err != nil {
@@ -68,7 +74,7 @@ func (r *UserRepositoryImpl) Delete(
 // SelectByInternalUid  ユーザIDからユーザ情報を取得する
 func (r *UserRepositoryImpl) SelectByInternalUid(
 	ctx context.Context,
-	internalUid uint64,
+	internalUid int64,
 ) (*user.User, error) {
 
 	row := r.db.QueryRowContext(
@@ -91,7 +97,7 @@ func (r *UserRepositoryImpl) SelectByInternalUid(
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, repository.ErrUserNotFound
+			return nil, repository.ErrNotFound
 		}
 
 		return nil, err
@@ -126,7 +132,7 @@ func (r *UserRepositoryImpl) SelectByFirebaseUid(
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, repository.ErrUserNotFound
+			return nil, repository.ErrNotFound
 		}
 
 		return nil, err
