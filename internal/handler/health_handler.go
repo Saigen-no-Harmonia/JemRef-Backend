@@ -20,8 +20,6 @@ func NewHealthHandler(db *sql.DB) *HealthHandler {
 	}
 }
 
-// Healthエンドポイント
-//
 // @Summary Health
 // @Description Health
 // @Tags health

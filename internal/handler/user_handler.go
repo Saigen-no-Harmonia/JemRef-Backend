@@ -34,8 +34,6 @@ func (h *UserHandler) RegisterRoutes(r *gin.RouterGroup) {
 	r.PUT("/users/login", h.Login)
 }
 
-// [MEM-API-002] ユーザ情報登録 /join POST
-//
 // @Summary [MEM-API-002] ユーザ情報登録
 // @Description ユーザを作成する。ユーザ情報はfirebase tokenから取得する。
 // @Tags users
@@ -44,9 +42,9 @@ func (h *UserHandler) RegisterRoutes(r *gin.RouterGroup) {
 // @Param Authorization  header string true "Bearer <firebase_id_token>"
 // @Param param body dto.CreateUserRequest true "ユーザ情報登録リクエスト"
 // @Success 201 {object} dto.CreateUserResponse
-// @Failure 400 {object} dto.ErrorResponse
+// @Failure 409 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
-// @Router /users [post]
+// @Router /join [post]
 func (h *UserHandler) CreateUser(c *gin.Context) {
 
 	// firebaseユーザIDを受け取る
@@ -101,8 +99,6 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, res)
 }
 
-// [MEM-API-004] ユーザ退会 /users/:id DELETE
-//
 // @Summary [MEM-API-004] ユーザ退会
 // @Description ユーザ情報を論理削除する。
 // @Tags users
@@ -110,7 +106,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 // @Produce json
 // @Param Authorization  header string true "Bearer <firebase_id_token>"
 // @Param id path string true "(公開用)ユーザID"
-// @Success 200 {object}
+// @Success 200
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /users [delete]
@@ -165,8 +161,6 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-// [MEM-API-005] ユーザ規約同意状況参照 /users/agreements GET
-//
 // @Summary [MEM-API-005] ユーザ規約同意状況参照
 // @Description 指定したユーザの規約同意状況を参照する。ユーザ情報はヘッダから取得する。
 // @Tags users
@@ -179,8 +173,6 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 // @Router /users/agreements [get]
 func (h *UserHandler) GetUserAgreements(c *gin.Context) {}
 
-// [MEM-API-006] ユーザ規約同意状況更新 users/agreements PUT
-//
 // @Summary [MEM-API-006] ユーザ規約同意状況更新
 // @Description 指定したユーザの規約同意状況を更新する。ユーザ情報はヘッダから取得する。
 // @Tags users
@@ -188,14 +180,12 @@ func (h *UserHandler) GetUserAgreements(c *gin.Context) {}
 // @Produce json
 // @Param Authorization  header string true "Bearer <firebase_id_token>"
 // @Param policies body dto.UpdateUserAgreementsRequest true "規約同意更新リクエスト"
-// @Success 200 {object} dto.StatusResponse
+// @Success 200
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /users/agreements [put]
 func (h *UserHandler) UpdateUserAgreements(c *gin.Context) {}
 
-// [MEM-API-007]ユーザログイン users/login PUT
-//
 // @Summary [MEM-API-007]ユーザログイン
 // @Description ユーザログイン処理を実施する。Ph0では公開用ユーザIDを返却するだけ。
 // @Tags users
@@ -228,9 +218,9 @@ func (h *UserHandler) Login(c *gin.Context) {
 }
 
 // createUserInput ユーザ作成Usecaseの引数を作成
-func createUserInput(firebaseUserId string, email string) usecaseDto.CreateUserInput {
+func createUserInput(firebaseUid string, email string) usecaseDto.CreateUserInput {
 	return usecaseDto.CreateUserInput{
-		FirebaseUserId: firebaseUserId,
+		FirebaseUserId: firebaseUid,
 		Email:          email,
 	}
 }

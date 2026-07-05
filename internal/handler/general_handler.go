@@ -23,7 +23,6 @@ func NewGeneralHandler(uc usecase.GeneralUsecase) *GeneralHandler {
 	return &GeneralHandler{usecase: uc}
 }
 
-// [GEN-API-001] 規約情報参照 /policies POST
 // @Summary [GEN-API-001] 規約情報参照
 // @Description 指定された規約について、最新版の情報を１件返却する。規約本文は改行文字入りのテキストとなる。
 // @Tags policies

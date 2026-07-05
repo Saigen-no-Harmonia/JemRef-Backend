@@ -41,6 +41,59 @@ const docTemplate = `{
                 }
             }
         },
+        "/join": {
+            "post": {
+                "description": "ユーザを作成する。ユーザ情報はfirebase tokenから取得する。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "[MEM-API-002] ユーザ情報登録",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer \u003cfirebase_id_token\u003e",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "ユーザ情報登録リクエスト",
+                        "name": "param",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateUserResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/policies/:policy_type": {
             "get": {
                 "description": "指定された規約について、最新版の情報を１件返却する。規約本文は改行文字入りのテキストとなる。",
@@ -397,8 +450,8 @@ const docTemplate = `{
             }
         },
         "/users": {
-            "post": {
-                "description": "ユーザを作成する。ユーザ情報はfirebase tokenから取得する。",
+            "delete": {
+                "description": "ユーザ情報を論理削除する。",
                 "consumes": [
                     "application/json"
                 ],
@@ -408,7 +461,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "[MEM-API-002] ユーザ情報登録",
+                "summary": "[MEM-API-004] ユーザ退会",
                 "parameters": [
                     {
                         "type": "string",
@@ -418,21 +471,16 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "ユーザ情報登録リクエスト",
-                        "name": "param",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.CreateUserRequest"
-                        }
+                        "type": "string",
+                        "description": "(公開用)ユーザID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/dto.CreateUserResponse"
-                        }
+                    "200": {
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -524,10 +572,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.StatusResponse"
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -571,57 +616,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/dto.UserLoginResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/users/{id}": {
-            "delete": {
-                "description": "ユーザ情報を論理削除する。",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "[MEM-API-004] ユーザ退会",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer \u003cfirebase_id_token\u003e",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "(公開用)ユーザID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.StatusResponse"
                         }
                     },
                     "400": {

@@ -588,6 +588,41 @@ paths:
       summary: Health
       tags:
       - health
+  /join:
+    post:
+      consumes:
+      - application/json
+      description: ユーザを作成する。ユーザ情報はfirebase tokenから取得する。
+      parameters:
+      - description: Bearer <firebase_id_token>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ユーザ情報登録リクエスト
+        in: body
+        name: param
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CreateUserResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: '[MEM-API-002] ユーザ情報登録'
+      tags:
+      - users
   /policies/:policy_type:
     get:
       consumes:
@@ -829,41 +864,6 @@ paths:
       tags:
       - records
   /users:
-    post:
-      consumes:
-      - application/json
-      description: ユーザを作成する。ユーザ情報はfirebase tokenから取得する。
-      parameters:
-      - description: Bearer <firebase_id_token>
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: ユーザ情報登録リクエスト
-        in: body
-        name: param
-        required: true
-        schema:
-          $ref: '#/definitions/dto.CreateUserRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/dto.CreateUserResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-      summary: '[MEM-API-002] ユーザ情報登録'
-      tags:
-      - users
-  /users/{id}:
     delete:
       consumes:
       - application/json
@@ -884,8 +884,6 @@ paths:
       responses:
         "200":
           description: OK
-          schema:
-            $ref: '#/definitions/dto.StatusResponse'
         "400":
           description: Bad Request
           schema:
@@ -947,8 +945,6 @@ paths:
       responses:
         "200":
           description: OK
-          schema:
-            $ref: '#/definitions/dto.StatusResponse'
         "400":
           description: Bad Request
           schema:

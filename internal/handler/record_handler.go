@@ -28,7 +28,6 @@ func (h *RecordHandler) RegisterRoutes(r *gin.RouterGroup) {
 	r.DELETE("/records/:id", h.DeleteRecord)
 }
 
-// [REF-API-001] 書誌一覧参照 /records GET
 // @Summary [REF-API-001] 書誌一覧参照
 // @Description ユーザに紐づく書誌情報をリストで返却する。ユーザ情報はfirebase tokenから取得する。
 // @Tags records
@@ -43,7 +42,6 @@ func (h *RecordHandler) RegisterRoutes(r *gin.RouterGroup) {
 func (h *RecordHandler) GetRecords(c *gin.Context) {
 }
 
-// [REF-API-002] 書誌詳細参照 /records/:id GET
 // @Summary [REF-API-002] 書誌詳細参照
 // @Description ユーザに紐づく書誌詳細情報を１件返却する。ユーザ情報はfirebase tokenから取得する。
 // @Tags records
@@ -57,7 +55,6 @@ func (h *RecordHandler) GetRecords(c *gin.Context) {
 // @Router /records/{id} [get]
 func (h *RecordHandler) GetRecord(c *gin.Context) {}
 
-// [REF-API-003] 書誌情報登録 /records POST
 // @Summary [REF-API-003] 書誌情報登録
 // @Description ユーザに紐づく書誌情報を登録する。ユーザ情報はfirebase tokenから取得する。
 // @Tags records
@@ -102,7 +99,6 @@ func (h *RecordHandler) CreateRecord(c *gin.Context) {
 	c.JSON(201, res)
 }
 
-// [REF-API-004] 書誌情報更新 /records/:id PUT
 // @Summary [REF-API-004] 書誌情報更新
 // @Description ユーザに紐づく書誌情報を更新する。ユーザ情報はfirebase tokenから取得する。<br>
 // @Tags records
@@ -117,7 +113,6 @@ func (h *RecordHandler) CreateRecord(c *gin.Context) {
 // @Router /records/{id} [put]
 func (h *RecordHandler) UpdateRecord(c *gin.Context) {}
 
-// [REF-API-005] 書誌情報削除 /records/:id DELETE
 // @Summary [REF-API-005] 書誌情報削除
 // @Description ユーザに紐づく書誌情報を論理削除する。ユーザ情報はfirebase tokenから取得する。<br>
 // @Tags records
