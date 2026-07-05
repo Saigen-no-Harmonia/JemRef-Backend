@@ -1,11 +1,10 @@
-package main
-
 // @title JemRef Beta API
 // @version 1.0
 // @license.name Capra
 // @description JemRef backend API
 // @host localhost:8080
 // @BasePath /api/v0
+package main
 
 import (
 	"context"

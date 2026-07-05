@@ -1,24 +1,19 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-    <meta charset="utf-8">
-    <title>JemRef API Documentation</title>
-
-    <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
-
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-        }
-    </style>
+  <title>Swagger UI</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css">
 </head>
-
 <body>
-
-<redoc spec-url="swagger.json"></redoc>
-
+<div id="swagger-ui"></div>
+<script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+<script>
+window.onload = () => {
+  SwaggerUIBundle({
+    url: "swagger.json",
+    dom_id: "#swagger-ui",
+  });
+};
+</script>
 </body>
-
 </html>
