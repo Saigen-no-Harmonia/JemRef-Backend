@@ -138,6 +138,68 @@ func (u *UserUsecaseImpl) Delete(ctx context.Context, du dto.DeleteUserInput) er
 	return nil
 }
 
+// GetUserAgreements 指定されたユーザについて、規約同意状況を判定して返却する
+func (u *UserUsecaseImpl) GetUserAgreements(ctx context.Context, uid int64) (*dto.GetUserAgreementsOutput, error) {
+
+	usr, err := u.userRepo.SelectByInternalUid(ctx, uid)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	// Ph0では、P001とP002だけがある想定なので、それぞれ取得・判定
+	terms, err := u.generalRepo.SelectLatestById(ctx, policy.PolicyIdTermsOfService)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			log.Println("ユーザ利用規約情報が取得できませんでした。")
+			return nil, ErrPolicyNotFound
+		}
+		return nil, err
+	}
+
+	privacyPolicy, err := u.generalRepo.SelectLatestById(ctx, policy.PolicyIdPrivacyPolicy)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			log.Println("プライバシーポリシー情報が取得できませんでした。")
+			return nil, ErrPolicyNotFound
+		}
+		return nil, err
+	}
+
+	return createGetUserAgreementsOutput(usr, terms, privacyPolicy)
+
+}
+
+// createGetUserAgreementsOutput ユーザの規約同意状況を判定し返却する。
+// Ph0ではユーザ規約とプラポリだけが存在する想定で簡易実装している。
+func createGetUserAgreementsOutput(u *user.User, terms, privacyPolicy *policy.Policy) (*dto.GetUserAgreementsOutput, error) {
+
+	var res dto.GetUserAgreementsOutput
+
+	termsStatus := dto.UserAgreement{
+		PolicyType:    policy.PolicyTypeTermsOfService,
+		Label:         terms.Name,
+		LatestVersion: terms.Version,
+		AgreedVersion: u.TermsVersion,
+		Status:        user.ChkAgreementStat(u.TermsVersion, terms.Version),
+	}
+
+	privacyPolicyStatis := dto.UserAgreement{
+		PolicyType:    policy.PolicyTypePrivacyPolicy,
+		Label:         privacyPolicy.Name,
+		LatestVersion: privacyPolicy.Version,
+		AgreedVersion: u.PrivacyPolicyVersion,
+		Status:        user.ChkAgreementStat(u.PrivacyPolicyVersion, privacyPolicy.Version),
+	}
+
+	res.Agreements = append(res.Agreements, termsStatus)
+	res.Agreements = append(res.Agreements, privacyPolicyStatis)
+
+	return &res, nil
+}
+
 // Login ユーザログイン処理 Ph0では公開用UIDを返却するだけ
 func (uu *UserUsecaseImpl) Login(ctx context.Context, ui dto.UserLoginInput) (*dto.UserLoginOutput, error) {
 	uid := ui.InternalUserId

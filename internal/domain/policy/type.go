@@ -33,12 +33,12 @@ func (t PolicyType) GetId() string {
 	return code
 }
 
-// PolicyTypeFromCode 規約タイプIDをもとに規約タイプを返却する
-func PolicyTypeFromCode(code string) PolicyType {
-	policyType, ok := codeToTypeMap[code]
+// PolicyTypeFromId 規約タイプIDをもとに規約タイプを返却する
+func PolicyTypeFromId(id string) PolicyType {
+	policyType, ok := codeToTypeMap[id]
 
 	if !ok {
-		panic("invalid policy code")
+		panic("invalid policy id")
 	}
 
 	return policyType

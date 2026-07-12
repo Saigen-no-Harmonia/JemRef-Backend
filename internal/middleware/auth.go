@@ -22,7 +22,7 @@ func FirebaseAuth(app *firebase.App) gin.HandlerFunc {
 		// Authorizationヘッダの取得
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			log.Println("fatal: Anthorizationヘッダ取得に失敗しました")
+			log.Println("Anthorizationヘッダが見つかりません")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
@@ -30,7 +30,7 @@ func FirebaseAuth(app *firebase.App) gin.HandlerFunc {
 		// Bearer<token>のチェック
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			log.Println("fatal: Bearerヘッダの形式が不正です")
+			log.Println("Authorization形式が不正です")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid header format"})
 			return
 		}

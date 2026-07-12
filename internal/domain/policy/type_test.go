@@ -118,12 +118,12 @@ func TestType_PoliicyTypeFromCode(t *testing.T) {
 
 			if tt.expectPanic {
 				assert.Panics(t, func() {
-					PolicyTypeFromCode(tt.input)
+					PolicyTypeFromId(tt.input)
 				})
 				return
 			}
 
-			actual := PolicyTypeFromCode(tt.input)
+			actual := PolicyTypeFromId(tt.input)
 			assert.Equal(t, actual, tt.expected)
 		})
 	}

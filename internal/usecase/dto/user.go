@@ -1,5 +1,10 @@
 package dto
 
+import (
+	"jemref_go/internal/domain/policy"
+	"jemref_go/internal/domain/user"
+)
+
 type CreateUserInput struct {
 	FirebaseUserId string
 	Email          string
@@ -12,6 +17,18 @@ type CreateUserOutput struct {
 type DeleteUserInput struct {
 	InternalUserid int64
 	FirebaseUserId string
+}
+
+type GetUserAgreementsOutput struct {
+	Agreements []UserAgreement
+}
+
+type UserAgreement struct {
+	PolicyType    policy.PolicyType
+	Label         string
+	LatestVersion string
+	AgreedVersion string
+	Status        user.PolicyAgreementStatus
 }
 
 type UserLoginInput struct {

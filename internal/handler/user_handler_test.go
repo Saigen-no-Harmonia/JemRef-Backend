@@ -474,14 +474,29 @@ type MockUserUsecase struct {
 		usecaseDto.DeleteUserInput,
 	) error
 
+	getUserAgreementsFunc func(
+		context.Context,
+		int64,
+	) (*usecaseDto.GetUserAgreementsOutput, error)
+
 	loginFunc func(
 		context.Context,
 		usecaseDto.UserLoginInput,
 	) (*usecaseDto.UserLoginOutput, error)
 
-	createUserCalled bool
-	deleteUserCalled bool
-	loginCalled      bool
+	createUserCalled        bool
+	deleteUserCalled        bool
+	getUserAgreementsCalled bool
+	loginCalled             bool
+}
+
+// GetUserAgreements implements [usecase.UserUsecase].
+func (m *MockUserUsecase) GetUserAgreements(
+	ctx context.Context,
+	uid int64,
+) (*usecaseDto.GetUserAgreementsOutput, error) {
+	m.getUserAgreementsCalled = true
+	return m.getUserAgreementsFunc(ctx, uid)
 }
 
 func (m *MockUserUsecase) Create(

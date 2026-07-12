@@ -97,7 +97,7 @@ func createGetPolicyInput(tp policy.PolicyType) usecasedto.GetPoliciesInput {
 // createGetPoliciesResponse レスポンス用構造体を作成
 func createGetPoliciesResponse(o usecasedto.GetPoliciesOutput) handlerdto.GetPoliciesResponse {
 	// DBの規約IDを、レスポンス用に規約タイプ名称へと変換
-	policyType := policy.PolicyTypeFromCode(o.PolicyId)
+	policyType := policy.PolicyTypeFromId(o.PolicyId)
 
 	return handlerdto.GetPoliciesResponse{
 		PolicyType:    string(policyType),

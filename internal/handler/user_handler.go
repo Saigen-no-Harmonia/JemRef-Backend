@@ -30,7 +30,7 @@ func (h *UserHandler) RegisterRoutes(r *gin.RouterGroup) {
 	// r.PUT("/users/:id", h.UpdateUser)
 	r.DELETE("/users/:id", h.DeleteUser)
 	r.GET("/users/agreements", h.GetUserAgreements)
-	r.PUT("/users/agreement", h.UpdateUserAgreements)
+	r.PUT("/users/agreements", h.UpdateUserAgreements)
 	r.PUT("/users/login", h.Login)
 }
 
@@ -171,7 +171,39 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /users/agreements [get]
-func (h *UserHandler) GetUserAgreements(c *gin.Context) {}
+func (h *UserHandler) GetUserAgreements(c *gin.Context) {
+	internalUid, ok := ctxutil.GetUserId(c)
+	if !ok {
+		log.Print("internal user idの取得に失敗")
+		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Code:    "A0001",
+			Message: "fatal:ユーザID取得処理に異常がありjます。",
+		})
+		return
+	}
+
+	output, err := h.usecase.GetUserAgreements(c.Request.Context(), internalUid)
+	if err != nil {
+		if errors.Is(err, usecase.ErrUserNotFound) {
+			log.Printf("ユーザマスタ情報に異常があります。internal user id: %d", internalUid)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+				Code:    "A0001",
+				Message: "fatal:ユーザマスタ情報に異常があります。",
+			})
+			return
+		} else {
+			log.Print(err)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+				Code:    "A0001",
+				Message: "fatal:予期せぬエラー",
+			})
+			return
+		}
+	}
+
+	res := createGetUserAgreementsResponse(*output)
+	c.JSON(http.StatusOK, res)
+}
 
 // @Summary [MEM-API-006] ユーザ規約同意状況更新
 // @Description 指定したユーザの規約同意状況を更新する。ユーザ情報はヘッダから取得する。
@@ -231,6 +263,36 @@ func createDeleteUserInput(internalUid int64, firebaseUid string) usecaseDto.Del
 		InternalUserid: internalUid,
 		FirebaseUserId: firebaseUid,
 	}
+}
+
+// createGetUserAgreementsResponse ユーザ規約同意状況取得レスポンスを生成
+// Ph0では、ユーザ規約とプラポリだけがある想定で簡易実装
+func createGetUserAgreementsResponse(output usecaseDto.GetUserAgreementsOutput) dto.GetUserAgreementsResponse {
+	var res dto.GetUserAgreementsResponse
+
+	terms := output.Agreements[0]
+	privacyPolicy := output.Agreements[1]
+
+	t := dto.UserAgreementResponse{
+		PolicyType:    string(terms.PolicyType),
+		Label:         terms.Label,
+		LatestVersion: terms.LatestVersion,
+		AgreedVersion: terms.AgreedVersion,
+		Status:        terms.Status,
+	}
+
+	p := dto.UserAgreementResponse{
+		PolicyType:    string(privacyPolicy.PolicyType),
+		Label:         privacyPolicy.Label,
+		LatestVersion: privacyPolicy.LatestVersion,
+		AgreedVersion: privacyPolicy.AgreedVersion,
+		Status:        privacyPolicy.Status,
+	}
+
+	res.Agreements = append(res.Agreements, t)
+	res.Agreements = append(res.Agreements, p)
+
+	return res
 }
 
 // createLoginResponse Loginのレスポンスを生成

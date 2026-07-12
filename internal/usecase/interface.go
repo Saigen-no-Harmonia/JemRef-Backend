@@ -25,6 +25,11 @@ type UserUsecase interface {
 		input usecaseDto.DeleteUserInput,
 	) error
 
+	GetUserAgreements(
+		ctx context.Context,
+		uid int64,
+	) (*usecaseDto.GetUserAgreementsOutput, error)
+
 	Login(
 		ctx context.Context,
 		input usecaseDto.UserLoginInput,
