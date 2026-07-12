@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"jemref_go/internal/domain/policy"
+	"jemref_go/internal/repository"
+	"jemref_go/internal/testutil/mock"
 	"jemref_go/internal/usecase/dto"
 	"testing"
 	"time"
@@ -14,16 +16,17 @@ import (
 func TestGeneralUsecaseImpl_GetPolicies(t *testing.T) {
 
 	tests := []struct {
-		name          string
-		mockRepo      *MockGeneralRepository
-		inputDto      dto.GetPoliciesInput
-		expected      dto.GetPoliciesOutput
-		expectedError bool
+		name                string
+		mockRepo            *mock.MockGeneralRepository
+		inputDto            dto.GetPoliciesInput
+		expected            dto.GetPoliciesOutput
+		expectedError       bool
+		expectedErrorOutput error
 	}{
 		{
 			name: "正常_ユーザ利用規約取得",
-			mockRepo: &MockGeneralRepository{
-				selectLatestByIdFunc: func(
+			mockRepo: &mock.MockGeneralRepository{
+				SelectLatestByIdFunc: func(
 					ctx context.Context,
 					id string,
 				) (*policy.Policy, error) {
@@ -50,8 +53,8 @@ func TestGeneralUsecaseImpl_GetPolicies(t *testing.T) {
 		},
 		{
 			name: "正常_プライバシーポリシー取得",
-			mockRepo: &MockGeneralRepository{
-				selectLatestByIdFunc: func(
+			mockRepo: &mock.MockGeneralRepository{
+				SelectLatestByIdFunc: func(
 					ctx context.Context,
 					id string,
 				) (*policy.Policy, error) {
@@ -78,18 +81,35 @@ func TestGeneralUsecaseImpl_GetPolicies(t *testing.T) {
 		},
 		{
 			name: "異常_規約が存在しない",
-			mockRepo: &MockGeneralRepository{
-				selectLatestByIdFunc: func(
+			mockRepo: &mock.MockGeneralRepository{
+				SelectLatestByIdFunc: func(
 					ctx context.Context,
 					id string,
 				) (*policy.Policy, error) {
-					return nil, errors.New("not found")
+					return nil, repository.ErrNotFound
 				},
 			},
 			inputDto: dto.GetPoliciesInput{
 				PolicyId: policy.PolicyIdTermsOfService,
 			},
-			expectedError: true,
+			expectedError:       true,
+			expectedErrorOutput: ErrPolicyNotFound,
+		},
+		{
+			name: "異常_予期しないDBエラー",
+			mockRepo: &mock.MockGeneralRepository{
+				SelectLatestByIdFunc: func(
+					ctx context.Context,
+					id string,
+				) (*policy.Policy, error) {
+					return nil, errors.New("error")
+				},
+			},
+			inputDto: dto.GetPoliciesInput{
+				PolicyId: policy.PolicyIdTermsOfService,
+			},
+			expectedError:       true,
+			expectedErrorOutput: errors.New("error"),
 		},
 	}
 
@@ -101,9 +121,11 @@ func TestGeneralUsecaseImpl_GetPolicies(t *testing.T) {
 				context.Background(),
 				tt.inputDto,
 			)
+
 			if tt.expectedError {
 				assert.Error(t, err)
 				assert.Nil(t, actual)
+				assert.Equal(t, tt.expectedErrorOutput, err)
 				return
 			}
 
@@ -115,20 +137,6 @@ func TestGeneralUsecaseImpl_GetPolicies(t *testing.T) {
 			assert.Equal(t, tt.expected.Content, actual.Content)
 		})
 	}
-}
-
-type MockGeneralRepository struct {
-	selectLatestByIdFunc func(
-		ctx context.Context,
-		id string,
-	) (*policy.Policy, error)
-}
-
-func (m *MockGeneralRepository) SelectLatestById(
-	ctx context.Context,
-	id string,
-) (*policy.Policy, error) {
-	return m.selectLatestByIdFunc(ctx, id)
 }
 
 func mustParseDate(v string) time.Time {

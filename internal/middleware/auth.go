@@ -107,7 +107,7 @@ func FindCurrentUser(au *usecase.AuthUsecaseImpl) gin.HandlerFunc {
 			// 退会済みユーザだった場合、Firebaseユーザを削除して終了
 			if errors.Is(err, usecase.ErrUserDeleted) {
 				log.Printf("ERROR: すでに退会済みのユーザです。 FIrebaseユーザ削除処理を実施します。firebaseUid: %s", firebaseUid)
-				_ = au.CleanupDeletedUser(
+				_ = au.DeleteUser(
 					c.Request.Context(),
 					firebaseUid,
 				)

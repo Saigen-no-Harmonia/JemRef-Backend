@@ -484,7 +484,7 @@ type MockUserUsecase struct {
 	loginCalled      bool
 }
 
-func (m *MockUserUsecase) CreateUser(
+func (m *MockUserUsecase) Create(
 	ctx context.Context,
 	input usecaseDto.CreateUserInput,
 ) (*usecaseDto.CreateUserOutput, error) {
@@ -492,7 +492,7 @@ func (m *MockUserUsecase) CreateUser(
 	return m.createUserFunc(ctx, input)
 }
 
-func (m *MockUserUsecase) DeleteUser(
+func (m *MockUserUsecase) Delete(
 	ctx context.Context,
 	input usecaseDto.DeleteUserInput,
 ) error {

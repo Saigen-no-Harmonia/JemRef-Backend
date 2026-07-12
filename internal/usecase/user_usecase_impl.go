@@ -34,15 +34,13 @@ func NewUserUsecase(ur repository.UserRepository, gr repository.GeneralRepositor
 	}
 }
 
-// ユーザ情報登録Usecase
-// CreateUser ユーザを作成し、公開用UIDを返却する
-func (u *UserUsecaseImpl) CreateUser(ctx context.Context, cu dto.CreateUserInput) (*dto.CreateUserOutput, error) {
+// Create ユーザを作成し、公開用UIDを返却する
+func (u *UserUsecaseImpl) Create(ctx context.Context, cu dto.CreateUserInput) (*dto.CreateUserOutput, error) {
 	log.Printf("ユーザ情報登録usecase 処理開始: firebase uid: %s", cu.FirebaseUserId)
 
-	// 公開用ユーザIDを生成
 	publicUserId := u.idGen.Generate()
 
-	// 規約関係
+	// 規約マスタチェック
 	t, err := u.generalRepo.SelectLatestById(
 		ctx,
 		policy.PolicyIdTermsOfService,
@@ -57,27 +55,24 @@ func (u *UserUsecaseImpl) CreateUser(ctx context.Context, cu dto.CreateUserInput
 		policy.PolicyIdPrivacyPolicy,
 	)
 	if err != nil {
-		log.Println("ユーザ規約が取得できませんでした")
+		log.Println("プライバシーポリシーが取得できませんでした")
 		return nil, ErrPolicyNotFound
 	}
 
-	termsAgreedDt := time.Now()
+	sysDate := time.Now()
 	termsVersion := t.Version
-	privacyPolicyAgreedDt := time.Now()
 	privacyPolicyVersion := p.Version
 
-	// 引数をマッピング
 	user := &user.User{
 		PublicUserId:          publicUserId,
 		FirebaseUserId:        cu.FirebaseUserId,
 		Email:                 cu.Email,
-		TermsAgreedDt:         &termsAgreedDt,
+		TermsAgreedDt:         &sysDate,
 		TermsVersion:          termsVersion,
-		PrivacyPolicyAgreedDt: &privacyPolicyAgreedDt,
+		PrivacyPolicyAgreedDt: &sysDate,
 		PrivacyPolicyVersion:  privacyPolicyVersion,
 	}
 
-	// DBに登録
 	err = u.userRepo.Create(ctx, user)
 
 	var mysqlErr *mysql.MySQLError
@@ -89,7 +84,6 @@ func (u *UserUsecaseImpl) CreateUser(ctx context.Context, cu dto.CreateUserInput
 		return nil, err
 	}
 
-	// レスポンス
 	log.Printf("ユーザ情報登録usecase 処理完了: firebase uid: %s", cu.FirebaseUserId)
 	return &dto.CreateUserOutput{
 		PublicUserId: publicUserId,
@@ -97,11 +91,11 @@ func (u *UserUsecaseImpl) CreateUser(ctx context.Context, cu dto.CreateUserInput
 
 }
 
-// DeleteUser DBのユーザと Firebaseユーザを削除する
-func (u *UserUsecaseImpl) DeleteUser(ctx context.Context, ud dto.DeleteUserInput) error {
+// Delete DBのユーザと Firebaseユーザを削除する
+func (u *UserUsecaseImpl) Delete(ctx context.Context, du dto.DeleteUserInput) error {
 
-	internalUid := ud.InternalUserid
-	firebaseUid := ud.FirebaseUserId
+	internalUid := du.InternalUserid
+	firebaseUid := du.FirebaseUserId
 	log.Printf("ユーザ削除usecase 処理開始: internal uid: %d", internalUid)
 
 	user, err := u.userRepo.SelectByInternalUid(ctx, internalUid)
@@ -116,18 +110,21 @@ func (u *UserUsecaseImpl) DeleteUser(ctx context.Context, ud dto.DeleteUserInput
 		return err
 	}
 
-	// ユーザデータ不整合があった場合
-	if user.FirebaseUserId != ud.FirebaseUserId {
+	// マスタ整合性チェック
+	if user.FirebaseUserId != du.FirebaseUserId {
 		log.Printf("ユーザデータに不整合があります。internal uid: %d, firebase uid: %s", internalUid, firebaseUid)
 		return ErrInvalidUser
 	}
 
-	// すでに論理削除済みなら何もしない
 	if user.DeletedAt == nil {
 		if err := u.userRepo.Delete(ctx, internalUid); err != nil {
-			log.Printf("退会済みのため、FIrebaseユーザを削除します。internalUid: %d", internalUid)
-			return err
+			log.Print(err)
+			log.Printf("DBのユーザデータ削除に失敗しました。internal uid: %d", internalUid)
+			return ErrUserDeleteFailed
 		}
+		// すでに論理削除済みならDB更新のみスキップ
+	} else {
+		log.Printf("すでに退会処理済みのため、FirebaseUser削除のみ実施します。firebase uid: %s", firebaseUid)
 	}
 
 	// firebaseユーザ削除

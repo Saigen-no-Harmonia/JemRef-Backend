@@ -19,7 +19,7 @@ func NewAuthUsecaseImpl(ur repository.UserRepository, fr repository.FirebaseRepo
 	}
 }
 
-// Authenticate ユーザ情報を認証する。Ph0ではDBから取得するだけ。
+// Authenticate ユーザ情報を認証する。Ph0ではDBからユーザ情報を取得するだけ。
 func (a *AuthUsecaseImpl) Authenticate(
 	ctx context.Context,
 	firebaseUid string,
@@ -49,12 +49,12 @@ func (a *AuthUsecaseImpl) Authenticate(
 	}, nil
 }
 
-// CleanupDeletedUser 退会済みユーザのFirebaseUserを削除する
-func (u *AuthUsecaseImpl) CleanupDeletedUser(
+// DeleteUser FirebaseUserを削除する
+func (a *AuthUsecaseImpl) DeleteUser(
 	ctx context.Context,
 	firebaseUid string,
 ) error {
-	err := u.firebaseRepo.DeleteUser(ctx, firebaseUid)
+	err := a.firebaseRepo.DeleteUser(ctx, firebaseUid)
 
 	if err != nil {
 		return err

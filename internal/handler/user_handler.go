@@ -70,7 +70,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	input := createUserInput(firebaseUserId, email)
 
 	// usecaseを呼び出し
-	output, err := h.usecase.CreateUser(c.Request.Context(), input)
+	output, err := h.usecase.Create(c.Request.Context(), input)
 	if err != nil {
 		log.Println(err)
 
@@ -132,7 +132,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 
 	input := createDeleteUserInput(internalUid, firebaseUid)
 
-	err := h.usecase.DeleteUser(c.Request.Context(), input)
+	err := h.usecase.Delete(c.Request.Context(), input)
 	if err != nil {
 		// FirebaseユーザはいるがDBにデータが物理的に存在しない：未入会
 		if errors.Is(err, usecase.ErrUserNotFound) {

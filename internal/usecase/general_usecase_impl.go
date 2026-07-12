@@ -1,7 +1,5 @@
 package usecase
 
-// 一般Usecase実装
-
 import (
 	"context"
 	"errors"
@@ -22,7 +20,6 @@ func (g *GeneralUsecaseImpl) GetPolicies(
 	ctx context.Context,
 	gp dto.GetPoliciesInput,
 ) (*dto.GetPoliciesOutput, error) {
-	// 規約情報を取得
 	p, err := g.generalRepo.SelectLatestById(ctx, gp.PolicyId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -32,7 +29,6 @@ func (g *GeneralUsecaseImpl) GetPolicies(
 		return nil, err
 	}
 
-	// 規約情報を返却
 	return &dto.GetPoliciesOutput{
 		PolicyId:      p.Id,
 		Label:         p.Name,
