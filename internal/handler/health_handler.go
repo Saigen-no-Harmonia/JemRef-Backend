@@ -3,18 +3,19 @@ package handler
 // Healthハンドラ実装
 
 import (
-	"database/sql"
+	"context"
 	"jemref_go/internal/handler/dto"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 type HealthHandler struct {
-	db *sql.DB
+	db DbPinger
 }
 
-func NewHealthHandler(db *sql.DB) *HealthHandler {
+func NewHealthHandler(db DbPinger) *HealthHandler {
 	return &HealthHandler{
 		db: db,
 	}
@@ -25,7 +26,8 @@ func NewHealthHandler(db *sql.DB) *HealthHandler {
 // @Tags health
 // @Accept json
 // @Produce json
-// @Success 200 {object} dto.StatusResponse
+// @Success 200
+// @Failure 500 {object} dto.ErrorResponse
 // @Router /health [get]
 func (h *HealthHandler) Health(c *gin.Context) {
 
@@ -33,11 +35,19 @@ func (h *HealthHandler) Health(c *gin.Context) {
 	err := h.db.PingContext(c.Request.Context())
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, dto.StatusResponse{
-			Status: "NG",
-		})
+		log.Print(err)
+		c.JSON(http.StatusInternalServerError,
+			dto.ErrorResponse{
+				Code:    "F0001",
+				Message: "fatal:Internal Server Error",
+			},
+		)
 		return
 	}
 
-	c.JSON(200, dto.StatusResponse{Status: "OK"})
+	c.Status(http.StatusOK)
+}
+
+type DbPinger interface {
+	PingContext(ctx context.Context) error
 }

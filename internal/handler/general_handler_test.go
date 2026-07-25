@@ -139,6 +139,7 @@ func TestGeneralHandler_GetPolicies(t *testing.T) {
 				)
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expectedErrorBody, actual)
+				return
 			}
 
 			// 正常系の場合のassertion
