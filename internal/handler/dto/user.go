@@ -31,10 +31,10 @@ type UserAgreementResponse struct {
 }
 
 type UpdateUserAgreementsRequest struct {
-	Policies []AgreementPolicyRequest `json:"policies" binding:"required"`
+	Policies []PolicyAgreementRequest `json:"policies" binding:"required"`
 }
 
-type AgreementPolicyRequest struct {
+type PolicyAgreementRequest struct {
 	// 規約タイプ
 	PolicyType string `json:"policy_type" binding:"required" example:"privacy_policy"`
 	// 規約バージョン

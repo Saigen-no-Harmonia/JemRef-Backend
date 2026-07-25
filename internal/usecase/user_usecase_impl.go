@@ -35,24 +35,26 @@ func NewUserUsecase(ur repository.UserRepository, gr repository.GeneralRepositor
 }
 
 // Create ユーザを作成し、公開用UIDを返却する
-func (u *UserUsecaseImpl) Create(ctx context.Context, cu dto.CreateUserInput) (*dto.CreateUserOutput, error) {
+func (uu *UserUsecaseImpl) Create(ctx context.Context, cu dto.CreateUserInput) (*dto.CreateUserOutput, error) {
 	log.Printf("ユーザ情報登録usecase 処理開始: firebase uid: %s", cu.FirebaseUserId)
 
-	publicUserId := u.idGen.Generate()
+	publicUserId := uu.idGen.Generate()
 
 	// 規約マスタチェック
-	t, err := u.generalRepo.SelectLatestById(
+	_, err := uu.generalRepo.SelectPolicyByPrimaryKey(
 		ctx,
 		policy.PolicyIdTermsOfService,
+		cu.TermsAgreedVersion,
 	)
 	if err != nil {
 		log.Println("ユーザ規約が取得できませんでした")
 		return nil, ErrPolicyNotFound
 	}
 
-	p, err := u.generalRepo.SelectLatestById(
+	_, err = uu.generalRepo.SelectPolicyByPrimaryKey(
 		ctx,
 		policy.PolicyIdPrivacyPolicy,
+		cu.PrivacyPolicyAgreedVersion,
 	)
 	if err != nil {
 		log.Println("プライバシーポリシーが取得できませんでした")
@@ -60,20 +62,18 @@ func (u *UserUsecaseImpl) Create(ctx context.Context, cu dto.CreateUserInput) (*
 	}
 
 	sysDate := time.Now()
-	termsVersion := t.Version
-	privacyPolicyVersion := p.Version
 
 	user := &user.User{
 		PublicUserId:          publicUserId,
 		FirebaseUserId:        cu.FirebaseUserId,
 		Email:                 cu.Email,
 		TermsAgreedDt:         &sysDate,
-		TermsVersion:          termsVersion,
+		TermsVersion:          cu.TermsAgreedVersion,
 		PrivacyPolicyAgreedDt: &sysDate,
-		PrivacyPolicyVersion:  privacyPolicyVersion,
+		PrivacyPolicyVersion:  cu.PrivacyPolicyAgreedVersion,
 	}
 
-	err = u.userRepo.Create(ctx, user)
+	err = uu.userRepo.Create(ctx, user)
 
 	var mysqlErr *mysql.MySQLError
 	if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
@@ -92,13 +92,13 @@ func (u *UserUsecaseImpl) Create(ctx context.Context, cu dto.CreateUserInput) (*
 }
 
 // Delete DBのユーザと Firebaseユーザを削除する
-func (u *UserUsecaseImpl) Delete(ctx context.Context, du dto.DeleteUserInput) error {
+func (uu *UserUsecaseImpl) Delete(ctx context.Context, du dto.DeleteUserInput) error {
 
 	internalUid := du.InternalUserid
 	firebaseUid := du.FirebaseUserId
 	log.Printf("ユーザ削除usecase 処理開始: internal uid: %d", internalUid)
 
-	user, err := u.userRepo.SelectByInternalUid(ctx, internalUid)
+	user, err := uu.userRepo.SelectByInternalUid(ctx, internalUid)
 	// ユーザデータが存在しない場合
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -117,7 +117,7 @@ func (u *UserUsecaseImpl) Delete(ctx context.Context, du dto.DeleteUserInput) er
 	}
 
 	if user.DeletedAt == nil {
-		if err := u.userRepo.Delete(ctx, internalUid); err != nil {
+		if err := uu.userRepo.Delete(ctx, internalUid); err != nil {
 			log.Print(err)
 			log.Printf("DBのユーザデータ削除に失敗しました。internal uid: %d", internalUid)
 			return ErrUserDeleteFailed
@@ -128,7 +128,7 @@ func (u *UserUsecaseImpl) Delete(ctx context.Context, du dto.DeleteUserInput) er
 	}
 
 	// firebaseユーザ削除
-	if err = u.firebaseRepo.DeleteUser(ctx, firebaseUid); err != nil {
+	if err = uu.firebaseRepo.DeleteUser(ctx, firebaseUid); err != nil {
 		log.Printf("firebaseユーザの削除に失敗しました。internal uid: %d, firebase uid: %s", internalUid, firebaseUid)
 		// 失敗時は、共通認証で自動リカバリ（FirebaseUser削除）する設計のため、ログ出力のみで終了
 		return nil
@@ -139,9 +139,9 @@ func (u *UserUsecaseImpl) Delete(ctx context.Context, du dto.DeleteUserInput) er
 }
 
 // GetUserAgreements 指定されたユーザについて、規約同意状況を判定して返却する
-func (u *UserUsecaseImpl) GetUserAgreements(ctx context.Context, uid int64) (*dto.GetUserAgreementsOutput, error) {
+func (uu *UserUsecaseImpl) GetUserAgreements(ctx context.Context, uid int64) (*dto.GetUserAgreementsOutput, error) {
 
-	usr, err := u.userRepo.SelectByInternalUid(ctx, uid)
+	u, err := uu.userRepo.SelectByInternalUid(ctx, uid)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, ErrUserNotFound
@@ -150,7 +150,7 @@ func (u *UserUsecaseImpl) GetUserAgreements(ctx context.Context, uid int64) (*dt
 	}
 
 	// Ph0では、P001とP002だけがある想定なので、それぞれ取得・判定
-	terms, err := u.generalRepo.SelectLatestById(ctx, policy.PolicyIdTermsOfService)
+	terms, err := uu.generalRepo.SelectLatestPolicyById(ctx, policy.PolicyIdTermsOfService)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			log.Println("ユーザ利用規約情報が取得できませんでした。")
@@ -159,7 +159,7 @@ func (u *UserUsecaseImpl) GetUserAgreements(ctx context.Context, uid int64) (*dt
 		return nil, err
 	}
 
-	privacyPolicy, err := u.generalRepo.SelectLatestById(ctx, policy.PolicyIdPrivacyPolicy)
+	privacyPolicy, err := uu.generalRepo.SelectLatestPolicyById(ctx, policy.PolicyIdPrivacyPolicy)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			log.Println("プライバシーポリシー情報が取得できませんでした。")
@@ -168,8 +168,66 @@ func (u *UserUsecaseImpl) GetUserAgreements(ctx context.Context, uid int64) (*dt
 		return nil, err
 	}
 
-	return createGetUserAgreementsOutput(usr, terms, privacyPolicy)
+	return createGetUserAgreementsOutput(u, terms, privacyPolicy)
+}
 
+// UpdateUserAgreements 引数で指定したユーザ情報に基づき、ユーザ同意状況を更新する
+func (uu *UserUsecaseImpl) UpdateUserAgreements(ctx context.Context, ua dto.UpdateUserAgreementsInput) error {
+
+	// 現時点の同意状況をベースにして更新処理するため、１度SELECTする
+	u, err := uu.userRepo.SelectByInternalUid(ctx, ua.InternalUid)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+
+	now := time.Now()
+
+	for _, a := range ua.Agreements {
+
+		if !a.PolicyType.IsValid() {
+			return ErrInvalidPolicyType
+		}
+
+		p, err := uu.generalRepo.SelectPolicyByPrimaryKey(
+			ctx,
+			a.PolicyType.GetId(),
+			a.AgreedVersion,
+		)
+		if err != nil {
+			// ここでのnot foundはバージョン指定不正のみ想定される
+			if errors.Is(err, repository.ErrNotFound) {
+				return ErrInvalidPolicyVersion
+			}
+			return err
+		}
+
+		switch p.Id {
+		case policy.PolicyIdTermsOfService:
+			u.TermsAgreedDt = &now
+			u.TermsVersion = p.Version
+
+		case policy.PolicyIdPrivacyPolicy:
+			u.PrivacyPolicyAgreedDt = &now
+			u.PrivacyPolicyVersion = p.Version
+
+		default:
+			return ErrUnexpectedPolicy
+		}
+	}
+
+	rows, err := uu.userRepo.UpdateUserAgreement(ctx, u)
+
+	if err != nil {
+		return err
+	}
+
+	// 更新件数が0件でもエラーにはしない（更新対象ユーザがDBに存在することは共通認証処理で確認ずみ）
+	_ = rows
+
+	return nil
 }
 
 // createGetUserAgreementsOutput ユーザの規約同意状況を判定し返却する。
@@ -178,7 +236,7 @@ func createGetUserAgreementsOutput(u *user.User, terms, privacyPolicy *policy.Po
 
 	var res dto.GetUserAgreementsOutput
 
-	termsStatus := dto.UserAgreement{
+	termsStatus := dto.GetUserAgreement{
 		PolicyType:    policy.PolicyTypeTermsOfService,
 		Label:         terms.Name,
 		LatestVersion: terms.Version,
@@ -186,7 +244,7 @@ func createGetUserAgreementsOutput(u *user.User, terms, privacyPolicy *policy.Po
 		Status:        user.ChkAgreementStat(u.TermsVersion, terms.Version),
 	}
 
-	privacyPolicyStatis := dto.UserAgreement{
+	privacyPolicyStatis := dto.GetUserAgreement{
 		PolicyType:    policy.PolicyTypePrivacyPolicy,
 		Label:         privacyPolicy.Name,
 		LatestVersion: privacyPolicy.Version,

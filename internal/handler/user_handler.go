@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"jemref_go/internal/context"
 	ctxutil "jemref_go/internal/context"
+	"jemref_go/internal/domain/policy"
 	"jemref_go/internal/handler/dto"
 	handlerDto "jemref_go/internal/handler/dto"
 	"jemref_go/internal/usecase"
@@ -28,7 +29,7 @@ func NewUserHandler(uc usecase.UserUsecase) *UserHandler {
 func (h *UserHandler) RegisterRoutes(r *gin.RouterGroup) {
 	// r.GET("/users/:id", h.GetUser)
 	// r.PUT("/users/:id", h.UpdateUser)
-	r.DELETE("/users/:id", h.DeleteUser)
+	r.DELETE("/users", h.DeleteUser)
 	r.GET("/users/agreements", h.GetUserAgreements)
 	r.PUT("/users/agreements", h.UpdateUserAgreements)
 	r.PUT("/users/login", h.Login)
@@ -42,56 +43,70 @@ func (h *UserHandler) RegisterRoutes(r *gin.RouterGroup) {
 // @Param Authorization  header string true "Bearer <firebase_id_token>"
 // @Param param body dto.CreateUserRequest true "ユーザ情報登録リクエスト"
 // @Success 201 {object} dto.CreateUserResponse
+// @Failure 400 {object} dto.ErrorResponse
 // @Failure 409 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /join [post]
 func (h *UserHandler) CreateUser(c *gin.Context) {
 
-	// firebaseユーザIDを受け取る
 	firebaseUserId, ok := ctxutil.GetFirebaseUid(c)
 	if !ok {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Code:    "A0001",
 			Message: "fatal:FirebaseUIDの取得処理に異常があります。",
 		})
 		return
 	}
 
-	// メールアドレスを受け取る
 	email, ok := ctxutil.GetEmail(c)
 	if !ok {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Code:    "A0001",
 			Message: "fatal:Eメールアドレスの取得処理に異常があります。"})
 		return
 	}
 
-	// usecase用構造体を作成
-	input := createUserInput(firebaseUserId, email)
+	var req dto.CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Print(err)
+		c.JSON(
+			http.StatusBadRequest,
+			handlerDto.ErrorResponse{
+				Code:    "E0002",
+				Message: "リクエストが不正です。",
+			},
+		)
+		return
+	}
 
-	// usecaseを呼び出し
+	input := createUserInput(firebaseUserId, email, req)
 	output, err := h.usecase.Create(c.Request.Context(), input)
 	if err != nil {
 		log.Println(err)
 
-		// 既存ユーザがいた場合
 		if errors.Is(err, usecase.ErrUserAlreadyExists) {
-			c.AbortWithStatusJSON(http.StatusConflict, dto.ErrorResponse{
+			c.JSON(http.StatusConflict, dto.ErrorResponse{
 				Code:    "E0005",
 				Message: fmt.Sprintf("すでに存在するFirebase UIDまたはEmailです。FirebaseUID: %s, Email: %s", firebaseUserId, email),
 			})
 			return
 		}
 
-		// 上記以外の場合
-		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+		if errors.Is(err, usecase.ErrPolicyNotFound) {
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+				Code:    "E0004",
+				Message: "不正な規約情報です。",
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Code:    "A0001",
 			Message: "fatal:ユーザ作成処理に失敗しました。",
 		})
 		return
 	}
 
-	// レスポンスを生成
 	res := dto.CreateUserResponse{
 		PublicUserId: output.PublicUserId,
 	}
@@ -114,7 +129,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	internalUid, ok := ctxutil.GetUserId(c)
 	if !ok {
 		log.Print("internal user idの取得に失敗")
-		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Code:    "A0001",
 			Message: "fatal:ユーザID取得処理に異常があります。",
 		})
@@ -123,7 +138,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	firebaseUid, ok := ctxutil.GetFirebaseUid(c)
 	if !ok {
 		log.Print("firebase user idの取得に失敗")
-		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Code:    "A0001",
 			Message: "firebaseユーザID取得処理に異常があります。",
 		})
@@ -136,7 +151,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	if err != nil {
 		// FirebaseユーザはいるがDBにデータが物理的に存在しない：未入会
 		if errors.Is(err, usecase.ErrUserNotFound) {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, dto.ErrorResponse{
+			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
 				Code:    "E0010",
 				Message: "未登録ユーザです。ユーザ登録を行ってください。",
 			})
@@ -144,14 +159,14 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		}
 		// ユーザ情報に不整合がある場合
 		if errors.Is(err, usecase.ErrInvalidUser) {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+			c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 				Code:    "A0001",
 				Message: "fatal: ユーザデータに不整合があります。",
 			})
 			return
 		}
 
-		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Code:    "A0001",
 			Message: "fatal: internal server error",
 		})
@@ -175,30 +190,31 @@ func (h *UserHandler) GetUserAgreements(c *gin.Context) {
 	internalUid, ok := ctxutil.GetUserId(c)
 	if !ok {
 		log.Print("internal user idの取得に失敗")
-		c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Code:    "A0001",
-			Message: "fatal:ユーザID取得処理に異常がありjます。",
+			Message: "fatal:ユーザID取得処理に異常があります。",
 		})
 		return
 	}
 
 	output, err := h.usecase.GetUserAgreements(c.Request.Context(), internalUid)
 	if err != nil {
+		log.Print(err)
 		if errors.Is(err, usecase.ErrUserNotFound) {
 			log.Printf("ユーザマスタ情報に異常があります。internal user id: %d", internalUid)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
+			c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 				Code:    "A0001",
 				Message: "fatal:ユーザマスタ情報に異常があります。",
 			})
 			return
-		} else {
-			log.Print(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, dto.ErrorResponse{
-				Code:    "A0001",
-				Message: "fatal:予期せぬエラー",
-			})
-			return
 		}
+
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Code:    "A0001",
+			Message: "fatal:予期せぬエラー",
+		})
+		return
+
 	}
 
 	res := createGetUserAgreementsResponse(*output)
@@ -216,7 +232,96 @@ func (h *UserHandler) GetUserAgreements(c *gin.Context) {
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /users/agreements [put]
-func (h *UserHandler) UpdateUserAgreements(c *gin.Context) {}
+func (h *UserHandler) UpdateUserAgreements(c *gin.Context) {
+
+	uid, ok := ctxutil.GetUserId(c)
+	if !ok {
+		c.JSON(
+			http.StatusInternalServerError,
+			handlerDto.ErrorResponse{
+				Code:    "F0001",
+				Message: "fatal: 内部用UID取得処理に異常があります。",
+			},
+		)
+		return
+	}
+
+	var req handlerDto.UpdateUserAgreementsRequest
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		log.Print(err)
+		c.JSON(
+			http.StatusBadRequest,
+			handlerDto.ErrorResponse{
+				Code:    "E0002",
+				Message: "リクエストが不正です。",
+			},
+		)
+		return
+	}
+
+	if len(req.Policies) == 0 {
+		log.Print("リクエストに規約情報がありませんでした。")
+		c.JSON(
+			http.StatusBadRequest,
+			handlerDto.ErrorResponse{
+				Code:    "E0002",
+				Message: "リクエストが不正です。",
+			},
+		)
+		return
+	}
+
+	input := createUpdateUserAgreementInput(uid, req)
+
+	err := h.usecase.UpdateUserAgreements(c.Request.Context(), input)
+	if err != nil {
+		log.Print(err)
+		if errors.Is(err, usecase.ErrUserNotFound) {
+			c.JSON(
+				http.StatusInternalServerError,
+				handlerDto.ErrorResponse{
+					Code:    "F0001",
+					Message: "fatal:ユーザ取得処理に異常があります。",
+				},
+			)
+			return
+		}
+
+		if errors.Is(err, usecase.ErrInvalidPolicyType) {
+			c.JSON(
+				http.StatusBadRequest,
+				handlerDto.ErrorResponse{
+					Code:    "E0011",
+					Message: "規約タイプが不正です。",
+				},
+			)
+			return
+		}
+
+		if errors.Is(err, usecase.ErrInvalidPolicyVersion) {
+			c.JSON(
+				http.StatusBadRequest,
+				handlerDto.ErrorResponse{
+					Code:    "E0012",
+					Message: "規約バージョンが不正です。",
+				},
+			)
+			return
+		}
+
+		c.JSON(
+			http.StatusInternalServerError,
+			handlerDto.ErrorResponse{
+				Code:    "F0001",
+				Message: "fatal:予期せぬエラー",
+			},
+		)
+		return
+	}
+
+	c.Status(http.StatusOK)
+
+}
 
 // @Summary [MEM-API-007]ユーザログイン
 // @Description ユーザログイン処理を実施する。Ph0では公開用ユーザIDを返却するだけ。
@@ -250,10 +355,12 @@ func (h *UserHandler) Login(c *gin.Context) {
 }
 
 // createUserInput ユーザ作成Usecaseの引数を作成
-func createUserInput(firebaseUid string, email string) usecaseDto.CreateUserInput {
+func createUserInput(firebaseUid string, email string, req dto.CreateUserRequest) usecaseDto.CreateUserInput {
 	return usecaseDto.CreateUserInput{
-		FirebaseUserId: firebaseUid,
-		Email:          email,
+		FirebaseUserId:             firebaseUid,
+		Email:                      email,
+		TermsAgreedVersion:         req.TermsAgreedVersion,
+		PrivacyPolicyAgreedVersion: req.PrivacyPolicyAgreedVersion,
 	}
 }
 
@@ -293,6 +400,23 @@ func createGetUserAgreementsResponse(output usecaseDto.GetUserAgreementsOutput) 
 	res.Agreements = append(res.Agreements, p)
 
 	return res
+}
+
+// createUpdateUserAgreementInput ユーザ規約同意状況更新usecaseの引数を作成
+func createUpdateUserAgreementInput(internalUid int64, req handlerDto.UpdateUserAgreementsRequest) usecaseDto.UpdateUserAgreementsInput {
+	input := usecaseDto.UpdateUserAgreementsInput{
+		InternalUid: internalUid,
+	}
+
+	for _, p := range req.Policies {
+		input.Agreements = append(input.Agreements,
+			usecaseDto.UpdateUserAgreement{
+				PolicyType:    policy.PolicyType(p.PolicyType),
+				AgreedVersion: p.Version,
+			},
+		)
+	}
+	return input
 }
 
 // createLoginResponse Loginのレスポンスを生成

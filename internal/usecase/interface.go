@@ -30,6 +30,11 @@ type UserUsecase interface {
 		uid int64,
 	) (*usecaseDto.GetUserAgreementsOutput, error)
 
+	UpdateUserAgreements(
+		ctx context.Context,
+		ua usecaseDto.UpdateUserAgreementsInput,
+	) error
+
 	Login(
 		ctx context.Context,
 		input usecaseDto.UserLoginInput,

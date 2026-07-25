@@ -19,3 +19,12 @@ var ErrUserAlreadyExists = errors.New("duplicate user registration")
 
 // ErrUserDeleteFailed ユーザ削除失敗（DBエラー）
 var ErrUserDeleteFailed = errors.New("failed db update to delete user")
+
+// ErrInvalidPolicyType ポリシー指定が不正
+var ErrInvalidPolicyType = errors.New("invalid policy type")
+
+// ErrInvalidPolicyVersion ポリシーバージョン指定が不正
+var ErrInvalidPolicyVersion = errors.New("invalid policy version")
+
+// ErrUnexpectedPolicy DBなどに規約マスタデータ異常がある場合
+var ErrUnexpectedPolicy = errors.New("unexpected policy")

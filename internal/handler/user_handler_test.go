@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	ctxutil "jemref_go/internal/context"
+	"jemref_go/internal/domain/policy"
+	"jemref_go/internal/domain/user"
 	handlerDto "jemref_go/internal/handler/dto"
 	handlerdto "jemref_go/internal/handler/dto"
 	"jemref_go/internal/testutil"
+	"jemref_go/internal/testutil/mock"
 	"jemref_go/internal/usecase"
 	usecaseDto "jemref_go/internal/usecase/dto"
 	"net/http"
@@ -18,6 +21,34 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestUserHandler_RegisterRoutes(t *testing.T) {
+	r := gin.New()
+	group := r.Group("/api/v0")
+
+	h := NewUserHandler(nil)
+	h.RegisterRoutes(group)
+
+	routes := r.Routes()
+
+	expected := map[string]bool{
+		"DELETE /api/v0/users":         false,
+		"GET /api/v0/users/agreements": false,
+		"PUT /api/v0/users/agreements": false,
+		"PUT /api/v0/users/login":      false,
+	}
+
+	for _, route := range routes {
+		key := route.Method + " " + route.Path
+		if _, ok := expected[key]; ok {
+			expected[key] = true
+		}
+	}
+
+	for key, found := range expected {
+		assert.True(t, found, "%s is not registered", key)
+	}
+}
+
 func TestUserHandler_CreateUser(t *testing.T) {
 
 	path := "/api/v0/join"
@@ -27,7 +58,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 		name              string
 		body              handlerDto.CreateUserRequest
 		setUpContext      gin.HandlerFunc
-		mockUsecase       *MockUserUsecase
+		mockUsecase       *mock.MockUserUsecase
 		usecaseCalled     bool
 		expectedStatus    int
 		expectError       bool
@@ -45,8 +76,8 @@ func TestUserHandler_CreateUser(t *testing.T) {
 				c.Set(ctxutil.CtxKeyEmail, "test@example.com")
 				c.Next()
 			},
-			mockUsecase: &MockUserUsecase{
-				createUserFunc: func(
+			mockUsecase: &mock.MockUserUsecase{
+				CreateUserFunc: func(
 					ctx context.Context,
 					input usecaseDto.CreateUserInput,
 				) (*usecaseDto.CreateUserOutput, error) {
@@ -72,7 +103,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 				c.Set(ctxutil.CtxKeyEmail, "test@example.com")
 				c.Next()
 			},
-			mockUsecase:    &MockUserUsecase{},
+			mockUsecase:    &mock.MockUserUsecase{},
 			usecaseCalled:  false,
 			expectedStatus: http.StatusInternalServerError,
 			expectError:    true,
@@ -92,13 +123,39 @@ func TestUserHandler_CreateUser(t *testing.T) {
 				c.Set(ctxutil.CtxKeyEmail, "")
 				c.Next()
 			},
-			mockUsecase:    &MockUserUsecase{},
+			mockUsecase:    &mock.MockUserUsecase{},
 			usecaseCalled:  false,
 			expectedStatus: http.StatusInternalServerError,
 			expectError:    true,
 			expectedErrorBody: handlerDto.ErrorResponse{
 				Code:    "A0001",
 				Message: "fatal:Eメールアドレスの取得処理に異常があります。",
+			},
+		},
+		{
+			name: "異常_ユーザ登録_リクエスト不正",
+			body: handlerDto.CreateUserRequest{},
+			setUpContext: func(c *gin.Context) {
+				c.Set(ctxutil.CtxKeyFirebaseUid, "firebase_uid")
+				c.Set(ctxutil.CtxKeyEmail, "test@example.com")
+				c.Next()
+			},
+			mockUsecase: &mock.MockUserUsecase{
+				CreateUserFunc: func(
+					ctx context.Context,
+					input usecaseDto.CreateUserInput,
+				) (*usecaseDto.CreateUserOutput, error) {
+					return &usecaseDto.CreateUserOutput{
+						PublicUserId: "_test_public_userid_",
+					}, nil
+				},
+			},
+			usecaseCalled:  false,
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+			expectedErrorBody: handlerdto.ErrorResponse{
+				Code:    "E0002",
+				Message: "リクエストが不正です。",
 			},
 		},
 		{
@@ -112,8 +169,8 @@ func TestUserHandler_CreateUser(t *testing.T) {
 				c.Set(ctxutil.CtxKeyEmail, "test@example.com")
 				c.Next()
 			},
-			mockUsecase: &MockUserUsecase{
-				createUserFunc: func(
+			mockUsecase: &mock.MockUserUsecase{
+				CreateUserFunc: func(
 					ctx context.Context,
 					input usecaseDto.CreateUserInput,
 				) (*usecaseDto.CreateUserOutput, error) {
@@ -129,6 +186,33 @@ func TestUserHandler_CreateUser(t *testing.T) {
 			},
 		},
 		{
+			name: "異常_ユーザ登録_規約指定不正",
+			body: handlerDto.CreateUserRequest{
+				TermsAgreedVersion:         "0.3",
+				PrivacyPolicyAgreedVersion: "0.1",
+			},
+			setUpContext: func(c *gin.Context) {
+				c.Set(ctxutil.CtxKeyFirebaseUid, "firebase_uid")
+				c.Set(ctxutil.CtxKeyEmail, "test@example.com")
+				c.Next()
+			},
+			mockUsecase: &mock.MockUserUsecase{
+				CreateUserFunc: func(
+					ctx context.Context,
+					input usecaseDto.CreateUserInput,
+				) (*usecaseDto.CreateUserOutput, error) {
+					return nil, usecase.ErrPolicyNotFound
+				},
+			},
+			usecaseCalled:  true,
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+			expectedErrorBody: handlerDto.ErrorResponse{
+				Code:    "E0004",
+				Message: "不正な規約情報です。",
+			},
+		},
+		{
 			name: "異常_ユーザ登録_予期しないエラー",
 			body: handlerDto.CreateUserRequest{
 				TermsAgreedVersion:         "0.1",
@@ -139,8 +223,8 @@ func TestUserHandler_CreateUser(t *testing.T) {
 				c.Set(ctxutil.CtxKeyEmail, "test@example.com")
 				c.Next()
 			},
-			mockUsecase: &MockUserUsecase{
-				createUserFunc: func(
+			mockUsecase: &mock.MockUserUsecase{
+				CreateUserFunc: func(
 					ctx context.Context,
 					input usecaseDto.CreateUserInput,
 				) (*usecaseDto.CreateUserOutput, error) {
@@ -184,12 +268,14 @@ func TestUserHandler_CreateUser(t *testing.T) {
 
 			// 呼び出しチェック
 			if tt.usecaseCalled {
-				assert.True(t, tt.mockUsecase.createUserCalled)
+				assert.True(t, tt.mockUsecase.CreateUserCalled)
+				assert.Equal(t, tt.body.TermsAgreedVersion, tt.mockUsecase.LastCreateUserInput.TermsAgreedVersion)
+				assert.Equal(t, tt.body.PrivacyPolicyAgreedVersion, tt.mockUsecase.LastCreateUserInput.PrivacyPolicyAgreedVersion)
 			} else {
-				assert.False(t, tt.mockUsecase.createUserCalled)
+				assert.False(t, tt.mockUsecase.CreateUserCalled)
 			}
-			assert.False(t, tt.mockUsecase.deleteUserCalled)
-			assert.False(t, tt.mockUsecase.loginCalled)
+			assert.False(t, tt.mockUsecase.DeleteUserCalled)
+			assert.False(t, tt.mockUsecase.LoginCalled)
 
 			// 異常系の場合のassertion
 			if tt.expectError {
@@ -200,19 +286,295 @@ func TestUserHandler_CreateUser(t *testing.T) {
 			// 正常系の場合のassertion
 			testutil.AssertResponse(t, rec, tt.expectedBody)
 		})
+	}
+}
 
+func TestUserHandler_UpdateUserAgreements(t *testing.T) {
+	path := "/api/v0/user/agreements"
+	gin.SetMode(gin.TestMode)
+	uid := int64(2001)
+
+	tests := []struct {
+		name              string
+		body              handlerDto.UpdateUserAgreementsRequest
+		setUpContext      gin.HandlerFunc
+		mockUsecase       *mock.MockUserUsecase
+		usecaseCalled     bool
+		expectedStatus    int
+		expectError       bool
+		expectedErrorBody handlerDto.ErrorResponse
+	}{
+		{
+			name: "正常_ユーザ規約同意状況更新",
+			body: handlerDto.UpdateUserAgreementsRequest{
+				Policies: []handlerDto.PolicyAgreementRequest{
+					{
+						PolicyType: string(policy.PolicyTypeTermsOfService),
+						Version:    "0.1",
+					},
+					{
+						PolicyType: string(policy.PolicyTypePrivacyPolicy),
+						Version:    "0.2",
+					},
+				},
+			},
+			setUpContext: func(c *gin.Context) {
+				c.Set(ctxutil.CtxKeyUid, uid)
+				c.Next()
+			},
+			mockUsecase: &mock.MockUserUsecase{
+				UpdateUserAgreementsFunc: func(ctx context.Context, uuai usecaseDto.UpdateUserAgreementsInput) error {
+					return nil
+				},
+			},
+			usecaseCalled:  true,
+			expectedStatus: http.StatusOK,
+			expectError:    false,
+		},
+		{
+			name: "異常_ユーザ規約同意状況更新_ユーザID取得失敗",
+			body: handlerDto.UpdateUserAgreementsRequest{},
+			setUpContext: func(c *gin.Context) {
+				c.Next()
+			},
+			mockUsecase:    &mock.MockUserUsecase{},
+			usecaseCalled:  false,
+			expectedStatus: http.StatusInternalServerError,
+			expectError:    false,
+			expectedErrorBody: handlerdto.ErrorResponse{
+				Code:    "F0001",
+				Message: "fatal: 内部用UID取得処理に異常があります。",
+			},
+		},
+		{
+			name: "異常_ユーザ規約同意状況更新_リクエスト形式不正",
+			body: handlerDto.UpdateUserAgreementsRequest{},
+			setUpContext: func(c *gin.Context) {
+				c.Set(ctxutil.CtxKeyUid, uid)
+				c.Next()
+			},
+			mockUsecase: &mock.MockUserUsecase{
+				UpdateUserAgreementsFunc: func(ctx context.Context, uuai usecaseDto.UpdateUserAgreementsInput) error {
+					return nil
+				},
+			},
+			usecaseCalled:  false,
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+			expectedErrorBody: handlerDto.ErrorResponse{
+				Code:    "E0002",
+				Message: "リクエストが不正です。",
+			},
+		},
+		{
+			name: "異常_ユーザ規約同意状況更新_リクエストが空の配列",
+			body: handlerDto.UpdateUserAgreementsRequest{
+				Policies: []handlerDto.PolicyAgreementRequest{},
+			},
+			setUpContext: func(c *gin.Context) {
+				c.Set(ctxutil.CtxKeyUid, uid)
+				c.Next()
+			},
+			mockUsecase: &mock.MockUserUsecase{
+				UpdateUserAgreementsFunc: func(ctx context.Context, uuai usecaseDto.UpdateUserAgreementsInput) error {
+					return nil
+				},
+			},
+			usecaseCalled:  false,
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+			expectedErrorBody: handlerDto.ErrorResponse{
+				Code:    "E0002",
+				Message: "リクエストが不正です。",
+			},
+		},
+		{
+			name: "異常_ユーザ規約同意状況更新_ユーザ取得処理異常",
+			body: handlerDto.UpdateUserAgreementsRequest{
+				Policies: []handlerDto.PolicyAgreementRequest{
+					{
+						PolicyType: string(policy.PolicyTypeTermsOfService),
+						Version:    "0.1",
+					},
+					{
+						PolicyType: string(policy.PolicyTypePrivacyPolicy),
+						Version:    "0.2",
+					},
+				},
+			},
+			setUpContext: func(c *gin.Context) {
+				c.Set(ctxutil.CtxKeyUid, uid)
+				c.Next()
+			},
+			mockUsecase: &mock.MockUserUsecase{
+				UpdateUserAgreementsFunc: func(ctx context.Context, uuai usecaseDto.UpdateUserAgreementsInput) error {
+					return usecase.ErrUserNotFound
+				},
+			},
+			usecaseCalled:  true,
+			expectedStatus: http.StatusInternalServerError,
+			expectError:    true,
+			expectedErrorBody: handlerDto.ErrorResponse{
+				Code:    "F0001",
+				Message: "fatal:ユーザ取得処理に異常があります。",
+			},
+		},
+		{
+			name: "異常_ユーザ規約同意状況更新_規約タイプ指定不正",
+			body: handlerDto.UpdateUserAgreementsRequest{
+				Policies: []handlerDto.PolicyAgreementRequest{
+					{
+						PolicyType: string(policy.PolicyTypeTermsOfService),
+						Version:    "0.1",
+					},
+					{
+						PolicyType: string(policy.PolicyTypePrivacyPolicy),
+						Version:    "0.2",
+					},
+				},
+			},
+			setUpContext: func(c *gin.Context) {
+				c.Set(ctxutil.CtxKeyUid, uid)
+				c.Next()
+			},
+			mockUsecase: &mock.MockUserUsecase{
+				UpdateUserAgreementsFunc: func(ctx context.Context, uuai usecaseDto.UpdateUserAgreementsInput) error {
+					return usecase.ErrInvalidPolicyType
+				},
+			},
+			usecaseCalled:  true,
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+			expectedErrorBody: handlerDto.ErrorResponse{
+				Code:    "E0011",
+				Message: "規約タイプが不正です。",
+			},
+		},
+		{
+			name: "異常_ユーザ規約同意状況更新_規約バージョン指定不正",
+			body: handlerDto.UpdateUserAgreementsRequest{
+				Policies: []handlerDto.PolicyAgreementRequest{
+					{
+						PolicyType: string(policy.PolicyTypeTermsOfService),
+						Version:    "0.1",
+					},
+					{
+						PolicyType: string(policy.PolicyTypePrivacyPolicy),
+						Version:    "0.2",
+					},
+				},
+			},
+			setUpContext: func(c *gin.Context) {
+				c.Set(ctxutil.CtxKeyUid, uid)
+				c.Next()
+			},
+			mockUsecase: &mock.MockUserUsecase{
+				UpdateUserAgreementsFunc: func(ctx context.Context, uuai usecaseDto.UpdateUserAgreementsInput) error {
+					return usecase.ErrInvalidPolicyVersion
+				},
+			},
+			usecaseCalled:  true,
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+			expectedErrorBody: handlerDto.ErrorResponse{
+				Code:    "E0012",
+				Message: "規約バージョンが不正です。",
+			},
+		},
+		{
+			name: "異常_ユーザ規約同意状況更新_予期せぬエラー",
+			body: handlerDto.UpdateUserAgreementsRequest{
+				Policies: []handlerDto.PolicyAgreementRequest{
+					{
+						PolicyType: string(policy.PolicyTypeTermsOfService),
+						Version:    "0.1",
+					},
+					{
+						PolicyType: string(policy.PolicyTypePrivacyPolicy),
+						Version:    "0.2",
+					},
+				},
+			},
+			setUpContext: func(c *gin.Context) {
+				c.Set(ctxutil.CtxKeyUid, uid)
+				c.Next()
+			},
+			mockUsecase: &mock.MockUserUsecase{
+				UpdateUserAgreementsFunc: func(ctx context.Context, uuai usecaseDto.UpdateUserAgreementsInput) error {
+					return errors.New("予期せぬエラー")
+				},
+			},
+			usecaseCalled:  true,
+			expectedStatus: http.StatusInternalServerError,
+			expectError:    true,
+			expectedErrorBody: handlerDto.ErrorResponse{
+				Code:    "F0001",
+				Message: "fatal:予期せぬエラー",
+			},
+		},
 	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			r := gin.New()
+			if tt.setUpContext != nil {
+				r.Use(tt.setUpContext)
+			}
+			h := NewUserHandler(tt.mockUsecase)
+
+			r.PUT(
+				path,
+				h.UpdateUserAgreements,
+			)
+
+			req := httptest.NewRequest(
+				http.MethodPut,
+				path,
+				testutil.NewJsonReader(t, tt.body),
+			)
+
+			rec := httptest.NewRecorder()
+
+			r.ServeHTTP(rec, req)
+
+			assert.Equal(t, tt.expectedStatus, rec.Code)
+
+			// 呼び出しチェック
+			if tt.usecaseCalled {
+				assert.True(t, tt.mockUsecase.UpdateUserAgreementsCalled)
+				assert.Equal(t, uid, tt.mockUsecase.LastUpdateUserInput.InternalUid)
+				for i, p := range tt.body.Policies {
+					arg := tt.mockUsecase.LastUpdateUserInput.Agreements[i]
+					assert.Equal(t, p.PolicyType, string(arg.PolicyType))
+					assert.Equal(t, p.Version, string(arg.AgreedVersion))
+				}
+			} else {
+				assert.False(t, tt.mockUsecase.UpdateUserAgreementsCalled)
+			}
+			assert.False(t, tt.mockUsecase.CreateUserCalled)
+			assert.False(t, tt.mockUsecase.DeleteUserCalled)
+			assert.False(t, tt.mockUsecase.GetUserAgreementsCalled)
+			assert.False(t, tt.mockUsecase.LoginCalled)
+
+			// 異常系の婆のassertion
+			if tt.expectError {
+				testutil.AssertResponse(t, rec, tt.expectedErrorBody)
+			}
+		})
+	}
 }
 
 func TestUserHandler_DeleteUser(t *testing.T) {
 	path := "/api/v0/users"
 	gin.SetMode(gin.TestMode)
+	firebaseUid := "firebase_uid"
+	internalUid := int64(1234)
 
 	tests := []struct {
 		name              string
 		setUpContext      gin.HandlerFunc
-		mockUsecase       *MockUserUsecase
+		mockUsecase       *mock.MockUserUsecase
 		usecaseCalled     bool
 		expectedStatus    int
 		expectError       bool
@@ -221,12 +583,12 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		{
 			name: "正常_ユーザ退会",
 			setUpContext: func(c *gin.Context) {
-				c.Set(ctxutil.CtxKeyFirebaseUid, "firebase_uid")
-				c.Set(ctxutil.CtxKeyUid, int64(1234))
+				c.Set(ctxutil.CtxKeyFirebaseUid, firebaseUid)
+				c.Set(ctxutil.CtxKeyUid, internalUid)
 				c.Next()
 			},
-			mockUsecase: &MockUserUsecase{
-				deleteUserFunc: func(
+			mockUsecase: &mock.MockUserUsecase{
+				DeleteUserFunc: func(
 					ctx context.Context,
 					input usecaseDto.DeleteUserInput,
 				) error {
@@ -240,10 +602,10 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		{
 			name: "異常_ユーザ退会_InternalUIDの取得に失敗",
 			setUpContext: func(c *gin.Context) {
-				c.Set(ctxutil.CtxKeyFirebaseUid, "firebase_uid")
+				c.Set(ctxutil.CtxKeyFirebaseUid, firebaseUid)
 				c.Next()
 			},
-			mockUsecase:    &MockUserUsecase{},
+			mockUsecase:    &mock.MockUserUsecase{},
 			usecaseCalled:  false,
 			expectedStatus: http.StatusInternalServerError,
 			expectError:    true,
@@ -255,10 +617,10 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		{
 			name: "異常_ユーザ退会_FirebaseUIDの取得に失敗",
 			setUpContext: func(c *gin.Context) {
-				c.Set(ctxutil.CtxKeyUid, int64(1234))
+				c.Set(ctxutil.CtxKeyUid, internalUid)
 				c.Next()
 			},
-			mockUsecase:    &MockUserUsecase{},
+			mockUsecase:    &mock.MockUserUsecase{},
 			usecaseCalled:  false,
 			expectedStatus: http.StatusInternalServerError,
 			expectError:    true,
@@ -270,12 +632,12 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		{
 			name: "異常_ユーザ退会_未入会ユーザ",
 			setUpContext: func(c *gin.Context) {
-				c.Set(ctxutil.CtxKeyFirebaseUid, "firebase_uid")
-				c.Set(ctxutil.CtxKeyUid, int64(1234))
+				c.Set(ctxutil.CtxKeyFirebaseUid, firebaseUid)
+				c.Set(ctxutil.CtxKeyUid, internalUid)
 				c.Next()
 			},
-			mockUsecase: &MockUserUsecase{
-				deleteUserFunc: func(
+			mockUsecase: &mock.MockUserUsecase{
+				DeleteUserFunc: func(
 					ctx context.Context,
 					input usecaseDto.DeleteUserInput,
 				) error {
@@ -293,12 +655,12 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		{
 			name: "異常_ユーザ退会_ユーザ情報に不整合あり",
 			setUpContext: func(c *gin.Context) {
-				c.Set(ctxutil.CtxKeyFirebaseUid, "firebase_uid")
-				c.Set(ctxutil.CtxKeyUid, int64(1234))
+				c.Set(ctxutil.CtxKeyFirebaseUid, firebaseUid)
+				c.Set(ctxutil.CtxKeyUid, internalUid)
 				c.Next()
 			},
-			mockUsecase: &MockUserUsecase{
-				deleteUserFunc: func(
+			mockUsecase: &mock.MockUserUsecase{
+				DeleteUserFunc: func(
 					ctx context.Context,
 					input usecaseDto.DeleteUserInput,
 				) error {
@@ -316,12 +678,12 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		{
 			name: "異常_ユーザ退会_予期しないエラー",
 			setUpContext: func(c *gin.Context) {
-				c.Set(ctxutil.CtxKeyFirebaseUid, "firebase_uid")
-				c.Set(ctxutil.CtxKeyUid, int64(1234))
+				c.Set(ctxutil.CtxKeyFirebaseUid, firebaseUid)
+				c.Set(ctxutil.CtxKeyUid, internalUid)
 				c.Next()
 			},
-			mockUsecase: &MockUserUsecase{
-				deleteUserFunc: func(
+			mockUsecase: &mock.MockUserUsecase{
+				DeleteUserFunc: func(
 					ctx context.Context,
 					input usecaseDto.DeleteUserInput,
 				) error {
@@ -366,12 +728,15 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 
 			// 呼び出しチェック
 			if tt.usecaseCalled {
-				assert.True(t, tt.mockUsecase.deleteUserCalled)
+				assert.True(t, tt.mockUsecase.DeleteUserCalled)
+				assert.Equal(t, internalUid, tt.mockUsecase.LastDeleteUserInput.InternalUserid)
+				assert.Equal(t, firebaseUid, tt.mockUsecase.LastDeleteUserInput.FirebaseUserId)
+
 			} else {
-				assert.False(t, tt.mockUsecase.deleteUserCalled)
+				assert.False(t, tt.mockUsecase.DeleteUserCalled)
 			}
-			assert.False(t, tt.mockUsecase.createUserCalled)
-			assert.False(t, tt.mockUsecase.loginCalled)
+			assert.False(t, tt.mockUsecase.CreateUserCalled)
+			assert.False(t, tt.mockUsecase.LoginCalled)
 
 			// 異常系の場合
 			if tt.expectError {
@@ -389,7 +754,7 @@ func TestUserHandler_Login(t *testing.T) {
 	tests := []struct {
 		name            string
 		setUpContext    gin.HandlerFunc
-		mockUsecase     *MockUserUsecase
+		mockUsecase     *mock.MockUserUsecase
 		usecaseCalled   bool
 		expectedStatus  int
 		expectedBody    handlerDto.UserLoginResponse
@@ -463,62 +828,168 @@ func TestUserHandler_Login(t *testing.T) {
 	}
 }
 
-type MockUserUsecase struct {
-	createUserFunc func(
-		context.Context,
-		usecaseDto.CreateUserInput,
-	) (*usecaseDto.CreateUserOutput, error)
+func TestUserHandler_GetUserAgreements(t *testing.T) {
+	path := "/api/v0/users/agreements"
+	gin.SetMode(gin.TestMode)
 
-	deleteUserFunc func(
-		context.Context,
-		usecaseDto.DeleteUserInput,
-	) error
+	tests := []struct {
+		name              string
+		setUpContext      gin.HandlerFunc
+		mockUsecase       *mock.MockUserUsecase
+		usecaseCalled     bool
+		expectedStatus    int
+		expectError       bool
+		expectedBody      handlerDto.GetUserAgreementsResponse
+		expectedErrorBody handlerDto.ErrorResponse
+	}{
+		{
+			name: "正常_ユーザ規約同意状況参照",
+			setUpContext: func(c *gin.Context) {
+				c.Set(ctxutil.CtxKeyUid, int64(1001))
+				c.Next()
+			},
+			mockUsecase: &mock.MockUserUsecase{
+				GetUserAgreementsFunc: func(ctx context.Context, uid int64) (*usecaseDto.GetUserAgreementsOutput, error) {
+					agreements := []usecaseDto.GetUserAgreement{
+						{
+							PolicyType:    policy.PolicyTypeTermsOfService,
+							Label:         "_terms_",
+							LatestVersion: "_1.0_",
+							AgreedVersion: "_1.0_",
+							Status:        user.PolicyAgreementStatusAgreed,
+						},
+						{
+							PolicyType:    policy.PolicyTypePrivacyPolicy,
+							Label:         "_プラポリ_",
+							LatestVersion: "_2.0_",
+							AgreedVersion: "_1.0_",
+							Status:        user.PolicyAgreementStatusUpdateRequired,
+						},
+					}
+					return &usecaseDto.GetUserAgreementsOutput{
+						Agreements: agreements,
+					}, nil
+				},
+			},
+			usecaseCalled:  true,
+			expectedStatus: http.StatusOK,
+			expectedBody: handlerDto.GetUserAgreementsResponse{
+				Agreements: []handlerDto.UserAgreementResponse{
+					{
+						PolicyType:    string(policy.PolicyTypeTermsOfService),
+						Label:         "_terms_",
+						LatestVersion: "_1.0_",
+						AgreedVersion: "_1.0_",
+						Status:        user.PolicyAgreementStatusAgreed,
+					},
+					{
+						PolicyType:    string(policy.PolicyTypePrivacyPolicy),
+						Label:         "_プラポリ_",
+						LatestVersion: "_2.0_",
+						AgreedVersion: "_1.0_",
+						Status:        user.PolicyAgreementStatusUpdateRequired,
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "異常_ユーザ規約同意状況参照_internal uid取得失敗",
+			setUpContext: func(c *gin.Context) {
+				c.Next()
+			},
+			mockUsecase:    &mock.MockUserUsecase{},
+			usecaseCalled:  false,
+			expectedStatus: http.StatusInternalServerError,
+			expectError:    true,
+			expectedErrorBody: handlerDto.ErrorResponse{
+				Code:    "A0001",
+				Message: "fatal:ユーザID取得処理に異常があります。",
+			},
+		},
+		{
+			name: "異常_ユーザ規約同意状況参照_ユーザ非存在",
+			setUpContext: func(c *gin.Context) {
+				c.Set(ctxutil.CtxKeyUid, int64(1001))
+				c.Next()
+			},
+			mockUsecase: &mock.MockUserUsecase{
+				GetUserAgreementsFunc: func(ctx context.Context, uid int64) (*usecaseDto.GetUserAgreementsOutput, error) {
+					return nil, usecase.ErrUserNotFound
+				},
+			},
+			usecaseCalled:  true,
+			expectedStatus: http.StatusInternalServerError,
+			expectError:    true,
+			expectedErrorBody: handlerdto.ErrorResponse{
+				Code:    "A0001",
+				Message: "fatal:ユーザマスタ情報に異常があります。",
+			},
+		},
+		{
+			name: "異常_ユーザ規約同意状況参照_ユーザ非存在",
+			setUpContext: func(c *gin.Context) {
+				c.Set(ctxutil.CtxKeyUid, int64(1001))
+				c.Next()
+			},
+			mockUsecase: &mock.MockUserUsecase{
+				GetUserAgreementsFunc: func(ctx context.Context, uid int64) (*usecaseDto.GetUserAgreementsOutput, error) {
+					return nil, errors.New("error")
+				},
+			},
+			usecaseCalled:  true,
+			expectedStatus: http.StatusInternalServerError,
+			expectError:    true,
+			expectedErrorBody: handlerdto.ErrorResponse{
+				Code:    "A0001",
+				Message: "fatal:予期せぬエラー",
+			},
+		},
+	}
 
-	getUserAgreementsFunc func(
-		context.Context,
-		int64,
-	) (*usecaseDto.GetUserAgreementsOutput, error)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 
-	loginFunc func(
-		context.Context,
-		usecaseDto.UserLoginInput,
-	) (*usecaseDto.UserLoginOutput, error)
+			r := gin.New()
+			if tt.setUpContext != nil {
+				r.Use(tt.setUpContext)
+			}
+			h := NewUserHandler(tt.mockUsecase)
 
-	createUserCalled        bool
-	deleteUserCalled        bool
-	getUserAgreementsCalled bool
-	loginCalled             bool
-}
+			r.GET(
+				path,
+				h.GetUserAgreements,
+			)
 
-// GetUserAgreements implements [usecase.UserUsecase].
-func (m *MockUserUsecase) GetUserAgreements(
-	ctx context.Context,
-	uid int64,
-) (*usecaseDto.GetUserAgreementsOutput, error) {
-	m.getUserAgreementsCalled = true
-	return m.getUserAgreementsFunc(ctx, uid)
-}
+			req := httptest.NewRequest(
+				http.MethodGet,
+				path,
+				nil,
+			)
 
-func (m *MockUserUsecase) Create(
-	ctx context.Context,
-	input usecaseDto.CreateUserInput,
-) (*usecaseDto.CreateUserOutput, error) {
-	m.createUserCalled = true
-	return m.createUserFunc(ctx, input)
-}
+			rec := httptest.NewRecorder()
 
-func (m *MockUserUsecase) Delete(
-	ctx context.Context,
-	input usecaseDto.DeleteUserInput,
-) error {
-	m.deleteUserCalled = true
-	return m.deleteUserFunc(ctx, input)
-}
+			r.ServeHTTP(rec, req)
 
-func (m *MockUserUsecase) Login(
-	ctx context.Context,
-	input usecaseDto.UserLoginInput,
-) (*usecaseDto.UserLoginOutput, error) {
-	m.loginCalled = true
-	return m.loginFunc(ctx, input)
+			assert.Equal(t, tt.expectedStatus, rec.Code)
+
+			// 呼び出しチェック
+			if tt.usecaseCalled {
+				assert.True(t, tt.mockUsecase.GetUserAgreementsCalled)
+			} else {
+				assert.False(t, tt.mockUsecase.GetUserAgreementsCalled)
+			}
+			assert.False(t, tt.mockUsecase.CreateUserCalled)
+			assert.False(t, tt.mockUsecase.DeleteUserCalled)
+
+			// 異常系のチェック
+			if tt.expectError {
+				testutil.AssertResponse(t, rec, tt.expectedErrorBody)
+				return
+			}
+
+			// 正常系のチェック
+			testutil.AssertResponse(t, rec, tt.expectedBody)
+		})
+	}
 }

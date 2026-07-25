@@ -6,9 +6,16 @@ import (
 )
 
 type GeneralRepository interface {
-	// 規約IDをもとに、規約１件を取得する
-	SelectLatestById(
+	// SelectLatestPolicyById 規約IDをもとに、規約１件を取得する
+	SelectLatestPolicyById(
 		context.Context,
 		string,
+	) (*policy.Policy, error)
+
+	// SelectPolicyByPrimaryKey 規約IDとバージョンをもとに、規約1件を取得する
+	SelectPolicyByPrimaryKey(
+		ctx context.Context,
+		id string,
+		version string,
 	) (*policy.Policy, error)
 }

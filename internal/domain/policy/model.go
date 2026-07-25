@@ -13,4 +13,18 @@ type Policy struct {
 	Content string
 	// 発行日
 	EffectiveDate time.Time
+	// 削除フラグ
+	DelFlg int
+	// 登録プログラム
+	InsPg string
+	// 登録者識別ID
+	InsId string
+	// 登録日
+	InsDt *time.Time
+	// 更新プログラム
+	UpdPg string
+	// 更新者識別ID
+	UpdId string
+	// 更新日
+	UpdDt *time.Time
 }

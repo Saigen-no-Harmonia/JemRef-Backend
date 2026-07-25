@@ -31,17 +31,40 @@ func LoadFixture(
 	return nil
 }
 
-// TruncateTable テスト実施前に対象テーブルをtruncateする
-func TruncateTable(
+// CleanUpTables テスト実施前に全レコードをdeleteする
+func CleanUpTables(
+	t *testing.T,
 	db *sql.DB,
-	tableName string,
-) error {
-
-	_, err := db.Exec(
-		"TRUNCATE TABLE " + tableName,
-	)
-
-	return err
+) {
+	t.Helper()
+	_, err := db.Exec("delete from e_record_field_values")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from e_record_memos")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from e_record_urls")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from e_record_contributions")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from e_records")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from m_record_field_values")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from m_record_contributions")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from m_record_fields")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from m_record_types")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from m_roles")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from m_contributors")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from m_records")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from m_policies")
+	require.NoError(t, err)
+	_, err = db.Exec("delete from m_users")
+	require.NoError(t, err)
 }
 
 // NewJsonReader handlerテスト用JSONReader作成メソッド

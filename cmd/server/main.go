@@ -113,10 +113,10 @@ func newRecordHandler() *handler.RecordHandler {
 
 func newUserHandler(db *sql.DB, client *auth.Client) *handler.UserHandler {
 	userRepo := infraDB.NewUserRepositoryImpl(db)
-	termsRepo := infraDB.NewGeneralRepositoryImpl(db)
+	generalRepo := infraDB.NewGeneralRepositoryImpl(db)
 	firebaseRepo := infraDB.NewFirebaseRepositoryImpl(client)
 	idGen := id.NewUlidGenerator()
-	uc := usecase.NewUserUsecase(userRepo, termsRepo, firebaseRepo, idGen)
+	uc := usecase.NewUserUsecase(userRepo, generalRepo, firebaseRepo, idGen)
 	return handler.NewUserHandler(uc)
 }
 

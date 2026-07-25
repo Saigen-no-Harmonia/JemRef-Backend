@@ -6,8 +6,10 @@ import (
 )
 
 type CreateUserInput struct {
-	FirebaseUserId string
-	Email          string
+	FirebaseUserId             string
+	Email                      string
+	TermsAgreedVersion         string
+	PrivacyPolicyAgreedVersion string
 }
 
 type CreateUserOutput struct {
@@ -20,15 +22,25 @@ type DeleteUserInput struct {
 }
 
 type GetUserAgreementsOutput struct {
-	Agreements []UserAgreement
+	Agreements []GetUserAgreement
 }
 
-type UserAgreement struct {
+type GetUserAgreement struct {
 	PolicyType    policy.PolicyType
 	Label         string
 	LatestVersion string
 	AgreedVersion string
 	Status        user.PolicyAgreementStatus
+}
+
+type UpdateUserAgreementsInput struct {
+	InternalUid int64
+	Agreements  []UpdateUserAgreement
+}
+
+type UpdateUserAgreement struct {
+	PolicyType    policy.PolicyType
+	AgreedVersion string
 }
 
 type UserLoginInput struct {

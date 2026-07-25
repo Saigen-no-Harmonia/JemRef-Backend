@@ -8,15 +8,18 @@ import (
 type MockUserRepository struct {
 	CreateFunc                func(ctx context.Context, u *user.User) error
 	DeleteFunc                func(ctx context.Context, uid int64) error
+	UpdateUserAgreementFunc   func(ctx context.Context, u *user.User) (int64, error)
 	SelectByInternalUidFunc   func(ctx context.Context, uid int64) (*user.User, error)
 	SelectByFirebaseUidFunc   func(ctx context.Context, firebaseUid string) (*user.User, error)
 	LastInsertUser            *user.User
+	LastUpdatedUser           *user.User
 	LastDeleteUserId          int64
 	LastSelectInternalUid     int64
 	LastSelectFirebaseUid     string
 	Called                    int
 	CreateCalled              int
 	DeleteCalled              int
+	UpdateUserAgreementCalled int
 	SelectByInternalUidCalled int
 	SelectByFirebaseUidCalled int
 }
@@ -39,6 +42,16 @@ func (m *MockUserRepository) Delete(
 	m.DeleteCalled++
 	m.LastDeleteUserId = uid
 	return m.DeleteFunc(ctx, uid)
+}
+
+func (m *MockUserRepository) UpdateUserAgreement(
+	ctx context.Context,
+	u *user.User,
+) (int64, error) {
+	m.Called++
+	m.UpdateUserAgreementCalled++
+	m.LastUpdatedUser = u
+	return m.UpdateUserAgreementFunc(ctx, u)
 }
 
 func (m *MockUserRepository) SelectByInternalUid(

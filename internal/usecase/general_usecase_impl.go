@@ -20,7 +20,7 @@ func (g *GeneralUsecaseImpl) GetPolicies(
 	ctx context.Context,
 	gp dto.GetPoliciesInput,
 ) (*dto.GetPoliciesOutput, error) {
-	p, err := g.generalRepo.SelectLatestById(ctx, gp.PolicyId)
+	p, err := g.generalRepo.SelectLatestPolicyById(ctx, gp.PolicyId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, ErrPolicyNotFound
