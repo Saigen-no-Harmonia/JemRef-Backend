@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// -------------SelectLatestById(context.Context, String)のテスト-------------
-func TestGeneralRepository_SelectLatestById_正常(t *testing.T) {
+// -------------SelectLatestPolicyById(context.Context, String)のテスト-------------
+func TestGeneralRepository_SelectLatestPolicyById_正常(t *testing.T) {
 
 	repo := testPoliciesSetup(t, "testdata/policies_select_001.sql")
 	actual, err := repo.SelectLatestPolicyById(
@@ -30,7 +30,7 @@ func TestGeneralRepository_SelectLatestById_正常(t *testing.T) {
 	assert.Equal(t, "2026-05-10", actual.EffectiveDate.Format("2006-01-02"))
 }
 
-func TestGeneralRepository_SelectLatestById_該当レコードなし(t *testing.T) {
+func TestGeneralRepository_SelectLatestPolicyById_該当レコードなし(t *testing.T) {
 
 	repo := testPoliciesSetup(t, "testdata/policies_select_001.sql")
 	actual, err := repo.SelectLatestPolicyById(
@@ -41,7 +41,7 @@ func TestGeneralRepository_SelectLatestById_該当レコードなし(t *testing.
 	assert.Nil(t, actual)
 }
 
-func TestGeneralRepository_SelectLatestById_引数なし(t *testing.T) {
+func TestGeneralRepository_SelectLatestPolicyById_引数なし(t *testing.T) {
 
 	repo := testPoliciesSetup(t, "testdata/policies_select_001.sql")
 	actual, err := repo.SelectLatestPolicyById(
@@ -52,6 +52,7 @@ func TestGeneralRepository_SelectLatestById_引数なし(t *testing.T) {
 	assert.Nil(t, actual)
 }
 
+// -------------SelectPolicyByPrimaryKey(context.Context, String, String)のテスト-------------
 func TestGeneralRepository_SelectPolicyByPrimaryKey_正常(t *testing.T) {
 
 	repo := testPoliciesSetup(t, "testdata/policies_select_002.sql")
@@ -76,8 +77,7 @@ func TestGeneralRepository_SelectPolicyByPrimaryKey_論理削除済みは対象�
 		"P001",
 		"test_0.01",
 	)
-	assert.Error(t, err)
-	assert.Equal(t, repository.ErrNotFound, err)
+	assert.ErrorIs(t, err, repository.ErrNotFound)
 	assert.Nil(t, actual)
 }
 

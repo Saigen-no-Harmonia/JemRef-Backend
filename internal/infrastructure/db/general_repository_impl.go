@@ -6,9 +6,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"jemref_go/internal/domain/policy"
 	"jemref_go/internal/repository"
-	"log"
 )
 
 type GeneralRepositoryImpl struct {
@@ -40,11 +40,9 @@ func (r *GeneralRepositoryImpl) SelectPolicyByPrimaryKey(ctx context.Context, id
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.Print("SelectByPrimaryKey:規約が存在しませんでした。")
-			return nil, repository.ErrNotFound
+			return nil, fmt.Errorf("規約が存在しません。:%w", repository.ErrNotFound)
 		}
-		log.Print("SelectByPrimaryKey:DB処理に失敗しました。")
-		return nil, err
+		return nil, fmt.Errorf("select policy by id=%s, version=%s :%w", id, version, err)
 	}
 	return &p, nil
 }
@@ -68,11 +66,9 @@ func (r *GeneralRepositoryImpl) SelectLatestPolicyById(ctx context.Context, id s
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.Print("SelectLatestById:規約が取得できませんでした。")
-			return nil, repository.ErrNotFound
+			return nil, fmt.Errorf("規約が存在しません。:%w", repository.ErrNotFound)
 		}
-		log.Print("SelectLatestById:DB処理に異常があります。")
-		return nil, err
+		return nil, fmt.Errorf("select latest policy by id=%s :%w", id, err)
 	}
 
 	return &p, nil

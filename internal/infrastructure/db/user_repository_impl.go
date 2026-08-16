@@ -6,9 +6,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"jemref_go/internal/domain/user"
 	"jemref_go/internal/repository"
-	"log"
 
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
@@ -50,11 +50,9 @@ func (r *UserRepositoryImpl) SelectByInternalUid(
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.Print("SelectByInternalUid: 件数なし")
-			return nil, repository.ErrNotFound
+			return nil, fmt.Errorf("ユーザが存在しません。:%w", repository.ErrNotFound)
 		}
-
-		return nil, err
+		return nil, fmt.Errorf("select user by internal uid=%d :%w", internalUid, err)
 	}
 
 	return &u, nil
@@ -86,10 +84,10 @@ func (r *UserRepositoryImpl) SelectByFirebaseUid(
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, repository.ErrNotFound
+			return nil, fmt.Errorf("ユーザが存在しません。:%w", repository.ErrNotFound)
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("select user by firebase uid=%s :%w", firebaseUid, err)
 	}
 
 	return &u, nil
@@ -117,11 +115,9 @@ func (r *UserRepositoryImpl) Create(
 		var mysqlErr *mysql.MySQLError
 		// キー重複エラー
 		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
-			log.Print("Create:ユーザ登録時に重複が生じました。")
-			return repository.ErrDuplicateEntry
+			return fmt.Errorf("登録ずみユーザです。:%w", repository.ErrDuplicateEntry)
 		}
-		log.Print("Create:ユーザ登録時にDBエラーが生じました。")
-		return err
+		return fmt.Errorf("create user firebase uid=%s, email=%s :%w", user.FirebaseUserId, user.Email, err)
 	}
 
 	return nil
@@ -139,17 +135,17 @@ func (r *UserRepositoryImpl) Delete(
 	)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("delete user by internal uid=%d :%w", internalUid, err)
 	}
 
 	// 更新対象0件はエラーとする（仕様上、意図しないエラーに限られるので）
 	cnt, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return fmt.Errorf("delete user by internal uid=%d :%w", internalUid, err)
 	}
 
 	if cnt == 0 {
-		return repository.ErrNotFound
+		return fmt.Errorf("削除対象ユーザが存在しません:%w", repository.ErrNotFound)
 	}
 
 	return nil
@@ -167,13 +163,13 @@ func (r *UserRepositoryImpl) UpdateUserAgreement(ctx context.Context, u *user.Us
 		u.InternalUserId,
 	)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("update user agreement by internal uid=%d :%w", u.InternalUserId, err)
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("update user agreement by internal uid=%d :%w", u.InternalUserId, err)
 	}
 
-	return rows, err
+	return rows, nil
 }

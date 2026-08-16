@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"jemref_go/internal/repository"
 	"jemref_go/internal/usecase/dto"
 )
@@ -23,7 +24,7 @@ func (g *GeneralUsecaseImpl) GetPolicies(
 	p, err := g.generalRepo.SelectLatestPolicyById(ctx, gp.PolicyId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return nil, ErrPolicyNotFound
+			return nil, fmt.Errorf("指定した規約が存在しません。:%w", ErrPolicyNotFound)
 		}
 
 		return nil, err

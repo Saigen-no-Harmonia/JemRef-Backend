@@ -36,7 +36,7 @@ func TestUserRepository_SelectByInternalUid_論理削除済みは抽出対象外
 	// 論削ずみのIDを指定
 	actual, err := repo.SelectByInternalUid(context.Background(), int64(1003))
 	require.Error(t, err)
-	assert.Equal(t, repository.ErrNotFound, err)
+	assert.ErrorIs(t, err, repository.ErrNotFound)
 	assert.Nil(t, actual)
 }
 
@@ -46,7 +46,7 @@ func TestUserRepository_SelectByInternalUid_対象ユーザなし(t *testing.T) 
 	// 論削ずみのIDを指定
 	actual, err := repo.SelectByInternalUid(context.Background(), int64(9999))
 	require.Error(t, err)
-	assert.Equal(t, repository.ErrNotFound, err)
+	assert.ErrorIs(t, err, repository.ErrNotFound)
 	assert.Nil(t, actual)
 }
 
@@ -73,7 +73,7 @@ func TestUserRepository_SelectByFirebaseUid_論理削除済みは抽出対象外
 	// 論削ずみのIDを指定
 	actual, err := repo.SelectByFirebaseUid(context.Background(), "_firebase_uid003_")
 	require.Error(t, err)
-	assert.Equal(t, repository.ErrNotFound, err)
+	assert.ErrorIs(t, err, repository.ErrNotFound)
 	assert.Nil(t, actual)
 }
 
@@ -83,7 +83,7 @@ func TestUserRepository_SelectByFirebaseUid_対象ユーザなし(t *testing.T) 
 	// 論削ずみのIDを指定
 	actual, err := repo.SelectByFirebaseUid(context.Background(), "_firebase_uid999_")
 	require.Error(t, err)
-	assert.Equal(t, repository.ErrNotFound, err)
+	assert.ErrorIs(t, err, repository.ErrNotFound)
 	assert.Nil(t, actual)
 }
 
@@ -172,7 +172,7 @@ func TestUserRepository_Delete_対象ユーザなし(t *testing.T) {
 
 	err = repo.Delete(context.Background(), int64(1000))
 	require.Error(t, err)
-	assert.ErrorIs(t, repository.ErrNotFound, err)
+	assert.ErrorIs(t, err, repository.ErrNotFound)
 
 	after, err := testutil.SelectUserByPk(t, testDb, int64(1001))
 	require.NoError(t, err)

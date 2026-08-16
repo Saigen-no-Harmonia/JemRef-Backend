@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"jemref_go/internal/repository"
 	"jemref_go/internal/usecase/dto"
 )
@@ -31,14 +32,22 @@ func (a *AuthUsecaseImpl) Authenticate(
 	// ユーザ情報が取得できなかった場合
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return nil, ErrUserNotFound
+			return nil,
+				fmt.Errorf("ユーザ情報が見つかりません。firebaseUid=%s :%w",
+					firebaseUid,
+					ErrUserNotFound,
+				)
 		}
-		return nil, err
+		return nil, fmt.Errorf("select firebase user by firebase uid=%s :%w", firebaseUid, err)
 	}
 
 	// 退会済みの場合
 	if u.DeletedAt != nil {
-		return nil, ErrUserDeleted
+		return nil,
+			fmt.Errorf("退会済みユーザです。firebaseUid=%s :%w",
+				firebaseUid,
+				ErrUserDeleted,
+			)
 	}
 
 	// ユーザ情報を返却
@@ -57,7 +66,7 @@ func (a *AuthUsecaseImpl) DeleteUser(
 	err := a.firebaseRepo.DeleteUser(ctx, firebaseUid)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("delete firebase user by firebase uid=%s :%w", firebaseUid, err)
 	}
 
 	return nil

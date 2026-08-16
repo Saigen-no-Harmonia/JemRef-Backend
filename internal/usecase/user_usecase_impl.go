@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"jemref_go/internal/domain/id"
 	"jemref_go/internal/domain/policy"
 	"jemref_go/internal/domain/user"
@@ -36,7 +37,6 @@ func NewUserUsecase(ur repository.UserRepository, gr repository.GeneralRepositor
 
 // Create ユーザを作成し、公開用UIDを返却する
 func (uu *UserUsecaseImpl) Create(ctx context.Context, cu dto.CreateUserInput) (*dto.CreateUserOutput, error) {
-	log.Printf("ユーザ情報登録usecase 処理開始: firebase uid: %s", cu.FirebaseUserId)
 
 	publicUserId := uu.idGen.Generate()
 
@@ -47,8 +47,7 @@ func (uu *UserUsecaseImpl) Create(ctx context.Context, cu dto.CreateUserInput) (
 		cu.TermsAgreedVersion,
 	)
 	if err != nil {
-		log.Println("ユーザ規約が取得できませんでした")
-		return nil, ErrPolicyNotFound
+		return nil, fmt.Errorf("ユーザ規約マスタ情報が取得できませんでした。:%w", ErrPolicyNotFound)
 	}
 
 	_, err = uu.generalRepo.SelectPolicyByPrimaryKey(
@@ -57,8 +56,7 @@ func (uu *UserUsecaseImpl) Create(ctx context.Context, cu dto.CreateUserInput) (
 		cu.PrivacyPolicyAgreedVersion,
 	)
 	if err != nil {
-		log.Println("プライバシーポリシーが取得できませんでした")
-		return nil, ErrPolicyNotFound
+		return nil, fmt.Errorf("プライバシーポリシーマスタ情報が取得できませんでした。:%w", ErrPolicyNotFound)
 	}
 
 	sysDate := time.Now()
@@ -77,14 +75,23 @@ func (uu *UserUsecaseImpl) Create(ctx context.Context, cu dto.CreateUserInput) (
 
 	var mysqlErr *mysql.MySQLError
 	if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
-		return nil, ErrUserAlreadyExists
+		return nil, fmt.Errorf(
+			"すでにユーザが存在します。firebaseuid=%s, email=%s :%w",
+			user.FirebaseUserId,
+			user.Email,
+			ErrUserAlreadyExists,
+		)
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(
+			"create user by firebaseuid=%s, email=%s :%w",
+			user.FirebaseUserId,
+			user.Email,
+			err,
+		)
 	}
 
-	log.Printf("ユーザ情報登録usecase 処理完了: firebase uid: %s", cu.FirebaseUserId)
 	return &dto.CreateUserOutput{
 		PublicUserId: publicUserId,
 	}, nil
@@ -96,34 +103,39 @@ func (uu *UserUsecaseImpl) Delete(ctx context.Context, du dto.DeleteUserInput) e
 
 	internalUid := du.InternalUserid
 	firebaseUid := du.FirebaseUserId
-	log.Printf("ユーザ削除usecase 処理開始: internal uid: %d", internalUid)
 
 	user, err := uu.userRepo.SelectByInternalUid(ctx, internalUid)
-	// ユーザデータが存在しない場合
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.Printf("削除対象ユーザが存在しません。internal uid: %d", internalUid)
-			return ErrUserNotFound
+			return fmt.Errorf(
+				"削除対象ユーザが存在しません。internal uid=%d :%w",
+				internalUid,
+				ErrUserNotFound,
+			)
 		}
-		// その他のDBエラー
-		log.Printf("database error: %s", err)
-		return err
+		return fmt.Errorf("select user by internal uid=%d :%w", internalUid, err)
 	}
 
 	// マスタ整合性チェック
 	if user.FirebaseUserId != du.FirebaseUserId {
-		log.Printf("ユーザデータに不整合があります。internal uid: %d, firebase uid: %s", internalUid, firebaseUid)
-		return ErrInvalidUser
+		return fmt.Errorf(
+			"ユーザデータに不整合があります。internal uid=%d, firebase uid=%s :%w",
+			internalUid,
+			firebaseUid,
+			ErrInvalidUser,
+		)
 	}
 
 	if user.DeletedAt == nil {
 		if err := uu.userRepo.Delete(ctx, internalUid); err != nil {
-			log.Print(err)
-			log.Printf("DBのユーザデータ削除に失敗しました。internal uid: %d", internalUid)
-			return ErrUserDeleteFailed
+			return fmt.Errorf(
+				"DBのユーザデータ削除に失敗しました。internal uid=%d :%w",
+				internalUid,
+				ErrUserDeleteFailed,
+			)
 		}
-		// すでに論理削除済みならDB更新のみスキップ
 	} else {
+		// すでに論理削除済みならDB更新のみスキップ
 		log.Printf("すでに退会処理済みのため、FirebaseUser削除のみ実施します。firebase uid: %s", firebaseUid)
 	}
 
@@ -134,7 +146,6 @@ func (uu *UserUsecaseImpl) Delete(ctx context.Context, du dto.DeleteUserInput) e
 		return nil
 	}
 
-	log.Printf("ユーザ削除usecase 処理完了: internal uid: %d", internalUid)
 	return nil
 }
 
@@ -144,28 +155,26 @@ func (uu *UserUsecaseImpl) GetUserAgreements(ctx context.Context, uid int64) (*d
 	u, err := uu.userRepo.SelectByInternalUid(ctx, uid)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return nil, ErrUserNotFound
+			return nil, fmt.Errorf("select user by internal uid=%d :%w", uid, ErrUserNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("select user by internal uid=%d :%w", uid, err)
 	}
 
 	// Ph0では、P001とP002だけがある想定なので、それぞれ取得・判定
 	terms, err := uu.generalRepo.SelectLatestPolicyById(ctx, policy.PolicyIdTermsOfService)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			log.Println("ユーザ利用規約情報が取得できませんでした。")
-			return nil, ErrPolicyNotFound
+			return nil, fmt.Errorf("ユーザ利用規約情報が取得できませんでした。:%w", ErrPolicyNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("select terms master:%w", err)
 	}
 
 	privacyPolicy, err := uu.generalRepo.SelectLatestPolicyById(ctx, policy.PolicyIdPrivacyPolicy)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			log.Println("プライバシーポリシー情報が取得できませんでした。")
-			return nil, ErrPolicyNotFound
+			return nil, fmt.Errorf("プライバシーポリシー情報が取得できませんでした。:%w", ErrPolicyNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("select privacy policy master :%w", err)
 	}
 
 	return createGetUserAgreementsOutput(u, terms, privacyPolicy)
@@ -178,9 +187,9 @@ func (uu *UserUsecaseImpl) UpdateUserAgreements(ctx context.Context, ua dto.Upda
 	u, err := uu.userRepo.SelectByInternalUid(ctx, ua.InternalUid)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return ErrUserNotFound
+			return fmt.Errorf("ユーザ情報が存在しません。 internal uid=%d :%w", ua.InternalUid, ErrUserNotFound)
 		}
-		return err
+		return fmt.Errorf("select user by internal uid=%d :%w", ua.InternalUid, err)
 	}
 
 	now := time.Now()
@@ -188,7 +197,11 @@ func (uu *UserUsecaseImpl) UpdateUserAgreements(ctx context.Context, ua dto.Upda
 	for _, a := range ua.Agreements {
 
 		if !a.PolicyType.IsValid() {
-			return ErrInvalidPolicyType
+			return fmt.Errorf(
+				"規約タイプが不正です。policyType=%s :%w",
+				a.PolicyType,
+				ErrInvalidPolicyType,
+			)
 		}
 
 		p, err := uu.generalRepo.SelectPolicyByPrimaryKey(
@@ -199,9 +212,19 @@ func (uu *UserUsecaseImpl) UpdateUserAgreements(ctx context.Context, ua dto.Upda
 		if err != nil {
 			// ここでのnot foundはバージョン指定不正のみ想定される
 			if errors.Is(err, repository.ErrNotFound) {
-				return ErrInvalidPolicyVersion
+				return fmt.Errorf(
+					"規約バージョン指定が不正です。policy id=%s, agreed version=%s :%w",
+					a.PolicyType.GetId(),
+					a.AgreedVersion,
+					ErrInvalidPolicyVersion,
+				)
 			}
-			return err
+			return fmt.Errorf(
+				"select policy by policy id=%s, agreed version=%s :%w",
+				a.PolicyType.GetId(),
+				a.AgreedVersion,
+				err,
+			)
 		}
 
 		switch p.Id {
@@ -214,20 +237,43 @@ func (uu *UserUsecaseImpl) UpdateUserAgreements(ctx context.Context, ua dto.Upda
 			u.PrivacyPolicyVersion = p.Version
 
 		default:
-			return ErrUnexpectedPolicy
+			return fmt.Errorf("invalid policy id %s %w", p.Id, ErrUnexpectedPolicy)
 		}
 	}
 
 	rows, err := uu.userRepo.UpdateUserAgreement(ctx, u)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("update user agreements by internal uid=%d :%w", u.InternalUserId, err)
 	}
 
 	// 更新件数が0件でもエラーにはしない（更新対象ユーザがDBに存在することは共通認証処理で確認ずみ）
 	_ = rows
 
 	return nil
+}
+
+// Login ユーザログイン処理 Ph0では公開用UIDを返却するだけ
+func (uu *UserUsecaseImpl) Login(ctx context.Context, ui dto.UserLoginInput) (*dto.UserLoginOutput, error) {
+	uid := ui.InternalUserId
+
+	u, err := uu.userRepo.SelectByInternalUid(ctx, uid)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, fmt.Errorf(
+				"ユーザ情報が存在しません。internal uid =%d :%w",
+				uid,
+				ErrUserNotFound,
+			)
+		}
+		return nil, fmt.Errorf(
+			"select user by internal uid =%d :%w",
+			uid,
+			err,
+		)
+	}
+
+	return &dto.UserLoginOutput{PublicUserId: u.PublicUserId}, err
 }
 
 // createGetUserAgreementsOutput ユーザの規約同意状況を判定し返却する。
@@ -256,21 +302,4 @@ func createGetUserAgreementsOutput(u *user.User, terms, privacyPolicy *policy.Po
 	res.Agreements = append(res.Agreements, privacyPolicyStatis)
 
 	return &res, nil
-}
-
-// Login ユーザログイン処理 Ph0では公開用UIDを返却するだけ
-func (uu *UserUsecaseImpl) Login(ctx context.Context, ui dto.UserLoginInput) (*dto.UserLoginOutput, error) {
-	uid := ui.InternalUserId
-	log.Printf("ユーザログインusecase 処理開始: internal uid: %d", uid)
-
-	u, err := uu.userRepo.SelectByInternalUid(ctx, uid)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, ErrUserNotFound
-		}
-		return nil, err
-	}
-
-	log.Printf("ユーザログインusecase 処理完了: internal uid: %d", uid)
-	return &dto.UserLoginOutput{PublicUserId: u.PublicUserId}, err
 }

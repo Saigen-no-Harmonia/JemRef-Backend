@@ -2,6 +2,9 @@ package usecase
 
 import "errors"
 
+// ErrTestUnexpected テスト用の予期せぬエラー
+var ErrTestUnexpected = errors.New("test unexpected")
+
 // ErrUserNotFound ユーザが存在しない
 var ErrUserNotFound = errors.New("user not found")
 

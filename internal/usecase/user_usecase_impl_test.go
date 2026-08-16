@@ -191,7 +191,7 @@ func TestUserUsecaseImpl_CreateUser(t *testing.T) {
 			name: "CreateUser_異常_その他のユーザRepoエラー",
 			mockUserRepo: &mock.MockUserRepository{
 				CreateFunc: func(ctx context.Context, u *user.User) error {
-					return errors.New("unexpeted error")
+					return repository.ErrTestUnexpected
 				},
 			},
 			mockGeneralRepo: &mock.MockGeneralRepository{
@@ -223,7 +223,7 @@ func TestUserUsecaseImpl_CreateUser(t *testing.T) {
 			generalRepoCalls:    2,
 			idGenCalls:          1,
 			expectedError:       true,
-			expectedErrorOutput: errors.New("unexpeted error"),
+			expectedErrorOutput: repository.ErrTestUnexpected,
 		},
 	}
 
@@ -254,7 +254,7 @@ func TestUserUsecaseImpl_CreateUser(t *testing.T) {
 			// エラーケースチェック-------------------
 			if tt.expectedError {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedErrorOutput, err)
+				assert.ErrorIs(t, err, tt.expectedErrorOutput)
 				assert.Nil(t, actual)
 				return
 			}
@@ -364,7 +364,7 @@ func TestUserUsecaseImpl_DeleteUser(t *testing.T) {
 			},
 			mockFirebaseRepo: &mock.MockFirebaseRepository{
 				DeleteUserFunc: func(ctx context.Context, uid string) error {
-					return errors.New("error: failed to delete firebase user")
+					return repository.ErrTestUnexpected
 				},
 			},
 			inputDto: dto.DeleteUserInput{
@@ -375,6 +375,7 @@ func TestUserUsecaseImpl_DeleteUser(t *testing.T) {
 			userDeleteCalls:     1,
 			firebaseDeleteCalls: 1,
 			expectedError:       false,
+			expectedErrorOutput: nil,
 		},
 		{
 			name: "DeleteUser_異常_該当ユーザなし",
@@ -405,7 +406,7 @@ func TestUserUsecaseImpl_DeleteUser(t *testing.T) {
 			name: "DeleteUser_異常_ユーザSELECT失敗",
 			mockUserRepo: &mock.MockUserRepository{
 				SelectByInternalUidFunc: func(ctx context.Context, uid int64) (*user.User, error) {
-					return nil, errors.New("error")
+					return nil, repository.ErrTestUnexpected
 				},
 				DeleteFunc: func(ctx context.Context, uid int64) error {
 					return nil
@@ -424,7 +425,7 @@ func TestUserUsecaseImpl_DeleteUser(t *testing.T) {
 			userDeleteCalls:     0,
 			firebaseDeleteCalls: 0,
 			expectedError:       true,
-			expectedErrorOutput: errors.New("error"),
+			expectedErrorOutput: repository.ErrTestUnexpected,
 		},
 		{
 			name: "DeleteUser_異常_パラメータ不正",
@@ -508,7 +509,7 @@ func TestUserUsecaseImpl_DeleteUser(t *testing.T) {
 			// エラーケースチェック-------------------
 			if tt.expectedError {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedErrorOutput, err)
+				assert.ErrorIs(t, err, tt.expectedErrorOutput)
 				return
 			}
 
@@ -567,7 +568,7 @@ func TestUserUsecaseImpl_GetUserAgreements(t *testing.T) {
 							Name:    "_privacy_policy_label_",
 						}, nil
 					}
-					return nil, errors.New("failed")
+					return nil, repository.ErrTestUnexpected
 				},
 			},
 			generalRepoArgs: []string{
@@ -617,7 +618,7 @@ func TestUserUsecaseImpl_GetUserAgreements(t *testing.T) {
 			name: "GetUserAgreements_異常_ユーザ情報取得時に予期せぬエラー",
 			mockUserRepo: &mock.MockUserRepository{
 				SelectByInternalUidFunc: func(ctx context.Context, uid int64) (*user.User, error) {
-					return nil, errors.New("予期せぬエラー")
+					return nil, repository.ErrTestUnexpected
 				},
 			},
 			mockGeneralRepo: &mock.MockGeneralRepository{
@@ -628,7 +629,7 @@ func TestUserUsecaseImpl_GetUserAgreements(t *testing.T) {
 			userRepoCalls:       1,
 			generalRepoCalls:    0,
 			expectedError:       true,
-			expectedErrorOutput: errors.New("予期せぬエラー"),
+			expectedErrorOutput: repository.ErrTestUnexpected,
 		},
 		{
 			name: "GetUserAgreements_異常_ユーザ規約取得失敗",
@@ -683,7 +684,7 @@ func TestUserUsecaseImpl_GetUserAgreements(t *testing.T) {
 				SelectLatestByIdFunc: func(ctx context.Context, id string) (*policy.Policy, error) {
 					switch id {
 					case policy.PolicyIdTermsOfService:
-						return nil, errors.New("予期せぬエラー")
+						return nil, repository.ErrTestUnexpected
 					case policy.PolicyIdPrivacyPolicy:
 						return &policy.Policy{
 							Id:      policy.PolicyIdPrivacyPolicy,
@@ -691,7 +692,7 @@ func TestUserUsecaseImpl_GetUserAgreements(t *testing.T) {
 							Name:    "_privacy_policy_label_",
 						}, nil
 					}
-					return nil, errors.New("failed")
+					return nil, repository.ErrTestUnexpected
 				},
 			},
 			generalRepoArgs: []string{
@@ -702,7 +703,7 @@ func TestUserUsecaseImpl_GetUserAgreements(t *testing.T) {
 			userRepoCalls:       1,
 			generalRepoCalls:    1,
 			expectedError:       true,
-			expectedErrorOutput: errors.New("予期せぬエラー"),
+			expectedErrorOutput: repository.ErrTestUnexpected,
 		},
 		{
 			name: "GetUserAgreements_異常_プラポリ取得失敗",
@@ -763,9 +764,9 @@ func TestUserUsecaseImpl_GetUserAgreements(t *testing.T) {
 							Name:    "_terms_label_",
 						}, nil
 					case policy.PolicyIdPrivacyPolicy:
-						return nil, errors.New("予期せぬエラー")
+						return nil, repository.ErrTestUnexpected
 					}
-					return nil, errors.New("failed")
+					return nil, repository.ErrTestUnexpected
 				},
 			},
 			generalRepoArgs: []string{
@@ -776,7 +777,7 @@ func TestUserUsecaseImpl_GetUserAgreements(t *testing.T) {
 			userRepoCalls:       1,
 			generalRepoCalls:    2,
 			expectedError:       true,
-			expectedErrorOutput: errors.New("予期せぬエラー"),
+			expectedErrorOutput: repository.ErrTestUnexpected,
 		},
 	}
 	for _, tt := range tests {
@@ -804,7 +805,7 @@ func TestUserUsecaseImpl_GetUserAgreements(t *testing.T) {
 			// エラーケースチェック
 			if tt.expectedError {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedErrorOutput, err)
+				assert.ErrorIs(t, err, tt.expectedErrorOutput)
 				assert.Nil(t, actual)
 				return
 			}
@@ -856,7 +857,7 @@ func TestUserUsecaseImpl_UpdateUserAgreements(t *testing.T) {
 							Version: "2.0",
 						}, nil
 					}
-					return nil, errors.New("test failed")
+					return nil, repository.ErrTestUnexpected
 				},
 			},
 			generalRepoCalls: 2,
@@ -941,7 +942,7 @@ func TestUserUsecaseImpl_UpdateUserAgreements(t *testing.T) {
 			generalRepoCalls: 0,
 			mockUserRepo: &mock.MockUserRepository{
 				SelectByInternalUidFunc: func(ctx context.Context, uid int64) (*user.User, error) {
-					return nil, errors.New("予期せぬエラー")
+					return nil, repository.ErrTestUnexpected
 				},
 			},
 			selectByInternalUidCalls:  1,
@@ -961,7 +962,7 @@ func TestUserUsecaseImpl_UpdateUserAgreements(t *testing.T) {
 				},
 			},
 			expectedError:       true,
-			expectedErrorOutput: errors.New("予期せぬエラー"),
+			expectedErrorOutput: repository.ErrTestUnexpected,
 		},
 		{
 			name: "UpdateUserAgreements_異常_リクエストされた規約タイプが不正",
@@ -1026,7 +1027,7 @@ func TestUserUsecaseImpl_UpdateUserAgreements(t *testing.T) {
 							Version: "2.0",
 						}, nil
 					}
-					return nil, errors.New("test failed")
+					return nil, repository.ErrTestUnexpected
 				},
 			},
 			generalRepoCalls: 1,
@@ -1072,14 +1073,14 @@ func TestUserUsecaseImpl_UpdateUserAgreements(t *testing.T) {
 				SelectByPrimaryKeyFunc: func(ctx context.Context, id, version string) (*policy.Policy, error) {
 					switch id {
 					case policy.PolicyIdTermsOfService:
-						return nil, errors.New("予期せぬエラー")
+						return nil, repository.ErrTestUnexpected
 					case policy.PolicyIdPrivacyPolicy:
 						return &policy.Policy{
 							Id:      policy.PolicyIdPrivacyPolicy,
 							Version: "2.0",
 						}, nil
 					}
-					return nil, errors.New("test failed")
+					return nil, repository.ErrTestUnexpected
 				},
 			},
 			generalRepoCalls: 1,
@@ -1117,7 +1118,7 @@ func TestUserUsecaseImpl_UpdateUserAgreements(t *testing.T) {
 				},
 			},
 			expectedError:       true,
-			expectedErrorOutput: errors.New("予期せぬエラー"),
+			expectedErrorOutput: repository.ErrTestUnexpected,
 		},
 		{
 			name: "UpdateUserAgreements_異常_DBが不正な規約情報を返却",
@@ -1217,7 +1218,7 @@ func TestUserUsecaseImpl_UpdateUserAgreements(t *testing.T) {
 					}, nil
 				},
 				UpdateUserAgreementFunc: func(ctx context.Context, u *user.User) (int64, error) {
-					return 0, errors.New("予期せぬエラー")
+					return 0, repository.ErrTestUnexpected
 				},
 			},
 			selectByInternalUidCalls:  1,
@@ -1242,7 +1243,7 @@ func TestUserUsecaseImpl_UpdateUserAgreements(t *testing.T) {
 				},
 			},
 			expectedError:       true,
-			expectedErrorOutput: errors.New("予期せぬエラー"),
+			expectedErrorOutput: repository.ErrTestUnexpected,
 		},
 	}
 
@@ -1274,7 +1275,7 @@ func TestUserUsecaseImpl_UpdateUserAgreements(t *testing.T) {
 			// エラーケースチェック
 			if tt.expectedError {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedErrorOutput, err)
+				assert.ErrorIs(t, err, tt.expectedErrorOutput)
 				return
 			}
 
@@ -1342,7 +1343,7 @@ func TestUserUseraseImpl_Login(t *testing.T) {
 			name: "Login_異常_予期せぬDBエラー",
 			mockUserRepo: &mock.MockUserRepository{
 				SelectByInternalUidFunc: func(ctx context.Context, uid int64) (*user.User, error) {
-					return nil, errors.New("error")
+					return nil, repository.ErrTestUnexpected
 				},
 			},
 			inputDto: dto.UserLoginInput{
@@ -1350,7 +1351,7 @@ func TestUserUseraseImpl_Login(t *testing.T) {
 			},
 			userRepoCalls:       1,
 			expectedError:       true,
-			expectedErrorOutput: errors.New("error"),
+			expectedErrorOutput: repository.ErrTestUnexpected,
 		},
 	}
 
@@ -1377,7 +1378,7 @@ func TestUserUseraseImpl_Login(t *testing.T) {
 			// エラーケースチェック-------------------
 			if tt.expectedError {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedErrorOutput, err)
+				assert.ErrorIs(t, err, tt.expectedErrorOutput)
 				assert.Nil(t, actual)
 				return
 			}

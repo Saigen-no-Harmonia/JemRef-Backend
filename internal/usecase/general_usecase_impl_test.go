@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"jemref_go/internal/domain/policy"
 	"jemref_go/internal/repository"
 	"jemref_go/internal/testutil/mock"
@@ -102,14 +101,14 @@ func TestGeneralUsecaseImpl_GetPolicies(t *testing.T) {
 					ctx context.Context,
 					id string,
 				) (*policy.Policy, error) {
-					return nil, errors.New("error")
+					return nil, repository.ErrTestUnexpected
 				},
 			},
 			inputDto: dto.GetPoliciesInput{
 				PolicyId: policy.PolicyIdTermsOfService,
 			},
 			expectedError:       true,
-			expectedErrorOutput: errors.New("error"),
+			expectedErrorOutput: repository.ErrTestUnexpected,
 		},
 	}
 
@@ -125,7 +124,7 @@ func TestGeneralUsecaseImpl_GetPolicies(t *testing.T) {
 			if tt.expectedError {
 				assert.Error(t, err)
 				assert.Nil(t, actual)
-				assert.Equal(t, tt.expectedErrorOutput, err)
+				assert.ErrorIs(t, err, tt.expectedErrorOutput)
 				return
 			}
 

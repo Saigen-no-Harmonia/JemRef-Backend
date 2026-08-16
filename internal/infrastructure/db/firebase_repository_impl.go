@@ -28,6 +28,7 @@ func (r *FirebaseRepositoryImpl) DeleteUser(
 		return nil
 	}
 
+	// すでに削除済みでもOKとする
 	if auth.IsUserNotFound(err) {
 		return nil
 	}

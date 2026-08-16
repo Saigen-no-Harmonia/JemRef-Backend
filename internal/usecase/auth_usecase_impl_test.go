@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"jemref_go/internal/domain/user"
 	"jemref_go/internal/repository"
 	"jemref_go/internal/testutil"
@@ -60,13 +59,13 @@ func TestAuthUsecaseImpl_Authenticate(t *testing.T) {
 			name: "Authenticate_異常_予期せぬDBエラー",
 			mockUserRepo: &mock.MockUserRepository{
 				SelectByFirebaseUidFunc: func(ctx context.Context, firebaseUid string) (*user.User, error) {
-					return nil, errors.New("error")
+					return nil, repository.ErrTestUnexpected
 				},
 			},
 			inputUid:                 "_firebase_uid_",
 			selectByFirebaseUidCalls: 1,
 			expectedError:            true,
-			expectedErrorOutput:      errors.New("error"),
+			expectedErrorOutput:      repository.ErrTestUnexpected,
 		},
 		{
 			name: "Authenticate_異常_退会ずみ",
@@ -106,7 +105,7 @@ func TestAuthUsecaseImpl_Authenticate(t *testing.T) {
 			// エラーケースチェック
 			if tt.expectedError {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedErrorOutput, err)
+				assert.ErrorIs(t, err, tt.expectedErrorOutput)
 				return
 			}
 
@@ -145,13 +144,13 @@ func TestAuthUsecaseImpl_DeleteUser(t *testing.T) {
 			name: "DeletedUser_異常_ユーザ削除失敗",
 			mockFirebaserepository: &mock.MockFirebaseRepository{
 				DeleteUserFunc: func(ctx context.Context, uid string) error {
-					return errors.New("error")
+					return repository.ErrTestUnexpected
 				},
 			},
 			inputUid:            "_firebase_uid_",
 			deleteUserCalls:     1,
 			expectError:         true,
-			expectedErrorOutput: errors.New("error"),
+			expectedErrorOutput: repository.ErrTestUnexpected,
 		},
 	}
 
@@ -175,7 +174,7 @@ func TestAuthUsecaseImpl_DeleteUser(t *testing.T) {
 			// エラーケースチェック
 			if tt.expectError {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedErrorOutput, err)
+				assert.ErrorIs(t, err, tt.expectedErrorOutput)
 				return
 			}
 
