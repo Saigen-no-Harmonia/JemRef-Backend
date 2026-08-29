@@ -90,7 +90,7 @@ func TestUserRepository_SelectByFirebaseUid_対象ユーザなし(t *testing.T) 
 // -------------Create(context.Context, *user.User)のテスト-------------
 func TestUserRepository_Create_正常(t *testing.T) {
 	repo := testUsersSetup(t, "")
-	now := time.Now()
+	now := time.Now().Truncate(time.Microsecond)
 	termsAgreedDt := time.Now()
 	PrivacyPolicyAgreedDt := time.Now()
 	u := &user.User{
@@ -185,7 +185,7 @@ func TestUserRepository_UpdateUserAgreement_正常(t *testing.T) {
 	before, err := testutil.SelectUserByPk(t, testDb, int64(1001))
 	require.NoError(t, err)
 
-	now := time.Now().UTC()
+	now := time.Now().Truncate(time.Microsecond).UTC()
 	u := *before
 	u.TermsAgreedDt = &now
 	u.TermsVersion = "_terms_updated_"
@@ -222,7 +222,7 @@ func TestUserRepository_UpdateUserAgreement_対象ユーザなし(t *testing.T) 
 	before, err := testutil.SelectUserByPk(t, testDb, int64(1001))
 	require.NoError(t, err)
 
-	now := time.Now().UTC()
+	now := time.Now().Truncate(time.Microsecond).UTC()
 	u := *before
 	u.InternalUserId = int64(1000) // 存在しないUID
 	u.TermsAgreedDt = &now
