@@ -139,7 +139,7 @@ func TestUserRepository_Delete_正常(t *testing.T) {
 	before, err := testutil.SelectUserByPk(t, testDb, int64(1001))
 	require.NoError(t, err)
 
-	now := time.Now().UTC()
+	now := time.Now().Truncate(time.Microsecond).UTC()
 	err = repo.Delete(context.Background(), int64(1001))
 	require.NoError(t, err)
 
