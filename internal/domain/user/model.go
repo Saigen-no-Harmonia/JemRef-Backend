@@ -17,7 +17,9 @@ type User struct {
 	TermsVersion string
 	// プライバシーポリシー同意日時
 	PrivacyPolicyAgreedDt *time.Time
+	// プライバシーポリシー同意バージョン
 	PrivacyPolicyVersion  string
+	// 削除日時
 	DeletedAt             *time.Time
 	// 削除フラグ
 	DelFlg int

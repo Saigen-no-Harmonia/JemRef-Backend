@@ -11,6 +11,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"jemref_go/internal/api"
 	"jemref_go/internal/config"
 	"jemref_go/internal/domain/id"
 	"jemref_go/internal/handler"
@@ -49,11 +50,11 @@ func main() {
 
 	db, err := infrastructure.NewDB(cfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("error initializing database: %v", err)
 	}
 
 	// firebase初期化
-	log.Print("initializing routing")
+	log.Print("initializing firebase app")
 	app, err := firebase.NewApp(context.Background(), nil)
 	if err != nil {
 		log.Fatalf("error initializing firebase app: %v", err)
@@ -63,6 +64,11 @@ func main() {
 		log.Fatalf("error initializing firebase client: %v", err)
 	}
 
+	// middlewareの初期化
+	log.Print("initializing midlleware")
+	r := gin.New()
+	setupMiddleware(r, cfg)
+
 	// ルーティング
 	log.Print("initializing routing")
 	healthHandler := handler.NewHealthHandler(db)
@@ -71,7 +77,6 @@ func main() {
 	userHandler := newUserHandler(db, client)
 
 	// 認証なしルート ------------------------------------------------------
-	r := gin.Default()
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	r.GET("/api/v0/health", healthHandler.Health)
 	r.GET("/api/v0/policies/:"+handler.ParamPolicyType, generalHandler.GetPolicies)
@@ -82,7 +87,7 @@ func main() {
 	// 会員登録用
 	join := r.Group("/api/v0")
 	join.Use(
-		middleware.FirebaseAuth(app),
+		middleware.FirebaseAuth(*client),
 		middleware.ChkUnregistered(authUC),
 	)
 	join.POST("/join", userHandler.CreateUser)
@@ -90,7 +95,7 @@ func main() {
 	// 共通認証
 	auth := r.Group("/api/v0")
 	auth.Use(
-		middleware.FirebaseAuth(app),
+		middleware.FirebaseAuth(client),
 		middleware.FindCurrentUser(authUC),
 	)
 
@@ -102,6 +107,15 @@ func main() {
 	// 実行
 	log.Print("server starting")
 	r.Run("0.0.0.0:8080")
+}
+
+func setupMiddleware(r *gin.Engine, cfg config.Config) {
+	r.Use(gin.Recovery())
+
+	// logger → ErrorHandler の初期化順には依存関係がある。
+	// Loggerはc.NextでErrorHandlerによるレスポンス/ログ出力内容の確定を待つ
+	r.Use(middleware.CommonLogger(cfg))
+	r.Use(api.ErrorHandler())
 }
 
 func newRecordHandler() *handler.RecordHandler {

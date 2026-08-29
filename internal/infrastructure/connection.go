@@ -6,8 +6,8 @@ import (
 	"jemref_go/internal/config"
 )
 
-// DB接続
-func NewDB(cfg *config.Config) (*sql.DB, error) {
+// NewDB DB接続
+func NewDB(cfg config.Config) (*sql.DB, error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		cfg.DBUser,
 		cfg.DBPassword,

@@ -1,9 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
-	"errors"
-	"jemref_go/internal/handler/dto"
 	"jemref_go/internal/testutil/mock"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHealthHandler_Health(t *testing.T) {
@@ -18,9 +16,8 @@ func TestHealthHandler_Health(t *testing.T) {
 		name              string
 		path              string
 		mockDb            DbPinger
-		expectedStatus    int
 		expectedError     bool
-		expectedErrorBody dto.ErrorResponse
+		expectedErrorBody error
 	}{
 		{
 			name: "Health_正常",
@@ -28,56 +25,44 @@ func TestHealthHandler_Health(t *testing.T) {
 			mockDb: &mock.MockDB{
 				PingErr: nil,
 			},
-			expectedStatus: http.StatusOK,
-			expectedError:  false,
+			expectedError: false,
 		},
 		{
 			name: "Health_異常",
 			path: "/api/v0/health",
 			mockDb: &mock.MockDB{
-				PingErr: errors.New("予期せぬエラー"),
+				PingErr: ErrTestUnexpected,
 			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedError:  true,
-			expectedErrorBody: dto.ErrorResponse{
-				Code:    "F0001",
-				Message: "fatal:Internal Server Error",
-			},
+			expectedError:     true,
+			expectedErrorBody: ErrTestUnexpected,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := gin.New()
+			gin.SetMode(gin.TestMode)
+
 			h := NewHealthHandler(tt.mockDb)
 
-			r.GET(
-				tt.path,
-				h.Health,
-			)
+			rec := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(rec)
 
 			req := httptest.NewRequest(
 				http.MethodGet,
-				tt.path,
+				"/api/v0/health",
 				nil,
 			)
 
-			rec := httptest.NewRecorder()
+			c.Request = req
 
-			r.ServeHTTP(rec, req)
-
-			assert.Equal(t, tt.expectedStatus, rec.Code)
+			h.Health(c)
 
 			// 異常系のassertion
 			if tt.expectedError {
-				var actual dto.ErrorResponse
-				err := json.Unmarshal(
-					rec.Body.Bytes(),
-					&actual,
-				)
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedErrorBody, actual)
-				return
+				require.Len(t, c.Errors, 1)
+				assert.ErrorIs(t, c.Errors.Last().Err, tt.expectedErrorBody)
+			} else {
+				assert.Empty(t, c.Errors)
 			}
 		})
 	}

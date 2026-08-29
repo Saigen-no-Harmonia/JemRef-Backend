@@ -3,13 +3,11 @@ package handler
 // 一般ハンドラ実装
 
 import (
-	"errors"
 	"fmt"
 	"jemref_go/internal/domain/policy"
 	handlerdto "jemref_go/internal/handler/dto"
 	"jemref_go/internal/usecase"
 	usecasedto "jemref_go/internal/usecase/dto"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -38,17 +36,13 @@ func (h *GeneralHandler) GetPolicies(c *gin.Context) {
 	// パスパラメータ取得
 	targetPolicy := c.Param(ParamPolicyType)
 	policyType := policy.PolicyType(targetPolicy)
-
 	if !policyType.IsValid() {
-		c.JSON(
-			http.StatusBadRequest,
-			handlerdto.ErrorResponse{
-				Code: "E0003",
-				Message: fmt.Sprintf(
-					"規約IDが不正です。policy_id=%s",
-					targetPolicy,
-				),
-			})
+		c.Error(fmt.Errorf(
+			"規約が存在しません。targetPolicy=%s, policyType=%s :%w",
+			policyType,
+			targetPolicy,
+			ErrPolicyTypeInvalid,
+		))
 		return
 	}
 
@@ -56,30 +50,7 @@ func (h *GeneralHandler) GetPolicies(c *gin.Context) {
 	input := createGetPolicyInput(policyType)
 	output, err := h.usecase.GetPolicies(c.Request.Context(), input)
 	if err != nil {
-		log.Println(err)
-
-		// リクエストされた規約が存在しない場合
-		if errors.Is(err, usecase.ErrPolicyNotFound) {
-			c.JSON(
-				http.StatusNotFound,
-				handlerdto.ErrorResponse{
-					Code: "E0006",
-					Message: fmt.Sprintf("リクエストされた規約が存在しません。policy_type=%s",
-						targetPolicy,
-					),
-				},
-			)
-		} else {
-			// 意図しないエラー
-			c.JSON(
-				http.StatusInternalServerError,
-				handlerdto.ErrorResponse{
-					Code:    "A0001",
-					Message: "Fatal: internal server error",
-				},
-			)
-		}
-
+		c.Error(err)
 		return
 	}
 

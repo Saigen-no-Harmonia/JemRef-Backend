@@ -453,7 +453,7 @@ func TestUserUsecaseImpl_DeleteUser(t *testing.T) {
 			userDeleteCalls:     0,
 			firebaseDeleteCalls: 0,
 			expectedError:       true,
-			expectedErrorOutput: ErrInvalidUser,
+			expectedErrorOutput: ErrUserDataInconsistent,
 		},
 		{
 			name: "DeleteUser_異常_DBデータ削除失敗",

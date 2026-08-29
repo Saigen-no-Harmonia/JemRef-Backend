@@ -122,7 +122,7 @@ func (uu *UserUsecaseImpl) Delete(ctx context.Context, du dto.DeleteUserInput) e
 			"ユーザデータに不整合があります。internal uid=%d, firebase uid=%s :%w",
 			internalUid,
 			firebaseUid,
-			ErrInvalidUser,
+			ErrUserDataInconsistent,
 		)
 	}
 

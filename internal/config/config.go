@@ -13,9 +13,11 @@ type Config struct {
 	DBPort     string
 	DBPassword string
 	DBName     string
+	Env        string
+	LogLevel   string
 }
 
-func Load() (*Config, error) {
+func Load() (Config, error) {
 	// if os.Getenv("ENV") == "local" {
 	// 	_ = godotenv.Load()
 	// }
@@ -27,13 +29,17 @@ func Load() (*Config, error) {
 	port := mustGetEnv("DB_PORT")
 	password := mustGetEnv("DB_PASS")
 	name := mustGetEnv("DB_NAME")
+	env := mustGetEnv("ENV")
+	logLevel := mustGetEnv("LOG_LEVEL")
 
-	return &Config{
+	return Config{
 		DBHost:     host,
 		DBUser:     user,
 		DBPort:     port,
 		DBPassword: password,
 		DBName:     name,
+		Env:        env,
+		LogLevel:   logLevel,
 	}, nil
 }
 

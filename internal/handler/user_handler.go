@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"fmt"
 	"jemref_go/internal/context"
 	ctxutil "jemref_go/internal/context"
@@ -10,7 +9,6 @@ import (
 	handlerDto "jemref_go/internal/handler/dto"
 	"jemref_go/internal/usecase"
 	usecaseDto "jemref_go/internal/usecase/dto"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -51,61 +49,26 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 
 	firebaseUserId, ok := ctxutil.GetFirebaseUid(c)
 	if !ok {
-		log.Println("fatal: firebase uidの取得に失敗")
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "A0001",
-			Message: "fatal:FirebaseUIDの取得処理に異常があります。",
-		})
+		c.Error(ErrFirebaseUidNotFound)
 		return
 	}
 
 	email, ok := ctxutil.GetEmail(c)
 	if !ok {
-		log.Println("fatal: Eメールアドレスの取得に失敗")
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "A0001",
-			Message: "fatal:Eメールアドレスの取得処理に異常があります。"})
+		c.Error(fmt.Errorf("メールアドレス取得失敗 firebase uid = %s, %w", firebaseUserId, ErrEmailNotFound))
 		return
 	}
 
 	var req dto.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Println(err)
-		c.JSON(
-			http.StatusBadRequest,
-			handlerDto.ErrorResponse{
-				Code:    "E0002",
-				Message: "リクエストが不正です。",
-			},
-		)
+		c.Error(fmt.Errorf("%w: %v", ErrInvalidRequestBody, err))
 		return
 	}
 
 	input := createUserInput(firebaseUserId, email, req)
 	output, err := h.usecase.Create(c.Request.Context(), input)
 	if err != nil {
-		log.Println(err)
-
-		if errors.Is(err, usecase.ErrUserAlreadyExists) {
-			c.JSON(http.StatusConflict, dto.ErrorResponse{
-				Code:    "E0005",
-				Message: fmt.Sprintf("すでに存在するFirebase UIDまたはEmailです。FirebaseUID: %s, Email: %s", firebaseUserId, email),
-			})
-			return
-		}
-
-		if errors.Is(err, usecase.ErrPolicyNotFound) {
-			c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-				Code:    "E0004",
-				Message: "不正な規約情報です。",
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "A0001",
-			Message: "fatal:ユーザ作成処理に失敗しました。",
-		})
+		c.Error(err)
 		return
 	}
 
@@ -130,20 +93,13 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	internalUid, ok := ctxutil.GetUserId(c)
 	if !ok {
-		log.Println("fatal:internal user idの取得に失敗")
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "A0001",
-			Message: "fatal:ユーザID取得処理に異常があります。",
-		})
+		c.Error(ErrInternalUidNotFound)
 		return
 	}
+
 	firebaseUid, ok := ctxutil.GetFirebaseUid(c)
 	if !ok {
-		log.Println("fatal: firebase user idの取得に失敗")
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "A0001",
-			Message: "firebaseユーザID取得処理に異常があります。",
-		})
+		c.Error(ErrFirebaseUidNotFound)
 		return
 	}
 
@@ -151,28 +107,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 
 	err := h.usecase.Delete(c.Request.Context(), input)
 	if err != nil {
-		log.Println(err)
-		// FirebaseユーザはいるがDBにデータが物理的に存在しない：未入会
-		if errors.Is(err, usecase.ErrUserNotFound) {
-			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-				Code:    "E0010",
-				Message: "未登録ユーザです。ユーザ登録を行ってください。",
-			})
-			return
-		}
-		// ユーザ情報に不整合がある場合
-		if errors.Is(err, usecase.ErrInvalidUser) {
-			c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-				Code:    "A0001",
-				Message: "fatal: ユーザデータに不整合があります。",
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "A0001",
-			Message: "fatal: internal server error",
-		})
+		c.Error(err)
 		return
 	}
 
@@ -192,32 +127,14 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 func (h *UserHandler) GetUserAgreements(c *gin.Context) {
 	internalUid, ok := ctxutil.GetUserId(c)
 	if !ok {
-		log.Println("fatal: internal user idの取得に失敗")
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "A0001",
-			Message: "fatal:ユーザID取得処理に異常があります。",
-		})
+		c.Error(ErrInternalUidNotFound)
 		return
 	}
 
 	output, err := h.usecase.GetUserAgreements(c.Request.Context(), internalUid)
 	if err != nil {
-		log.Print(err)
-		if errors.Is(err, usecase.ErrUserNotFound) {
-			log.Printf("ユーザマスタ情報に異常があります。internal user id: %d", internalUid)
-			c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-				Code:    "A0001",
-				Message: "fatal:ユーザマスタ情報に異常があります。",
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "A0001",
-			Message: "fatal:予期せぬエラー",
-		})
+		c.Error(err)
 		return
-
 	}
 
 	res := createGetUserAgreementsResponse(*output)
@@ -239,39 +156,18 @@ func (h *UserHandler) UpdateUserAgreements(c *gin.Context) {
 
 	uid, ok := ctxutil.GetUserId(c)
 	if !ok {
-		log.Println("fatal: internal uid取得失敗")
-		c.JSON(
-			http.StatusInternalServerError,
-			handlerDto.ErrorResponse{
-				Code:    "F0001",
-				Message: "fatal: 内部用UID取得処理に異常があります。",
-			},
-		)
+		c.Error(ErrInternalUidNotFound)
 		return
 	}
 
 	var req handlerDto.UpdateUserAgreementsRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		log.Println(err)
-		c.JSON(
-			http.StatusBadRequest,
-			handlerDto.ErrorResponse{
-				Code:    "E0002",
-				Message: "リクエストが不正です。",
-			},
-		)
+		c.Error(fmt.Errorf("%w: %v", ErrInvalidRequestBody, err))
 		return
 	}
 
 	if len(req.Policies) == 0 {
-		log.Println("リクエストに規約情報がありませんでした。")
-		c.JSON(
-			http.StatusBadRequest,
-			handlerDto.ErrorResponse{
-				Code:    "E0002",
-				Message: "リクエストが不正です。",
-			},
-		)
+		c.Error(ErrPolicyRequired)
 		return
 	}
 
@@ -279,47 +175,7 @@ func (h *UserHandler) UpdateUserAgreements(c *gin.Context) {
 
 	err := h.usecase.UpdateUserAgreements(c.Request.Context(), input)
 	if err != nil {
-		log.Println(err)
-		if errors.Is(err, usecase.ErrUserNotFound) {
-			c.JSON(
-				http.StatusInternalServerError,
-				handlerDto.ErrorResponse{
-					Code:    "F0001",
-					Message: "fatal:ユーザ取得処理に異常があります。",
-				},
-			)
-			return
-		}
-
-		if errors.Is(err, usecase.ErrInvalidPolicyType) {
-			c.JSON(
-				http.StatusBadRequest,
-				handlerDto.ErrorResponse{
-					Code:    "E0011",
-					Message: "規約タイプが不正です。",
-				},
-			)
-			return
-		}
-
-		if errors.Is(err, usecase.ErrInvalidPolicyVersion) {
-			c.JSON(
-				http.StatusBadRequest,
-				handlerDto.ErrorResponse{
-					Code:    "E0012",
-					Message: "規約バージョンが不正です。",
-				},
-			)
-			return
-		}
-
-		c.JSON(
-			http.StatusInternalServerError,
-			handlerDto.ErrorResponse{
-				Code:    "F0001",
-				Message: "fatal:予期せぬエラー",
-			},
-		)
+		c.Error(err)
 		return
 	}
 
@@ -339,14 +195,7 @@ func (h *UserHandler) UpdateUserAgreements(c *gin.Context) {
 func (h *UserHandler) Login(c *gin.Context) {
 	publicUid, ok := context.GetPublicUid(c)
 	if !ok {
-		log.Println("fatal:ctxに公開用ユーザIDが存在しませんでした。")
-		c.JSON(
-			http.StatusInternalServerError,
-			handlerDto.ErrorResponse{
-				Code:    "F0001",
-				Message: "fatal: 公開用ユーザID取得処理に異常があります。",
-			},
-		)
+		c.Error(ErrPublicUidNotFound)
 		return
 	}
 

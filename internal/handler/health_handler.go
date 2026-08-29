@@ -4,8 +4,6 @@ package handler
 
 import (
 	"context"
-	"jemref_go/internal/handler/dto"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -35,13 +33,7 @@ func (h *HealthHandler) Health(c *gin.Context) {
 	err := h.db.PingContext(c.Request.Context())
 
 	if err != nil {
-		log.Print(err)
-		c.JSON(http.StatusInternalServerError,
-			dto.ErrorResponse{
-				Code:    "F0001",
-				Message: "fatal:Internal Server Error",
-			},
-		)
+		c.Error(err)
 		return
 	}
 

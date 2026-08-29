@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"jemref_go/internal/domain/policy"
 	handlerdto "jemref_go/internal/handler/dto"
 	"jemref_go/internal/usecase"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGeneralHandler_GetPolicies(t *testing.T) {
@@ -25,15 +25,15 @@ func TestGeneralHandler_GetPolicies(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		path              string
+		policyType        string
 		mockUsecase       *MockGeneralUsecase
-		expectedStatus    int
 		expectedBody      handlerdto.GetPoliciesResponse
-		expectedErrorBody handlerdto.ErrorResponse
+		expectError       bool
+		expectedErrorBody error
 	}{
 		{
-			name: "正常_ユーザ規約参照",
-			path: basePath + string(policy.PolicyTypeTermsOfService),
+			name:       "正常_ユーザ規約参照",
+			policyType: string(policy.PolicyTypeTermsOfService),
 			mockUsecase: &MockGeneralUsecase{
 				getPoliciesFunc: func(
 					ctx context.Context,
@@ -48,7 +48,6 @@ func TestGeneralHandler_GetPolicies(t *testing.T) {
 					}, nil
 				},
 			},
-			expectedStatus: http.StatusOK,
 			expectedBody: handlerdto.GetPoliciesResponse{
 				PolicyType:    string(policy.PolicyTypeTermsOfService),
 				Label:         "ユーザ利用規約",
@@ -56,22 +55,17 @@ func TestGeneralHandler_GetPolicies(t *testing.T) {
 				EffectiveDate: effectiveDate1.Format("2006-01-02"),
 				Content:       "sample_terms_content",
 			},
+			expectError: false,
 		},
 		{
-			name:           "異常_パラメータ不正",
-			path:           basePath + "invalid",
-			expectedStatus: http.StatusBadRequest,
-			expectedErrorBody: handlerdto.ErrorResponse{
-				Code: "E0003",
-				Message: fmt.Sprintf(
-					"規約IDが不正です。policy_id=%s",
-					"invalid",
-				),
-			},
+			name:              "異常_パラメータ不正",
+			policyType:        "invalid",
+			expectError:       true,
+			expectedErrorBody: ErrPolicyTypeInvalid,
 		},
 		{
-			name: "異常_リクエストされた規約がDBに存在しない",
-			path: basePath + string(policy.PolicyTypeTermsOfService),
+			name:       "異常_リクエストされた規約がDBに存在しない",
+			policyType: string(policy.PolicyTypeTermsOfService),
 			mockUsecase: &MockGeneralUsecase{
 				getPoliciesFunc: func(
 					ctx context.Context,
@@ -80,65 +74,56 @@ func TestGeneralHandler_GetPolicies(t *testing.T) {
 					return nil, usecase.ErrPolicyNotFound
 				},
 			},
-			expectedStatus: http.StatusNotFound,
-			expectedErrorBody: handlerdto.ErrorResponse{
-				Code: "E0006",
-				Message: fmt.Sprintf("リクエストされた規約が存在しません。policy_type=%s",
-					string(policy.PolicyTypeTermsOfService),
-				),
-			},
+			expectError:       true,
+			expectedErrorBody: usecase.ErrPolicyNotFound,
 		},
 		{
-			name: "異常_意図しないエラー",
-			path: basePath + string(policy.PolicyTypeTermsOfService),
+			name:       "異常_意図しないエラー",
+			policyType: string(policy.PolicyTypeTermsOfService),
 			mockUsecase: &MockGeneralUsecase{
 				getPoliciesFunc: func(
 					ctx context.Context,
 					gpi usecasedto.GetPoliciesInput,
 				) (*usecasedto.GetPoliciesOutput, error) {
-					return nil, fmt.Errorf("意図しないエラー")
+					return nil, ErrTestUnexpected
 				},
 			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedErrorBody: handlerdto.ErrorResponse{
-				Code:    "A0001",
-				Message: "Fatal: internal server error",
-			},
+			expectError:       true,
+			expectedErrorBody: ErrTestUnexpected,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			r := gin.New()
+			gin.SetMode(gin.TestMode)
+
 			h := NewGeneralHandler(tt.mockUsecase)
 
-			r.GET(
-				"/api/v0/policies/:"+ParamPolicyType,
-				h.GetPolicies,
-			)
+			rec := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(rec)
 
 			req := httptest.NewRequest(
 				http.MethodGet,
-				tt.path,
+				basePath+tt.policyType,
 				nil,
 			)
 
-			rec := httptest.NewRecorder()
+			c.Request = req
 
-			r.ServeHTTP(rec, req)
+			c.Params = gin.Params{
+				{
+					Key:   ParamPolicyType,
+					Value: tt.policyType,
+				},
+			}
 
-			assert.Equal(t, tt.expectedStatus, rec.Code)
+			h.GetPolicies(c)
 
 			// 異常系の場合のassertion
-			if tt.expectedStatus != http.StatusOK {
-				var actual handlerdto.ErrorResponse
-				err := json.Unmarshal(
-					rec.Body.Bytes(),
-					&actual,
-				)
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedErrorBody, actual)
+			if tt.expectError {
+				require.Len(t, c.Errors, 1)
+				assert.ErrorIs(t, c.Errors.Last().Err, tt.expectedErrorBody)
 				return
 			}
 
@@ -150,6 +135,7 @@ func TestGeneralHandler_GetPolicies(t *testing.T) {
 			)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedBody, actual)
+			assert.Empty(t, c.Errors)
 		})
 	}
 }

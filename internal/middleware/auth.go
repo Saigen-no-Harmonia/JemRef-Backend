@@ -3,35 +3,35 @@ package middleware
 import (
 	"context"
 	"errors"
+	"fmt"
 	ctxutil "jemref_go/internal/context"
 	"jemref_go/internal/usecase"
-	"log"
-	"net/http"
 	"strings"
 
-	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/auth"
 	"github.com/gin-gonic/gin"
 )
 
+type FirebaseAuthClient interface {
+	VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error)
+}
+
 // FirebaseAuth 要ログインAPI呼び出し時にコールする共通認証処理。
-func FirebaseAuth(app *firebase.App) gin.HandlerFunc {
-
-	client, _ := app.Auth(context.Background())
-
+func FirebaseAuth(client FirebaseAuthClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Authorizationヘッダの取得
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			log.Println("Anthorizationヘッダが見つかりません")
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			c.Error(ErrRequireAuthHeader)
+			c.Abort()
 			return
 		}
 
 		// Bearer<token>のチェック
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			log.Println("Authorization形式が不正です")
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid header format"})
+			c.Error(ErrRequireBearerToken)
+			c.Abort()
 			return
 		}
 		idToken := parts[1]
@@ -39,16 +39,17 @@ func FirebaseAuth(app *firebase.App) gin.HandlerFunc {
 		// Firebaseでの認証
 		token, err := client.VerifyIDToken(c.Request.Context(), idToken)
 		if err != nil {
-			log.Println("Firebase認証に失敗しました")
-			log.Println(err)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.Error(fmt.Errorf("%w: %v", ErrInvalidFirebaseToken, err))
+			c.Abort()
 			return
 		}
 
 		// メールアドレス取得
 		email, ok := token.Claims["email"].(string)
 		if !ok {
-			log.Printf("メールアドレスの取得に失敗しました。firebaseUid: %s", token.UID)
+			c.Error(ErrRequireEmail)
+			c.Abort()
+			return
 		}
 
 		c.Set(ctxutil.CtxKeyEmail, email)
@@ -62,22 +63,21 @@ func ChkUnregistered(au *usecase.AuthUsecaseImpl) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		firebaseUid, ok := ctxutil.GetFirebaseUid(c)
 		if !ok {
-			log.Printf("fatal: firebase uidの取得処理に異常があります")
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "failed to get firebase uid"})
+			c.Error(ErrRequireFirebaseUid)
+			c.Abort()
 			return
 		}
 
 		_, err := au.Authenticate(c.Request.Context(), firebaseUid)
 		// DBにユーザデータがある場合（会員登録済み）
 		if err == nil {
-			log.Printf("会員登録済みのユーザです。firebase uid: %s", firebaseUid)
-			c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": "user has been registered"})
+			c.Error(fmt.Errorf("会員登録済みのユーザです。firebase uid=%s: %w : %v", firebaseUid, ErrUserAlreadyExists, err))
+			c.Abort()
 			return
-			// not found以外のエラー
+			// その他のエラー
 		} else if !errors.Is(err, usecase.ErrUserNotFound) {
-			log.Printf("fatal: db error")
-			log.Print(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+			c.Error(fmt.Errorf("予期せぬエラー firebase uid=%s : %w", firebaseUid, err))
+			c.Abort()
 			return
 		}
 	}
@@ -89,54 +89,31 @@ func FindCurrentUser(au *usecase.AuthUsecaseImpl) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		firebaseUid, ok := ctxutil.GetFirebaseUid(c)
 		if !ok {
-			log.Printf("fatal: firebase uidの取得処理に異常があります")
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "failed to get firebase uid"})
+			c.Error(ErrRequireFirebaseUid)
+			c.Abort()
 			return
 		}
 
 		// ユーザ情報をDBから取得
 		authUser, err := au.Authenticate(c.Request.Context(), firebaseUid)
 		if err != nil {
-			// ユーザ情報が存在しない場合
-			if errors.Is(err, usecase.ErrUserNotFound) {
-				log.Printf("DBのユーザ情報取得に失敗しました。firebaseUid: %s", firebaseUid)
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user has not registered"})
-				return
-			}
-
 			// 退会済みユーザだった場合、Firebaseユーザを削除して終了
 			if errors.Is(err, usecase.ErrUserDeleted) {
-				log.Printf("ERROR: すでに退会済みのユーザです。 FIrebaseユーザ削除処理を実施します。firebaseUid: %s", firebaseUid)
 				_ = au.DeleteUser(
 					c.Request.Context(),
 					firebaseUid,
 				)
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user has deleted"})
+				c.Error(fmt.Errorf("すでに退会済みのユーザです。 FIrebaseユーザを削除しました。firebaseUid=%s: %w", firebaseUid, ErrUserDeleted))
+				c.Abort()
+				return
 			}
 
-			// その他のエラー
-			log.Println(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			c.Error(fmt.Errorf("予期せぬエラー firebase uid=%s :%w", firebaseUid, err))
+			c.Abort()
 			return
 		}
 
 		c.Set(ctxutil.CtxKeyUid, authUser.InternalUserId)
 		c.Set(ctxutil.CtxKeyPublicUid, authUser.PublicUserId)
-	}
-}
-
-// StubAuth 旧共通認証スタブ
-func StubAuth() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// TODO firebaseトークン認証に置き換える
-		c.Set(ctxutil.CtxKeyFirebaseUid, "firebaseuid")
-
-		// 仮のユーザID
-		c.Set(ctxutil.CtxKeyUid, "dummy-user")
-
-		// 仮のメールアドレス
-		c.Set(ctxutil.CtxKeyEmail, "dummy@example.com")
-
-		c.Next()
 	}
 }

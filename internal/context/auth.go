@@ -13,10 +13,10 @@ func GetUserId(c *gin.Context) (int64, bool) {
 
 	// 型チェック
 	uid, ok := val.(int64)
-	if val == 0 {
+	if !ok || val == int64(0) {
 		return 0, false
 	}
-	return uid, ok
+	return uid, true
 }
 
 func GetFirebaseUid(c *gin.Context) (string, bool) {
@@ -27,11 +27,11 @@ func GetFirebaseUid(c *gin.Context) (string, bool) {
 	}
 
 	firebaseUid, ok := val.(string)
-	if val == "" {
+	if !ok || val == "" {
 		return "", false
 	}
 
-	return firebaseUid, ok
+	return firebaseUid, true
 }
 
 func GetPublicUid(c *gin.Context) (string, bool) {
@@ -42,11 +42,11 @@ func GetPublicUid(c *gin.Context) (string, bool) {
 	}
 
 	publicUid, ok := val.(string)
-	if val == "" {
+	if !ok || val == "" {
 		return "", false
 	}
 
-	return publicUid, ok
+	return publicUid, true
 }
 
 func GetEmail(c *gin.Context) (string, bool) {
@@ -58,8 +58,8 @@ func GetEmail(c *gin.Context) (string, bool) {
 
 	// 型チェック
 	email, ok := val.(string)
-	if val == "" {
+	if !ok || val == "" {
 		return "", false
 	}
-	return email, ok
+	return email, true
 }
