@@ -2,6 +2,8 @@ package mock
 
 import "jemref_go/internal/domain/record"
 
+// TODO 仮実装用のモック。実装時にディレクトリごと削除すること
+
 type RecordRepositoryMock struct {
 	UserId string
 	Title  string

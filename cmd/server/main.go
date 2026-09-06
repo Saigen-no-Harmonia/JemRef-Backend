@@ -87,7 +87,7 @@ func main() {
 	// 会員登録用
 	join := r.Group("/api/v0")
 	join.Use(
-		middleware.FirebaseAuth(*client),
+		middleware.FirebaseAuth(client),
 		middleware.ChkUnregistered(authUC),
 	)
 	join.POST("/join", userHandler.CreateUser)

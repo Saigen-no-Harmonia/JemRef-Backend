@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"io"
 	"jemref_go/internal/config"
 	"log/slog"
 	"os"
@@ -13,7 +14,12 @@ import (
 
 // CommonLogger 共通ロガーミドルウェア
 func CommonLogger(cfg config.Config) gin.HandlerFunc {
-	logger := newLogger(cfg.Env, cfg.LogLevel)
+	return CommonLoggerWithWriter(cfg, os.Stdout)
+}
+
+// CommonLoggerWithWriter 共通ロガーミドルウェア ログ出力先を指定可能(テスト用)
+func CommonLoggerWithWriter(cfg config.Config, w io.Writer) gin.HandlerFunc {
+	logger := newLogger(w, cfg.Env, cfg.LogLevel)
 
 	// ログ出力しない設定
 	skipList := []string{"/api/v0/health"}
@@ -65,19 +71,19 @@ func CommonLogger(cfg config.Config) gin.HandlerFunc {
 }
 
 // newLogger ロガー生成 視認性向上のため、ローカルのみtintのロガーを使用する
-func newLogger(env string, logLevel string) *slog.Logger {
+func newLogger(w io.Writer, env string, logLevel string) *slog.Logger {
 	level := parseLogLevel(logLevel)
 
 	if env == "local" {
 		return slog.New(
-			tint.NewTextHandler(os.Stdout, &tint.Options{
+			tint.NewTextHandler(w, &tint.Options{
 				Level: level,
 			}),
 		)
 	}
 
 	return slog.New(
-		slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		slog.NewJSONHandler(w, &slog.HandlerOptions{
 			Level:     level,
 			AddSource: true,
 		}),

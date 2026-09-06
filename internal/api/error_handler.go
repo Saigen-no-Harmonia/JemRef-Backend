@@ -64,6 +64,8 @@ func toApiError(err error) ApiError {
 		return ErrBadRequest
 	case errors.Is(err, handler.ErrPolicyTypeInvalid):
 		return ErrBadRequest
+	case errors.Is(err, middleware.ErrUserDeleted):
+		return ErrUserDeleted
 
 		// Usecaseが投げるエラーの変換
 	case errors.Is(err, usecase.ErrPolicyNotFound):

@@ -70,7 +70,7 @@ func ChkUnregistered(au usecase.AuthUsecase) gin.HandlerFunc {
 
 		_, err := au.Authenticate(c.Request.Context(), firebaseUid)
 		// 正常（既存ユーザなし）
-		if err == usecase.ErrUserNotFound {
+		if errors.Is(err, usecase.ErrUserNotFound) {
 			return
 
 			// エラーがない場合は会員登録済み
