@@ -185,7 +185,7 @@ func TestUserRepository_UpdateUserAgreement_正常(t *testing.T) {
 	before, err := testutil.SelectUserByPk(t, testDb, int64(1001))
 	require.NoError(t, err)
 
-	now := time.Now().Truncate(time.Microsecond).UTC()
+	now := time.Now().UTC()
 	u := *before
 	u.TermsAgreedDt = &now
 	u.TermsVersion = "_terms_updated_"

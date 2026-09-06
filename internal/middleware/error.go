@@ -5,6 +5,7 @@ import (
 )
 
 var (
+	ErrTestUnexpected       = errors.New("middleware test unexpected")
 	ErrRequireAuthHeader    = errors.New("Authorizationヘッダがありません。")
 	ErrRequireBearerToken   = errors.New("Bearerトークンがありません。")
 	ErrRequireFirebaseUid   = errors.New("Firebase Uidがありません。")

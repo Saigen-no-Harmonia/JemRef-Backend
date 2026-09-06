@@ -11,7 +11,7 @@ type GetRecordsRequest struct {
 	// 出版年（検索用）
 	PublishYear string `json:"publish_year" example:"2026"`
 	// 並びかえキー (出版年、登録日)
-	SortKey string `json:"sort_key" default:"publish_yaer" example:"insert_date"`
+	SortKey string `json:"sort_key" default:"publish_year" example:"insert_date"`
 	// 並び順（asc または desc）
 	SortType string `json:"sort_type" default:"asc" example:"desc"`
 	// リミット

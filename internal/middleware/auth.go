@@ -58,7 +58,7 @@ func FirebaseAuth(client FirebaseAuthClient) gin.HandlerFunc {
 }
 
 // ChkUnregistered ユーザ未登録であることを検証する
-func ChkUnregistered(au *usecase.AuthUsecaseImpl) gin.HandlerFunc {
+func ChkUnregistered(au usecase.AuthUsecase) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		firebaseUid, ok := ctxutil.GetFirebaseUid(c)
@@ -69,11 +69,16 @@ func ChkUnregistered(au *usecase.AuthUsecaseImpl) gin.HandlerFunc {
 		}
 
 		_, err := au.Authenticate(c.Request.Context(), firebaseUid)
-		// DBにユーザデータがある場合（会員登録済み）
-		if err == nil {
+		// 正常（既存ユーザなし）
+		if err == usecase.ErrUserNotFound {
+			return
+
+			// エラーがない場合は会員登録済み
+		} else if err == nil {
 			c.Error(fmt.Errorf("会員登録済みのユーザです。firebase uid=%s: %w : %v", firebaseUid, ErrUserAlreadyExists, err))
 			c.Abort()
 			return
+
 			// その他のエラー
 		} else if !errors.Is(err, usecase.ErrUserNotFound) {
 			c.Error(fmt.Errorf("予期せぬエラー firebase uid=%s : %w", firebaseUid, err))
@@ -84,7 +89,7 @@ func ChkUnregistered(au *usecase.AuthUsecaseImpl) gin.HandlerFunc {
 }
 
 // FindCurrentUser DBからユーザ情報を取得しContextに格納する
-func FindCurrentUser(au *usecase.AuthUsecaseImpl) gin.HandlerFunc {
+func FindCurrentUser(au usecase.AuthUsecase) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		firebaseUid, ok := ctxutil.GetFirebaseUid(c)

@@ -38,5 +38,9 @@ cover-handler:
 	go test -coverprofile=cover.out ./internal/handler
 	go tool cover -func=cover.out
 
+cover-middleware:
+	go test -coverprofile=cover.out ./internal/middleware
+	go tool cover -func=cover.out
+
 show-cover:
 	go tool cover -html=cover.out

@@ -170,7 +170,7 @@ CREATE TABLE m_record_field_values (
   M_RECORD_ID     CHAR(36)      NOT NULL                COMMENT '書誌ID',
   RECORD_FIELD_ID CHAR(8)       NOT NULL                COMMENT '入力項目ID',
   DISPLAY_NUMBER  TINYINT       NOT NULL DEFAULT 1      COMMENT '表示順 (複数値の場合 2 以上)',
-  VALUE           VARCHAR(1024) NOT NULL                COMMENT '入力値 (テキスト。型変換はアプリ側)',
+  VALUE           VARCHAR(1024) NOT NULL                COMMENT '入力値 (テキスト)',
   DEL_FLG  TINYINT      NOT NULL DEFAULT 0,
   INS_PG   VARCHAR(64)  NOT NULL,
   INS_ID   VARCHAR(64)  NOT NULL,
