@@ -115,11 +115,11 @@ type RecordDetailItem struct {
 	// 既読ステータス
 	ReadStatus *string `json:"read_status" enums:"unread,reading,partially_read,read"`
 	// 貢献者情報
-	Contributors []ContributorInfo `json:"contributors"`
+	Contributors []ContributorInfo `json:"contributors" binding:"dive"`
 	// メモ情報
-	Memos []MemoInfo `json:"memos"`
+	Memos []MemoInfo `json:"memos" binding:"dive"`
 	// URL情報
-	Urls []UrlInfo `json:"urls"`
+	Urls []UrlInfo `json:"urls" binding:"dive"`
 	// オプション書誌項目値情報
 	OptionValues *OptionValues `json:"option_values"`
 }
@@ -137,7 +137,7 @@ type ContainerDetailItem struct {
 	// 既読ステータス
 	ReadStatus *string `json:"read_status" enums:"unread,reading,partially_read,read"`
 	// 貢献者情報
-	Contributors []ContributorInfo `json:"contributors"`
+	Contributors []ContributorInfo `json:"contributors" binding:"dive"`
 	// オプション書誌項目値情報
 	OptionValues *OptionValues `json:"option_values"`
 }
@@ -145,9 +145,9 @@ type ContainerDetailItem struct {
 // 貢献者情報
 type ContributorInfo struct {
 	// 貢献者名（人物名、研究会名など）
-	Name string `json:"name" binding:"required,dive" example:"木村元"`
+	Name string `json:"name" binding:"required" example:"木村元"`
 	// 役割
-	Role string `json:"role" binding:"required,dive" enums:"author,interpreter,compiler,compiler_author"`
+	Role string `json:"role" binding:"required" enums:"author,interpreter,compiler,compiler_author"`
 }
 
 // メモ情報
@@ -155,7 +155,7 @@ type MemoInfo struct {
 	// ラベル
 	Label *string `json:"label" example:"要約"`
 	// メモの内容
-	Content string `json:"content" binding:"required,dive" example:"学校の戦後史。少し難しい。"`
+	Content string `json:"content" binding:"required" example:"学校の戦後史。少し難しい。"`
 }
 
 // URL情報
@@ -163,7 +163,7 @@ type UrlInfo struct {
 	// ラベル
 	Label *string `json:"label" example:"オンラインPDFのリンク"`
 	// URL
-	Value string `json:"value" binding:"required,dive" example:"https://example.com/sample"`
+	Value string `json:"value" binding:"required" example:"https://example.com/sample"`
 }
 
 // オプション書誌項目値情報

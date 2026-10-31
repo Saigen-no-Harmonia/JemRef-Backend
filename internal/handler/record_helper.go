@@ -35,6 +35,10 @@ func toCreateRecordInput(internalUid int64, req dto.CreateRecordRequest) (usecas
 var createRecordRequiredErrors = map[string]error{
 	"Type":      ErrRecordTypeRequired,
 	"MainTitle": ErrMainTitleRequired,
+	"Name":      ErrContributorNameRequired,
+	"Role":      ErrContributorRoleRequired,
+	"Content":   ErrMemoContentRequired,
+	"Value":     ErrUrlValueRequired,
 }
 
 // chkCreateParam レコード登録APIのうち、bindingタグで表現できないバリデーションを行う
@@ -74,16 +78,6 @@ func toRecordInput(ri dto.RecordDetailItem) (usecasedto.RecordInput, error) {
 		return usecasedto.RecordInput{}, err
 	}
 
-	memos, err := toMemosInput(ri.Memos)
-	if err != nil {
-		return usecasedto.RecordInput{}, err
-	}
-
-	urls, err := toUrlsInput(ri.Urls)
-	if err != nil {
-		return usecasedto.RecordInput{}, err
-	}
-
 	return usecasedto.RecordInput{
 		Type:            record.RecordType(ri.Type), // typeはハンドラでvalidateずみ
 		MainTitle:       ri.MainTitle,
@@ -94,8 +88,8 @@ func toRecordInput(ri dto.RecordDetailItem) (usecasedto.RecordInput, error) {
 		DatePrecision:   datePrecision,
 		ReadStatus:      readStatus,
 		Contributors:    contributors,
-		Memos:           memos,
-		Urls:            urls,
+		Memos:           toMemosInput(ri.Memos),
+		Urls:            toUrlsInput(ri.Urls),
 		OptionValues:    toOptionValuesInput(ri.OptionValues),
 	}, nil
 }
@@ -126,15 +120,11 @@ func toContainerInput(ci *dto.ContainerDetailItem) (*usecasedto.ContainerInput, 
 	}, nil
 }
 
+// toContributorsInput 貢献者情報を変換する
+// 必須チェックはDTOのbindingタグ(とtoBindingError)に委ねる。
 func toContributorsInput(ci []dto.ContributorInfo) ([]usecasedto.ContributorInput, error) {
 	var contributors []usecasedto.ContributorInput
 	for _, c := range ci {
-		if c.Role == "" {
-			return nil, fmt.Errorf("貢献者情報がある場合、役割は必須です。%w", ErrInvalidRequestBody)
-		} else if c.Name == "" {
-			return nil, fmt.Errorf("貢献者情報がある場合、氏名は必須です。%w", ErrInvalidRequestBody)
-		}
-
 		role, err := toRole(c.Role)
 		if err != nil {
 			return nil, err
@@ -172,37 +162,34 @@ func toRole(s string) (record.ContributorRole, error) {
 	return ret, nil
 }
 
-func toMemosInput(mi []dto.MemoInfo) ([]usecasedto.MemoInput, error) {
+// toMemosInput メモ情報を変換する
+//
+// 内容の必須チェックはbindingタグ(とtoBindingError)に委ねる。
+func toMemosInput(mi []dto.MemoInfo) []usecasedto.MemoInput {
 	var memos []usecasedto.MemoInput
 	for _, m := range mi {
-		// メモの内容なしならエラー
-		if m.Content == "" {
-			return nil, fmt.Errorf("メモがある場合、内容は必須です。%w", ErrInvalidRequestBody)
-		}
-
 		memo := usecasedto.MemoInput{
 			Label:   nilIfEmpty(m.Label),
 			Content: m.Content,
 		}
 		memos = append(memos, memo)
 	}
-	return memos, nil
+	return memos
 }
 
-func toUrlsInput(ui []dto.UrlInfo) ([]usecasedto.UrlInput, error) {
+// toUrlsInput URL情報を変換する
+//
+// URLの値の必須チェックはbindingタグ(とtoBindingError)に委ねる。
+func toUrlsInput(ui []dto.UrlInfo) []usecasedto.UrlInput {
 	var urls []usecasedto.UrlInput
 	for _, u := range ui {
-		// URLなしならエラー
-		if u.Value == "" {
-			return nil, fmt.Errorf("URLがある場合、URLの値は必須です。%w", ErrInvalidRequestBody)
-		}
 		url := usecasedto.UrlInput{
 			Label: nilIfEmpty(u.Label),
 			Value: u.Value,
 		}
 		urls = append(urls, url)
 	}
-	return urls, nil
+	return urls
 }
 
 func toOptionValuesInput(oi *dto.OptionValues) *usecasedto.OptionValuesInput {

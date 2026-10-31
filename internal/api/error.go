@@ -116,4 +116,28 @@ var (
 		Code:       "E0018",
 		Message:    "規約同意バージョンは必須です。",
 	}
+
+	ErrContributorNameRequired = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0019",
+		Message:    "貢献者の氏名は必須です。",
+	}
+
+	ErrContributorRoleRequired = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0020",
+		Message:    "貢献者の役割は必須です。",
+	}
+
+	ErrMemoContentRequired = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0021",
+		Message:    "メモの内容は必須です。",
+	}
+
+	ErrUrlValueRequired = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0022",
+		Message:    "URLの値は必須です。",
+	}
 )

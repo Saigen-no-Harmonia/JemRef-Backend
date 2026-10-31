@@ -647,7 +647,7 @@ func TestRecordHandler_CreateRecord(t *testing.T) {
 			mockUsecase:       newRecordUsecaseMock(),
 			usecaseCalled:     false,
 			expectError:       true,
-			expectedErrorBody: ErrInvalidRequestBody,
+			expectedErrorBody: ErrContributorRoleRequired,
 		},
 		{
 			name:           "異常_貢献者の役割が不正値",
@@ -669,7 +669,31 @@ func TestRecordHandler_CreateRecord(t *testing.T) {
 			mockUsecase:       newRecordUsecaseMock(),
 			usecaseCalled:     false,
 			expectError:       true,
-			expectedErrorBody: ErrInvalidRequestBody,
+			expectedErrorBody: ErrContributorNameRequired,
+		},
+		{
+			// validatorはフィールド宣言順(Name -> Role)で報告するため氏名側が返る
+			name:           "異常_貢献者の氏名と役割が両方空",
+			ctxInternalUid: recordTestInternalUid,
+			ctxPublicUid:   recordTestPublicUid,
+			body: `{"type":"authored_book","main_title":"単著書",
+				"contributors":[{"name":"","role":""}]}`,
+			mockUsecase:       newRecordUsecaseMock(),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrContributorNameRequired,
+		},
+		{
+			// 2件目以降の要素も検証されること
+			name:           "異常_2件目の貢献者の氏名が空",
+			ctxInternalUid: recordTestInternalUid,
+			ctxPublicUid:   recordTestPublicUid,
+			body: `{"type":"authored_book","main_title":"単著書",
+				"contributors":[{"name":"木村元","role":"author"},{"name":"","role":"author"}]}`,
+			mockUsecase:       newRecordUsecaseMock(),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrContributorNameRequired,
 		},
 		{
 			name:           "異常_containerの貢献者の役割が不正値",
@@ -683,6 +707,17 @@ func TestRecordHandler_CreateRecord(t *testing.T) {
 			expectedErrorBody: ErrInvalidContributorRole,
 		},
 		{
+			name:           "異常_containerの貢献者の氏名が空",
+			ctxInternalUid: recordTestInternalUid,
+			ctxPublicUid:   recordTestPublicUid,
+			body: `{"type":"journal_article","main_title":"論文",
+				"container":{"main_title":"雑誌","contributors":[{"name":"","role":"author"}]}}`,
+			mockUsecase:       newRecordUsecaseMock(),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrContributorNameRequired,
+		},
+		{
 			name:           "異常_メモの内容が空",
 			ctxInternalUid: recordTestInternalUid,
 			ctxPublicUid:   recordTestPublicUid,
@@ -691,7 +726,7 @@ func TestRecordHandler_CreateRecord(t *testing.T) {
 			mockUsecase:       newRecordUsecaseMock(),
 			usecaseCalled:     false,
 			expectError:       true,
-			expectedErrorBody: ErrInvalidRequestBody,
+			expectedErrorBody: ErrMemoContentRequired,
 		},
 		{
 			name:           "異常_URLの値が空",
@@ -702,7 +737,7 @@ func TestRecordHandler_CreateRecord(t *testing.T) {
 			mockUsecase:       newRecordUsecaseMock(),
 			usecaseCalled:     false,
 			expectError:       true,
-			expectedErrorBody: ErrInvalidRequestBody,
+			expectedErrorBody: ErrUrlValueRequired,
 		},
 		{
 			name:              "異常_usecaseが登録上限エラー",

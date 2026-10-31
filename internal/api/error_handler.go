@@ -82,6 +82,14 @@ func toApiError(err error) ApiError {
 		return ErrInvalidReadStatus
 	case errors.Is(err, handler.ErrInvalidContributorRole):
 		return ErrInvalidContributorRole
+	case errors.Is(err, handler.ErrContributorNameRequired):
+		return ErrContributorNameRequired
+	case errors.Is(err, handler.ErrContributorRoleRequired):
+		return ErrContributorRoleRequired
+	case errors.Is(err, handler.ErrMemoContentRequired):
+		return ErrMemoContentRequired
+	case errors.Is(err, handler.ErrUrlValueRequired):
+		return ErrUrlValueRequired
 
 		// Usecaseが投げるエラーの変換
 	case errors.Is(err, usecase.ErrPolicyNotFound):

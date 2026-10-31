@@ -126,6 +126,46 @@ func TestErrorHandler(t *testing.T) {
 			},
 		},
 		{
+			name:          "異常_貢献者氏名必須エラーを専用コードに変換する",
+			handlerErrs:   []error{handler.ErrContributorNameRequired},
+			handlerStatus: http.StatusOK,
+			expectedCode:  ErrContributorNameRequired.StatusCode,
+			expectedBody: handlerDto.ErrorResponse{
+				Code:    ErrContributorNameRequired.Code,
+				Message: ErrContributorNameRequired.Message,
+			},
+		},
+		{
+			name:          "異常_貢献者役割必須エラーを専用コードに変換する",
+			handlerErrs:   []error{handler.ErrContributorRoleRequired},
+			handlerStatus: http.StatusOK,
+			expectedCode:  ErrContributorRoleRequired.StatusCode,
+			expectedBody: handlerDto.ErrorResponse{
+				Code:    ErrContributorRoleRequired.Code,
+				Message: ErrContributorRoleRequired.Message,
+			},
+		},
+		{
+			name:          "異常_メモ内容必須エラーを専用コードに変換する",
+			handlerErrs:   []error{handler.ErrMemoContentRequired},
+			handlerStatus: http.StatusOK,
+			expectedCode:  ErrMemoContentRequired.StatusCode,
+			expectedBody: handlerDto.ErrorResponse{
+				Code:    ErrMemoContentRequired.Code,
+				Message: ErrMemoContentRequired.Message,
+			},
+		},
+		{
+			name:          "異常_URL値必須エラーを専用コードに変換する",
+			handlerErrs:   []error{handler.ErrUrlValueRequired},
+			handlerStatus: http.StatusOK,
+			expectedCode:  ErrUrlValueRequired.StatusCode,
+			expectedBody: handlerDto.ErrorResponse{
+				Code:    ErrUrlValueRequired.Code,
+				Message: ErrUrlValueRequired.Message,
+			},
+		},
+		{
 			name:          "異常_未登録のエラーは500に変換する",
 			handlerErrs:   []error{errApiTestUnregistered},
 			handlerStatus: http.StatusOK,
