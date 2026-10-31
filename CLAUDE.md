@@ -14,17 +14,8 @@ make test                # go test ./...
 make test-repository     # DB統合テストのみ(./internal/infrastructure/db)
 make swagger             # swag init でSwagger定義を再生成(要: go install github.com/swaggo/swag/cmd/swag@latest)
 make docs                # public/docs/api/ にSwagger UI一式を配置
-make cover-record        # ./internal/domain/record のカバレッジ計測 + go tool cover -func
-make cover-usecase       # 同上(./internal/usecase)
-make cover-handler       # 同上(./internal/handler)
-make cover-middleware    # 同上(./internal/middleware)
-```
-
-単一パッケージ・単一テストの実行:
-
-```sh
-go test ./internal/middleware/...
-go test ./internal/middleware/... -run TestMiddleware_CommonLogger -v
+make cover-<pkg>         # record/usecase/handler/middleware のカバレッジ計測 + go tool cover -func
+make show-cover          # cover.out をHTMLで表示
 ```
 
 `internal/infrastructure/db` 配下のテストは `testcontainers-go` で実MySQLコンテナを起動する統合テストのため、**Dockerが起動している環境が必須**(`go test ./...` はここも含む)。`sql/ddl.sql` を読み込んでスキーマを作成する(`internal/infrastructure/db/main_test.go`)。
@@ -48,17 +39,18 @@ go test ./internal/middleware/... -run TestMiddleware_CommonLogger -v
 レイヤードアーキテクチャ。DIコンテナは使わず `cmd/server/main.go` 内の `newXxxHandler`/`newXxxUsecase` 関数で手動配線している。
 
 ```
-handler (gin) → usecase → repository (interface) → infrastructure/db (実装) or infrastructure/mock (実装)
+handler (gin) → usecase → repository (interface) → infrastructure/db (実装)
 ```
 
 - **internal/domain**: 純粋なドメインモデル・値オブジェクト(`record`, `user`, `policy`, `id`)。
-  - 列挙的な値オブジェクトの多く(`record.ReadStatus`, `record.ContributerRole`, `policy.PolicyType`)は `type Xxx string` + id⇔値のマップで実装され、`GetId()` / `XxxFromId()` / `IsValid()` を持つ。`XxxFromId()` は未知のidに対して `panic` する — **呼び出し側が事前に `IsValid()` で検証していることを前提とした設計**(不変条件違反はバグとして落とす方針)。
+  - 列挙的な値オブジェクトの多く(`record.ReadStatus`, `record.ContributorRole`, `record.RecordType`, `record.RecordField`, `policy.PolicyType`)は `type Xxx string` + id⇔値のマップで実装され、`GetId()` / `XxxFromId()` / `IsValid()` を持つ。`XxxFromId()` は未知のidに対して `panic` する — **呼び出し側が事前に `IsValid()` で検証していることを前提とした設計**(不変条件違反はバグとして落とす方針)。
   - `user.PolicyAgreementStatus` はこの型に当てはまらない例外で、id変換を持たず `ChkAgreementStat(agreedVer, latestVer)` で状態を判定するだけ。
-- **internal/repository**: リポジトリのインターフェースと、リポジトリ層共通の sentinel error(`ErrNotFound`, `ErrDuplicateEntry`)を定義。実装は2種類:
-  - `internal/infrastructure/db`: `database/sql` を使った実MySQL実装
-  - `internal/infrastructure/mock`: **未実装機能を動かすためのスタブ**。状態を保持せず(「mockなので保存はしない」)、固定のサンプル値を返すだけ。実装完了時に削除する。
+  - NULL許容カラムに入れる値オブジェクトは `(*ReadStatus).GetNullableId()` のように「未設定(nil)なら nil を返す」メソッドを domain 側に置き、repository はそれを渡すだけにする。
+  - `record.ContributorRelation` は `ContributorEntry` と `ContributionEntry` のペア(両テーブルは現状1:1で登録し、名寄せはしない)。
+- **internal/repository**: リポジトリのインターフェース、共通 sentinel error(`ErrNotFound`, `ErrDuplicateEntry`)、トランザクション抽象(`tx_manager.go` の `TxManager`、`dbtx.go` の `DBTX`)を定義。実装は `internal/infrastructure/db`(`database/sql` を使った実MySQL実装)。
+  - 更新処理は usecase が `txManager.WithTransaction(ctx, func(ctx, tx) error {...})` で囲み、repository は `*sql.DB` ではなく常に引数の `tx repository.DBTX` に対して実行する(テストでは `*sql.DB` をそのまま渡せる)。`TxManagerImpl` は `defer tx.Rollback()` + 正常終了時 `Commit()`。
 - **internal/usecase**: ビジネスロジック。インターフェースは `interface.go`、実装は `*_impl.go`、入出力DTOは `usecase/dto`、独自の sentinel error は `usecase/errors.go`。
-- **internal/handler**: ginハンドラ。リクエスト/レスポンスDTOは `handler/dto`、独自の sentinel error は `handler/error.go`、ルートパラメータ名は `handler/params.go`。
+- **internal/handler**: ginハンドラ。リクエスト/レスポンスDTOは `handler/dto`、独自の sentinel error は `handler/error.go`、ルートパラメータ名は `handler/params.go`、bindエラーの変換は `handler/binding.go`。
 - **internal/middleware**: 各ミドルウェア固有の sentinel error は同ディレクトリの `error.go`。
   - `auth.go`: `FirebaseAuth`(IDトークン検証 → email/firebaseUid をcontextへ)、`ChkUnregistered`(会員登録APIで「未登録であること」を検証)、`FindCurrentUser`(DBからユーザを引いて internal uid / public uid をcontextへ。退会済みならFirebaseユーザを削除して中断)。
   - `logger.go`: リクエストログ。`/api/v0/health` はログ対象外。テストからログ出力先を差し替えられるよう `CommonLoggerWithWriter(cfg, io.Writer)` を用意し、`CommonLogger(cfg)` はその `os.Stdout` 版。
@@ -76,6 +68,7 @@ handler (gin) → usecase → repository (interface) → infrastructure/db (実�
 
 **2 の追加漏れはコンパイルエラーにならず、`default` の 500(`ErrInternal`)に落ちる。** 別レイヤーの sentinel error を包み直して返す場合(例: usecase のエラーを middleware 側の sentinel error でラップする)は特に、包み直した後のエラーが `toApiError` に登録されているかを必ず確認すること。
 
+
 ### ミドルウェアの登録順序に依存関係がある
 
 `cmd/server/main.go` の `setupMiddleware`: `gin.Recovery()` → `middleware.CommonLogger(cfg)` → `api.ErrorHandler()` の順で登録すること。Loggerは `c.Next()` でハンドラチェーンの完了を待ってからログ出力するため、ErrorHandlerより先に登録し、後続で確定するレスポンス内容(ステータスコード等)を拾えるようにする必要がある。
@@ -84,12 +77,13 @@ handler (gin) → usecase → repository (interface) → infrastructure/db (実�
 
 - **handler / usecase / middleware / domain**: テーブル駆動テスト + `t.Run`(サブテスト名は日本語で `正常_xxx` / `異常_xxx`)。
 - **internal/infrastructure/db**: モックを使わず testcontainers-go で実MySQLを起動する統合テスト。こちらはテーブル駆動にせず、`TestUserRepository_Create_正常` のように**1ケース1関数**でケース名を関数名に含める。
-- モックは `MockXxx` 構造体に `XxxFunc func(...) (...)` フィールドを持たせ、実メソッドは呼び出し回数(`Called`, `XxxCalled`)と直近の引数(`LastXxx`)を記録してから `XxxFunc` に委譲する、という型で統一されている。テストで使うのは `internal/testutil/mock`(usecase/repositoryインターフェース向け)。`internal/infrastructure/mock` はテスト用ではなく本番配線に差し込むスタブなので混同しない。
-- 各レイヤーに `ErrTestUnexpected` という専用の sentinel error があり、「分岐でカバーしていない予期しないエラー」のテストに使う。
+- モックは `MockXxx` 構造体に `XxxFunc func(...) (...)` フィールドを持たせ、実メソッドは呼び出し回数(`Called`, `XxxCalled`)と直近の引数(`LastXxx`)を記録してから `XxxFunc` に委譲する、という型で統一する。テストで使うのは `internal/testutil/mock`。
+- 各レイヤーに `ErrTestUnexpected` という専用の sentinel error を設置し、「分岐でカバーしていない予期しないエラー」のテストに使う。
+- DB統合テストは `sql/seed.sql`(マスタ。本番と同じものを使う) → `testdata/*.sql`(フィクスチャ)の順に読み込み、検証は `testutil/record_db_helper.go` のようにDBの生値を保持する行構造体で行う(NULLと空文字を区別するため)。`testutil.CleanUpTables` は `e_records` が `PARENT_ID` で自己参照FKを持つため、**単一コネクション上で `FOREIGN_KEY_CHECKS` を一時解除**して削除する(セッション単位の設定なのでプール越しの `db.Exec` では効かない)。
 
 ## 守ること
 
-- エラーの比較は常に `errors.Is` を使う(`err == ErrXxx` の直接比較はラップされた瞬間に壊れる)。テストのエラー検証も `assert.ErrorIs(t, actualErr, tt.expectedErrorBody)`。
+- エラーの比較は常に `errors.Is` を使う。テストのエラー検証も `assert.ErrorIs(t, actualErr, tt.expectedErrorBody)`。
 - **DB往復した `time.Time` の比較は `assert.WithinDuration(t, expected, actual, time.Microsecond)` を使う**(`assert.True(t, a.Equal(b))` は不可)。MySQLのカラム精度による丸めで、ローカルでは通ってもCI環境でだけ失敗することがある(実績: コミット `6c571e6`)。
 - `XxxFromId()` 系を呼ぶ前に `IsValid()` で検証する(未知のidは `panic` する)。
-- 新しい sentinel error を追加したら `toApiError` の分岐追加までをセットで行う。
+- 必須チェックはDTOの `binding` タグに寄せ、ハンドラに手書きしない。リクエストDTOの `binding:"required"` が必須制約の**単一の正**(Swaggerの `required` も同じタグから生成される)。ハンドラは bind 失敗を `toBindingError(err, 対応表)`(`handler/binding.go`)で専用 sentinel に翻訳するだけにし、手書きの空文字チェックは置かない。対応表は `map[構造体フィールド名]error` をハンドラごとに定義する(`createRecordRequiredErrors` 等)。キーは `validator.FieldError.StructField()`。複数フィールドが同時に未入力のとき返るエラーはフィールド宣言順に従う。
