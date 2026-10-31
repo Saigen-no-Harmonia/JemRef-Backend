@@ -1,21 +1,20 @@
 package handler
 
 import (
-	"jemref_go/internal/handler/dto"
+	ctxutil "jemref_go/internal/context"
 	handlerdto "jemref_go/internal/handler/dto"
 	"jemref_go/internal/usecase"
-	usecasedto "jemref_go/internal/usecase/dto"
-	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 type RecordHandler struct {
-	usecase *usecase.RecordUsecase
+	usecase usecase.RecordUsecase
 }
 
 // コンストラクタ
-func NewRecordHandler(uc *usecase.RecordUsecase) *RecordHandler {
+func NewRecordHandler(uc usecase.RecordUsecase) *RecordHandler {
 	return &RecordHandler{usecase: uc}
 }
 
@@ -67,36 +66,43 @@ func (h *RecordHandler) GetRecord(c *gin.Context) {}
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /records [post]
 func (h *RecordHandler) CreateRecord(c *gin.Context) {
+	internalUid, ok := ctxutil.GetUserId(c)
+	if !ok {
+		c.Error(ErrInternalUidNotFound)
+		return
+	}
+
+	publicUid, ok := ctxutil.GetPublicUid(c)
+	if !ok {
+		c.Error(ErrPublicUidNotFound)
+		return
+	}
+
 	var req handlerdto.CreateRecordRequest
-
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400,
-			handlerdto.ErrorResponse{
-				Code:    "仮",
-				Message: "failed to get request param",
-			},
-		)
+		c.Error(toBindingError(err, createRecordRequiredErrors))
 		return
 	}
 
-	// usecase用の構造体にマッピング
-	input := toCreateRecordInput(req)
-
-	output, err := h.usecase.CreateRecord(input)
+	input, err := toCreateRecordInput(internalUid, req)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.Error(err)
 		return
 	}
 
-	// 仮
-	log.Print(output)
+	c.Set(ctxutil.CtxKeyApiId, ctxutil.REF_API_003)
+	output, err := h.usecase.Create(c, input)
+	if err != nil {
+		c.Error(err)
+		return
+	}
 
 	res := handlerdto.CreateRecordResponse{
-		PublicUserId:   "sample_public_user_id",
-		PublicRecordId: "sample_public_record_id",
+		PublicUserId:   publicUid,
+		PublicRecordId: output.RecordId,
 	}
 
-	c.JSON(201, res)
+	c.JSON(http.StatusCreated, res)
 }
 
 // @Summary [REF-API-004] 書誌情報更新
@@ -125,11 +131,3 @@ func (h *RecordHandler) UpdateRecord(c *gin.Context) {}
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /records/{id} [delete]
 func (h *RecordHandler) DeleteRecord(c *gin.Context) {}
-
-// Usecase用の構造体にマッピングする
-func toCreateRecordInput(req dto.CreateRecordRequest) usecasedto.CreateRecordInput {
-	//. TODO not implemented
-	return usecasedto.CreateRecordInput{
-		MainTitle: req.RecordDetailItem.MainTitle,
-	}
-}

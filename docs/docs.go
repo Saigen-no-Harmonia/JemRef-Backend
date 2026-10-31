@@ -33,9 +33,12 @@ const docTemplate = `{
                 "summary": "Health",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "OK"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/dto.StatusResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -77,6 +80,12 @@ const docTemplate = `{
                         "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/dto.CreateUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "409": {
@@ -168,7 +177,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "名前（検索用：部分一致）",
-                        "name": "contributerName",
+                        "name": "contributorName",
                         "in": "query"
                     },
                     {
@@ -196,7 +205,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "default": "publish_yaer",
+                        "default": "publish_year",
                         "example": "insert_date",
                         "description": "並びかえキー (出版年、登録日)",
                         "name": "sort_key",
@@ -635,33 +644,17 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.AgreementPolicyRequest": {
-            "type": "object",
-            "required": [
-                "policy_type",
-                "version"
-            ],
-            "properties": {
-                "policy_type": {
-                    "description": "規約タイプ",
-                    "type": "string",
-                    "example": "privacy_policy"
-                },
-                "version": {
-                    "description": "規約バージョン",
-                    "type": "string",
-                    "example": "1.4"
-                }
-            }
-        },
         "dto.ContainerDetailItem": {
             "type": "object",
+            "required": [
+                "main_title"
+            ],
             "properties": {
-                "contributers": {
+                "contributors": {
                     "description": "貢献者情報",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.ContributerInfo"
+                        "$ref": "#/definitions/dto.ContributorInfo"
                     }
                 },
                 "issue": {
@@ -674,7 +667,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "第1章 「学校」制度の境界線"
                 },
-                "option_value": {
+                "option_values": {
                     "description": "オプション書誌項目値情報",
                     "allOf": [
                         {
@@ -684,16 +677,12 @@ const docTemplate = `{
                 },
                 "read_status": {
                     "description": "既読ステータス",
+                    "type": "string",
                     "enum": [
                         "unread",
                         "reading",
                         "partially_read",
                         "read"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/record.ReadStatus"
-                        }
                     ]
                 },
                 "sub_title": {
@@ -711,11 +700,11 @@ const docTemplate = `{
         "dto.ContainerListItemResponse": {
             "type": "object",
             "properties": {
-                "contributers": {
+                "contributors": {
                     "description": "収録物貢献者情報",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.ContributerInfo"
+                        "$ref": "#/definitions/dto.ContributorInfo"
                     }
                 },
                 "issue": {
@@ -740,8 +729,12 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.ContributerInfo": {
+        "dto.ContributorInfo": {
             "type": "object",
+            "required": [
+                "name",
+                "role"
+            ],
             "properties": {
                 "name": {
                     "description": "貢献者名（人物名、研究会名など）",
@@ -750,16 +743,12 @@ const docTemplate = `{
                 },
                 "role": {
                     "description": "役割",
+                    "type": "string",
                     "enum": [
                         "author",
                         "interpreter",
                         "compiler",
                         "compiler_author"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/record.ContributerRole"
-                        }
                     ]
                 }
             }
@@ -779,11 +768,11 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "contributers": {
+                "contributors": {
                     "description": "貢献者情報",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.ContributerInfo"
+                        "$ref": "#/definitions/dto.ContributorInfo"
                     }
                 },
                 "main_title": {
@@ -798,7 +787,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/dto.MemoInfo"
                     }
                 },
-                "option_value": {
+                "option_values": {
                     "description": "オプション書誌項目値情報",
                     "allOf": [
                         {
@@ -823,16 +812,12 @@ const docTemplate = `{
                 },
                 "read_status": {
                     "description": "既読ステータス",
+                    "type": "string",
                     "enum": [
                         "unread",
                         "reading",
                         "partially_read",
                         "read"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/record.ReadStatus"
-                        }
                     ]
                 },
                 "sub_title": {
@@ -844,9 +829,9 @@ const docTemplate = `{
                     "description": "書誌タイプ",
                     "type": "string",
                     "enum": [
-                        "monograph",
+                        "authored_book",
                         "journal_article",
-                        "compilation_article"
+                        "contributed_book_article"
                     ]
                 },
                 "urls": {
@@ -975,11 +960,11 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "contributers": {
+                "contributors": {
                     "description": "貢献者情報",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.ContributerInfo"
+                        "$ref": "#/definitions/dto.ContributorInfo"
                     }
                 },
                 "main_title": {
@@ -994,7 +979,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/dto.MemoInfo"
                     }
                 },
-                "option_value": {
+                "option_values": {
                     "description": "オプション書誌項目値情報",
                     "allOf": [
                         {
@@ -1019,16 +1004,12 @@ const docTemplate = `{
                 },
                 "read_status": {
                     "description": "既読ステータス",
+                    "type": "string",
                     "enum": [
                         "unread",
                         "reading",
                         "partially_read",
                         "read"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/record.ReadStatus"
-                        }
                     ]
                 },
                 "record_id": {
@@ -1045,9 +1026,9 @@ const docTemplate = `{
                     "description": "書誌タイプ",
                     "type": "string",
                     "enum": [
-                        "monograph",
+                        "authored_book",
                         "journal_article",
-                        "compilation_article"
+                        "contributed_book_article"
                     ]
                 },
                 "urls": {
@@ -1092,6 +1073,9 @@ const docTemplate = `{
         },
         "dto.MemoInfo": {
             "type": "object",
+            "required": [
+                "content"
+            ],
             "properties": {
                 "content": {
                     "description": "メモの内容",
@@ -1122,6 +1106,25 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.PolicyAgreementRequest": {
+            "type": "object",
+            "required": [
+                "policy_type",
+                "version"
+            ],
+            "properties": {
+                "policy_type": {
+                    "description": "規約タイプ",
+                    "type": "string",
+                    "example": "privacy_policy"
+                },
+                "version": {
+                    "description": "規約バージョン",
+                    "type": "string",
+                    "example": "1.4"
+                }
+            }
+        },
         "dto.RecordListItemResponse": {
             "type": "object",
             "required": [
@@ -1138,11 +1141,11 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "contributers": {
+                "contributors": {
                     "description": "貢献者情報",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.ContributerInfo"
+                        "$ref": "#/definitions/dto.ContributorInfo"
                     }
                 },
                 "main_title": {
@@ -1167,16 +1170,12 @@ const docTemplate = `{
                 },
                 "read_status": {
                     "description": "既読ステータス",
+                    "type": "string",
                     "enum": [
                         "unread",
                         "reading",
                         "partially_read",
                         "read"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/record.ReadStatus"
-                        }
                     ]
                 },
                 "record_id": {
@@ -1193,9 +1192,9 @@ const docTemplate = `{
                     "description": "書誌タイプ",
                     "type": "string",
                     "enum": [
-                        "monograph",
+                        "authored_book",
                         "journal_article",
-                        "compilation_article"
+                        "contributed_book_article"
                     ]
                 }
             }
@@ -1224,11 +1223,11 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "contributers": {
+                "contributors": {
                     "description": "貢献者情報",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.ContributerInfo"
+                        "$ref": "#/definitions/dto.ContributorInfo"
                     }
                 },
                 "main_title": {
@@ -1243,7 +1242,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/dto.MemoInfo"
                     }
                 },
-                "option_value": {
+                "option_values": {
                     "description": "オプション書誌項目値情報",
                     "allOf": [
                         {
@@ -1268,16 +1267,12 @@ const docTemplate = `{
                 },
                 "read_status": {
                     "description": "既読ステータス",
+                    "type": "string",
                     "enum": [
                         "unread",
                         "reading",
                         "partially_read",
                         "read"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/record.ReadStatus"
-                        }
                     ]
                 },
                 "sub_title": {
@@ -1289,9 +1284,9 @@ const docTemplate = `{
                     "description": "書誌タイプ",
                     "type": "string",
                     "enum": [
-                        "monograph",
+                        "authored_book",
                         "journal_article",
-                        "compilation_article"
+                        "contributed_book_article"
                     ]
                 },
                 "urls": {
@@ -1312,13 +1307,16 @@ const docTemplate = `{
                 "policies": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.AgreementPolicyRequest"
+                        "$ref": "#/definitions/dto.PolicyAgreementRequest"
                     }
                 }
             }
         },
         "dto.UrlInfo": {
             "type": "object",
+            "required": [
+                "value"
+            ],
             "properties": {
                 "label": {
                     "description": "ラベル",
@@ -1388,36 +1386,6 @@ const docTemplate = `{
                     "example": "001JSUFP94SNN~"
                 }
             }
-        },
-        "record.ContributerRole": {
-            "type": "string",
-            "enum": [
-                "author",
-                "interpreter",
-                "compiler",
-                "compiler_author"
-            ],
-            "x-enum-varnames": [
-                "ContributerRoleAuthor",
-                "ContributerRoleInterpreter",
-                "ContributerRoleCompiler",
-                "ContributerRoleCompilerAuthor"
-            ]
-        },
-        "record.ReadStatus": {
-            "type": "string",
-            "enum": [
-                "read",
-                "unread",
-                "reading",
-                "partial_read"
-            ],
-            "x-enum-varnames": [
-                "ReadStatusRead",
-                "ReadStatusUnread",
-                "ReadStatusReading",
-                "ReadStatusPertialRead"
-            ]
         },
         "user.PolicyAgreementStatus": {
             "type": "string",

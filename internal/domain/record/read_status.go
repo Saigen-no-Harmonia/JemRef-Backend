@@ -3,31 +3,31 @@ package record
 type ReadStatus string
 
 const (
-	ReadStatusRead        ReadStatus = "read"
-	ReadStatusUnread      ReadStatus = "unread"
-	ReadStatusReading     ReadStatus = "reading"
-	ReadStatusPertialRead ReadStatus = "partial_read"
+	ReadStatusRead          ReadStatus = "read"
+	ReadStatusUnread        ReadStatus = "unread"
+	ReadStatusReading       ReadStatus = "reading"
+	ReadStatusPartiallyRead ReadStatus = "partially_read"
 )
 
 const (
-	ReadStatusIdRead        = 1
-	ReadStatusIdUnread      = 2
-	ReadStatusIdReading     = 3
-	ReadStatusIdPertialRead = 4
+	ReadStatusIdRead          = 1
+	ReadStatusIdUnread        = 2
+	ReadStatusIdReading       = 3
+	ReadStatusIdPartiallyRead = 4
 )
 
 var statusToIdMap = map[ReadStatus]int{
-	ReadStatusRead:        ReadStatusIdRead,
-	ReadStatusUnread:      ReadStatusIdUnread,
-	ReadStatusReading:     ReadStatusIdReading,
-	ReadStatusPertialRead: ReadStatusIdPertialRead,
+	ReadStatusRead:          ReadStatusIdRead,
+	ReadStatusUnread:        ReadStatusIdUnread,
+	ReadStatusReading:       ReadStatusIdReading,
+	ReadStatusPartiallyRead: ReadStatusIdPartiallyRead,
 }
 
 var idToStatusMap = map[int]ReadStatus{
-	ReadStatusIdRead:        ReadStatusRead,
-	ReadStatusIdUnread:      ReadStatusUnread,
-	ReadStatusIdReading:     ReadStatusReading,
-	ReadStatusIdPertialRead: ReadStatusPertialRead,
+	ReadStatusIdRead:          ReadStatusRead,
+	ReadStatusIdUnread:        ReadStatusUnread,
+	ReadStatusIdReading:       ReadStatusReading,
+	ReadStatusIdPartiallyRead: ReadStatusPartiallyRead,
 }
 
 // GetId 既読ステータスのIDを返却する
@@ -39,6 +39,14 @@ func (s ReadStatus) GetId() int {
 	}
 
 	return id
+}
+
+// GetNullableId 未設定(nil)ならnilを返す。DBのNULL登録用。
+func (s *ReadStatus) GetNullableId() any {
+	if s == nil {
+		return nil
+	}
+	return s.GetId()
 }
 
 // ReadStatusFromId 既読ステータスIDをもとに既読ステータスを返却する
@@ -58,7 +66,7 @@ func (s ReadStatus) IsValid() bool {
 	case ReadStatusRead,
 		ReadStatusUnread,
 		ReadStatusReading,
-		ReadStatusPertialRead:
+		ReadStatusPartiallyRead:
 		return true
 	default:
 		return false

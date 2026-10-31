@@ -17,7 +17,6 @@ import (
 	"jemref_go/internal/handler"
 	"jemref_go/internal/infrastructure"
 	infraDB "jemref_go/internal/infrastructure/db"
-	"jemref_go/internal/infrastructure/mock"
 	"jemref_go/internal/middleware"
 	"jemref_go/internal/usecase"
 	"log"
@@ -73,7 +72,7 @@ func main() {
 	log.Print("initializing routing")
 	healthHandler := handler.NewHealthHandler(db)
 	generalHandler := newGeneralHandler(db)
-	recordHandler := newRecordHandler()
+	recordHandler := newRecordHandler(db)
 	userHandler := newUserHandler(db, client)
 
 	// 認証なしルート ------------------------------------------------------
@@ -118,10 +117,11 @@ func setupMiddleware(r *gin.Engine, cfg config.Config) {
 	r.Use(api.ErrorHandler())
 }
 
-func newRecordHandler() *handler.RecordHandler {
-	// repositoryはmock
-	repo := mock.NewRecordRepositoryMock()
-	uc := usecase.NewRecordUsecase(repo)
+func newRecordHandler(db *sql.DB) *handler.RecordHandler {
+	recordRepo := infraDB.NewRecordRepositoryImpl(db)
+	txManager := infraDB.NewTxManager(db)
+	idGen := id.NewUlidGenerator()
+	uc := usecase.NewRecordUsecaseImpl(recordRepo, txManager, idGen)
 	return handler.NewRecordHandler(uc)
 }
 
@@ -130,7 +130,7 @@ func newUserHandler(db *sql.DB, client *auth.Client) *handler.UserHandler {
 	generalRepo := infraDB.NewGeneralRepositoryImpl(db)
 	firebaseRepo := infraDB.NewFirebaseRepositoryImpl(client)
 	idGen := id.NewUlidGenerator()
-	uc := usecase.NewUserUsecase(userRepo, generalRepo, firebaseRepo, idGen)
+	uc := usecase.NewUserUsecaseImpl(userRepo, generalRepo, firebaseRepo, idGen)
 	return handler.NewUserHandler(uc)
 }
 

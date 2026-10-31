@@ -52,3 +52,10 @@ type AuthUsecase interface {
 		firebaseUid string,
 	) error
 }
+
+type RecordUsecase interface {
+	Create(
+		ctx context.Context,
+		ci dto.CreateRecordInput,
+	) (*dto.CreateRecordOutput, error)
+}

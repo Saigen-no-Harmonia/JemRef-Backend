@@ -30,7 +30,7 @@ func TestReadStatus_IsValid(t *testing.T) {
 		},
 		{
 			name:     "正常_ステータス一部既読",
-			input:    ReadStatusPertialRead,
+			input:    ReadStatusPartiallyRead,
 			expected: true,
 		},
 		{
@@ -76,7 +76,7 @@ func TestReadStatus_GetId(t *testing.T) {
 		},
 		{
 			name:        "正常_ステータス一部既読",
-			input:       ReadStatusPertialRead,
+			input:       ReadStatusPartiallyRead,
 			expected:    4,
 			expectPanic: false,
 		},
@@ -89,15 +89,71 @@ func TestReadStatus_GetId(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if tt.expectPanic {
-			assert.Panics(t, func() {
-				tt.input.GetId()
-			})
-			return
-		}
+		t.Run(tt.name, func(t *testing.T) {
 
-		actual := tt.input.GetId()
-		assert.Equal(t, tt.expected, actual)
+			if tt.expectPanic {
+				assert.Panics(t, func() {
+					tt.input.GetId()
+				})
+				return
+			}
+
+			actual := tt.input.GetId()
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestReadStatus_GetNullableId(t *testing.T) {
+
+	readStatusRead := ReadStatusRead
+	readStatusPartiallyRead := ReadStatusPartiallyRead
+	readStatusInvalid := ReadStatus("invalid")
+
+	tests := []struct {
+		name        string
+		input       *ReadStatus
+		expected    any
+		expectPanic bool
+	}{
+		{
+			name:        "正常_未設定はnil",
+			input:       nil,
+			expected:    nil,
+			expectPanic: false,
+		},
+		{
+			name:        "正常_ステータス既読",
+			input:       &readStatusRead,
+			expected:    ReadStatusIdRead,
+			expectPanic: false,
+		},
+		{
+			name:        "正常_ステータス一部既読",
+			input:       &readStatusPartiallyRead,
+			expected:    ReadStatusIdPartiallyRead,
+			expectPanic: false,
+		},
+		{
+			name:        "異常_ステータス不正",
+			input:       &readStatusInvalid,
+			expectPanic: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			if tt.expectPanic {
+				assert.Panics(t, func() {
+					tt.input.GetNullableId()
+				})
+				return
+			}
+
+			actual := tt.input.GetNullableId()
+			assert.Equal(t, tt.expected, actual)
+		})
 	}
 }
 
@@ -129,8 +185,8 @@ func TestReadStatus_ReadStatusFromId(t *testing.T) {
 		},
 		{
 			name:        "正常_ステータス一部既読",
-			input:       ReadStatusIdPertialRead,
-			expected:    ReadStatusPertialRead,
+			input:       ReadStatusIdPartiallyRead,
+			expected:    ReadStatusPartiallyRead,
 			expectPanic: false,
 		},
 		{

@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http/httptest"
@@ -31,39 +32,51 @@ func LoadFixture(
 	return nil
 }
 
+// cleanUpTargetTables CleanUpTablesの削除対象テーブル(子->親の順)
+var cleanUpTargetTables = []string{
+	"e_record_field_values",
+	"e_record_memos",
+	"e_record_urls",
+	"e_record_contributions",
+	"e_contributors",
+	"e_records",
+	"m_record_field_values",
+	"m_record_contributions",
+	"m_record_fields",
+	"m_record_types",
+	"m_roles",
+	"m_contributors",
+	"m_records",
+	"m_policies",
+	"m_users",
+}
+
 // CleanUpTables テスト実施前に全レコードをdeleteする
+//
+// e_recordsはPARENT_IDで自己参照するため、単一のdelete文であっても
+// 行の削除順序によってはFK違反になりうる。そのためFK制約を一時解除して削除する。
+// SET FOREIGN_KEY_CHECKSはセッション単位の設定なので、コネクションプール越しの
+// db.Execではなく単一コネクション上で一連の処理を実行する
 func CleanUpTables(
 	t *testing.T,
 	db *sql.DB,
 ) {
 	t.Helper()
-	_, err := db.Exec("delete from e_record_field_values")
+
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
 	require.NoError(t, err)
-	_, err = db.Exec("delete from e_record_memos")
+	defer conn.Close()
+
+	_, err = conn.ExecContext(ctx, "SET FOREIGN_KEY_CHECKS = 0")
 	require.NoError(t, err)
-	_, err = db.Exec("delete from e_record_urls")
-	require.NoError(t, err)
-	_, err = db.Exec("delete from e_record_contributions")
-	require.NoError(t, err)
-	_, err = db.Exec("delete from e_records")
-	require.NoError(t, err)
-	_, err = db.Exec("delete from m_record_field_values")
-	require.NoError(t, err)
-	_, err = db.Exec("delete from m_record_contributions")
-	require.NoError(t, err)
-	_, err = db.Exec("delete from m_record_fields")
-	require.NoError(t, err)
-	_, err = db.Exec("delete from m_record_types")
-	require.NoError(t, err)
-	_, err = db.Exec("delete from m_roles")
-	require.NoError(t, err)
-	_, err = db.Exec("delete from m_contributors")
-	require.NoError(t, err)
-	_, err = db.Exec("delete from m_records")
-	require.NoError(t, err)
-	_, err = db.Exec("delete from m_policies")
-	require.NoError(t, err)
-	_, err = db.Exec("delete from m_users")
+
+	for _, table := range cleanUpTargetTables {
+		_, err = conn.ExecContext(ctx, "delete from "+table)
+		require.NoError(t, err, "delete from %s", table)
+	}
+
+	_, err = conn.ExecContext(ctx, "SET FOREIGN_KEY_CHECKS = 1")
 	require.NoError(t, err)
 }
 

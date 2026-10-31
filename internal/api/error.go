@@ -56,4 +56,52 @@ var (
 		Code:       "E0008",
 		Message:    "未登録ユーザです。",
 	}
+
+	ErrMainTitleRequired = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0009",
+		Message:    "主題は必須項目です。",
+	}
+
+	ErrRecordTypeRequired = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0010",
+		Message:    "書誌タイプ指定は必須です。",
+	}
+
+	ErrInvalidRecordType = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0011",
+		Message:    "書誌タイプ指定が不正です。",
+	}
+
+	ErrContainerNotAllowed = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0012",
+		Message:    "この書誌タイプは親レコードを持つことができません。",
+	}
+
+	ErrInvalidPublicationDate = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0013",
+		Message:    "出版日付の指定が不正です。",
+	}
+
+	ErrInvalidReadStatus = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0014",
+		Message:    "読了ステータスが不正です。",
+	}
+
+	ErrInvalidContributorRole = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0015",
+		Message:    "貢献者役割が不正です。",
+	}
+
+	ErrReachRegistrationLimit = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0016",
+		Message:    "DB登録件数上限を超えています。",
+	}
 )

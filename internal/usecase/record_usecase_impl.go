@@ -1,0 +1,259 @@
+package usecase
+
+import (
+	"context"
+	"fmt"
+	"jemref_go/internal/domain/id"
+	"jemref_go/internal/domain/record"
+	"jemref_go/internal/repository"
+	"jemref_go/internal/usecase/dto"
+)
+
+type RecordUsecaseImpl struct {
+	recordRepo repository.RecordRepository
+	txManager  repository.TxManager
+	idGen      id.Generator
+}
+
+func NewRecordUsecaseImpl(
+	r repository.RecordRepository,
+	tx repository.TxManager,
+	ig id.Generator,
+) *RecordUsecaseImpl {
+	return &RecordUsecaseImpl{
+		recordRepo: r,
+		txManager:  tx,
+		idGen:      ig,
+	}
+}
+
+var _ RecordUsecase = (*RecordUsecaseImpl)(nil)
+
+func (u *RecordUsecaseImpl) Create(
+	ctx context.Context,
+	ci dto.CreateRecordInput,
+) (*dto.CreateRecordOutput, error) {
+	if err := chkInsertLimit(ci); err != nil {
+		return nil, err
+	}
+
+	containerId := ""
+	var container *record.UserRecordEntry
+	if ci.ContainerInput != nil {
+		container = extractContainer(ci, u.idGen.Generate())
+	}
+
+	// container idはコンテナがある場合のみ値を入れる
+	if container != nil {
+		containerId = container.RecordEntryId
+	}
+
+	recordId := u.idGen.Generate()
+	article := extractArticle(ci, recordId, containerId)
+
+	err := u.txManager.WithTransaction(
+		ctx,
+		func(ctx context.Context, tx repository.DBTX) error {
+			if container != nil {
+				if err := u.recordRepo.Create(
+					ctx, tx, *container,
+				); err != nil {
+					return fmt.Errorf("create container record error: %w", err)
+				}
+			}
+
+			if err := u.recordRepo.Create(
+				ctx, tx, *article,
+			); err != nil {
+				return fmt.Errorf("create article record error: %w", err)
+			}
+
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.CreateRecordOutput{
+		RecordId: recordId,
+	}, nil
+}
+
+// recordInsertLimit 子要素1種あたりの登録件数上限
+// 子要素のDISPLAY_NUMBERはTINYINT(0起点)なので128件までしか登録できない。
+const recordInsertLimit = 128
+
+func chkInsertLimit(ci dto.CreateRecordInput) error {
+	if len(ci.RecordInput.Contributors) > recordInsertLimit {
+		return fmt.Errorf("貢献者情報の件数が登録上限を超えています。%w", ErrReachRegistrationLimit)
+	}
+
+	if ci.ContainerInput != nil && len(ci.ContainerInput.Contributors) > recordInsertLimit {
+		return fmt.Errorf("収録物の貢献者情報の件数が登録上限を超えています。%w", ErrReachRegistrationLimit)
+	}
+
+	if len(ci.RecordInput.Memos) > recordInsertLimit {
+		return fmt.Errorf("メモ情報の件数が登録上限を超えています。%w", ErrReachRegistrationLimit)
+	}
+
+	if len(ci.RecordInput.Urls) > recordInsertLimit {
+		return fmt.Errorf("URL情報の件数が登録上限を超えています。%w", ErrReachRegistrationLimit)
+	}
+
+	return nil
+}
+
+func extractContainer(input dto.CreateRecordInput, containerId string) *record.UserRecordEntry {
+	ci := input.ContainerInput
+
+	uid := input.InternalUserId
+	optionValues := extractOptionValues(ci.OptionValues, uid, containerId)
+	contributors, contributions := extractContributorRelations(ci.Contributors, uid, containerId)
+
+	return &record.UserRecordEntry{
+		RecordEntryId:   containerId,
+		InternalUid:     uid,
+		RecordType:      input.RecordInput.Type.GetParent(),
+		MainTitle:       ci.MainTitle,
+		SubTitle:        ci.SubTitle,
+		Volume:          ci.Volume,
+		Issue:           ci.Issue,
+		Publisher:       input.RecordInput.Publisher,
+		PublicationDate: input.RecordInput.PublicationDate,
+		DatePrecision:   input.RecordInput.DatePrecision,
+		ReadStatus:      ci.ReadStatus,
+		DelFlg:          0,
+		Contributors:    contributors,
+		Contributions:   contributions,
+		OptionValues:    optionValues,
+	}
+}
+
+func extractArticle(ci dto.CreateRecordInput, recordId string, containerId string) *record.UserRecordEntry {
+	uid := ci.InternalUserId
+	ri := ci.RecordInput
+
+	optionValues := extractOptionValues(ri.OptionValues, uid, recordId)
+	contributors, contributions := extractContributorRelations(ri.Contributors, uid, recordId)
+	urls := extractUrls(ri.Urls, uid, recordId)
+	memos := extractMemos(ri.Memos, uid, recordId)
+
+	var containerIdPtr *string
+	if containerId != "" {
+		containerIdPtr = &containerId
+	}
+
+	return &record.UserRecordEntry{
+		RecordEntryId:   recordId,
+		InternalUid:     uid,
+		RecordType:      ri.Type,
+		MainTitle:       ri.MainTitle,
+		SubTitle:        ri.SubTitle,
+		PageRange:       ri.PageRange,
+		Publisher:       ri.Publisher,
+		PublicationDate: ri.PublicationDate,
+		DatePrecision:   ri.DatePrecision,
+		ReadStatus:      ri.ReadStatus,
+		ParentId:        containerIdPtr,
+		DelFlg:          0,
+		Contributors:    contributors,
+		Contributions:   contributions,
+		Urls:            urls,
+		Memos:           memos,
+		OptionValues:    optionValues,
+	}
+}
+
+func extractContributorRelations(
+	contributorInput []dto.ContributorInput,
+	uid int64,
+	recordId string,
+) ([]record.ContributorEntry, []record.ContributionEntry) {
+	var contributors []record.ContributorEntry
+	var contributions []record.ContributionEntry
+
+	for i, c := range contributorInput {
+		contributor := record.ContributorEntry{
+			RawName:     c.Name,
+			InternalUid: uid,
+			DelFlg:      0,
+		}
+		contributors = append(contributors, contributor)
+
+		contribution := record.ContributionEntry{
+			RecordEntryId: recordId,
+			Role:          c.Role,
+			DisplayNumber: i,
+			DelFlg:        0,
+		}
+		contributions = append(contributions, contribution)
+	}
+
+	return contributors, contributions
+}
+
+func extractMemos(mi []dto.MemoInput, uid int64, recordId string) []record.MemoEntry {
+	var memos []record.MemoEntry
+	for i, m := range mi {
+		memo := record.MemoEntry{
+			RecordEntryId: recordId,
+			DisplayNumber: i,
+			Title:         m.Label,
+			Content:       m.Content,
+			InternalUid:   uid,
+			DelFlg:        0,
+		}
+		memos = append(memos, memo)
+	}
+	return memos
+}
+
+func extractUrls(ui []dto.UrlInput, uid int64, recordId string) []record.UrlEntry {
+	var urls []record.UrlEntry
+	for i, u := range ui {
+		url := record.UrlEntry{
+			RecordEntryId: recordId,
+			DisplayNumber: i,
+			Label:         u.Label,
+			Url:           u.Value,
+			InternalUid:   uid,
+			DelFlg:        0,
+		}
+		urls = append(urls, url)
+	}
+
+	return urls
+}
+
+func extractOptionValues(oi *dto.OptionValuesInput, internalUid int64, recordId string) []record.OptionValue {
+	if oi == nil {
+		return nil
+	}
+
+	var optionValues []record.OptionValue
+	if oi.Isbn != nil {
+		optionValues = append(optionValues, createOptionValue(recordId, internalUid, record.RecordFieldIsbn, 10, *oi.Isbn))
+	}
+
+	if oi.Edition != nil {
+		optionValues = append(optionValues, createOptionValue(recordId, internalUid, record.RecordFieldEdition, 20, *oi.Edition))
+	}
+
+	if oi.OriginalTitle != nil {
+		optionValues = append(optionValues, createOptionValue(recordId, internalUid, record.RecordFieldOriginalTitle, 30, *oi.OriginalTitle))
+	}
+
+	return optionValues
+}
+
+func createOptionValue(recordId string, internalUid int64, field record.RecordField, displayNum int, value string) record.OptionValue {
+	return record.OptionValue{
+		RecordEntryId: recordId,
+		RecordField:   field,
+		DisplayNumber: displayNum,
+		RawValue:      value,
+		InternalUid:   internalUid,
+		DelFlg:        0,
+	}
+}

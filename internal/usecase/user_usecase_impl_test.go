@@ -230,7 +230,7 @@ func TestUserUsecaseImpl_CreateUser(t *testing.T) {
 	for _, tt := range tests {
 		timestampBefore := time.Now()
 		t.Run(tt.name, func(t *testing.T) {
-			u := NewUserUsecase(
+			u := NewUserUsecaseImpl(
 				tt.mockUserRepo,
 				tt.mockGeneralRepo,
 				tt.mockFirebaseRepo,
@@ -487,7 +487,7 @@ func TestUserUsecaseImpl_DeleteUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := NewUserUsecase(
+			u := NewUserUsecaseImpl(
 				tt.mockUserRepo,
 				nil,
 				tt.mockFirebaseRepo,
@@ -782,7 +782,7 @@ func TestUserUsecaseImpl_GetUserAgreements(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := NewUserUsecase(
+			u := NewUserUsecaseImpl(
 				tt.mockUserRepo,
 				tt.mockGeneralRepo,
 				nil,
@@ -1249,7 +1249,7 @@ func TestUserUsecaseImpl_UpdateUserAgreements(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := NewUserUsecase(
+			u := NewUserUsecaseImpl(
 				tt.mockUserRepo,
 				tt.mockGeneralRepo,
 				nil,
@@ -1357,7 +1357,7 @@ func TestUserUseraseImpl_Login(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := NewUserUsecase(
+			u := NewUserUsecaseImpl(
 				tt.mockUserRepo,
 				nil,
 				nil,

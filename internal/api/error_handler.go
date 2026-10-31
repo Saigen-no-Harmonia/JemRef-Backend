@@ -48,6 +48,8 @@ func toApiError(err error) ApiError {
 		return ErrUnAuthorized
 	case errors.Is(err, middleware.ErrUserAlreadyExists):
 		return ErrUserAlreadyExists
+	case errors.Is(err, middleware.ErrUserDeleted):
+		return ErrUserDeleted
 
 	// Handler層が投げるエラーの変換
 	case errors.Is(err, handler.ErrInternalUidNotFound):
@@ -64,8 +66,20 @@ func toApiError(err error) ApiError {
 		return ErrBadRequest
 	case errors.Is(err, handler.ErrPolicyTypeInvalid):
 		return ErrBadRequest
-	case errors.Is(err, middleware.ErrUserDeleted):
-		return ErrUserDeleted
+	case errors.Is(err, handler.ErrMainTitleRequired):
+		return ErrMainTitleRequired
+	case errors.Is(err, handler.ErrRecordTypeRequired):
+		return ErrRecordTypeRequired
+	case errors.Is(err, handler.ErrInvalidRecordType):
+		return ErrInvalidRecordType
+	case errors.Is(err, handler.ErrContainerNotAllowed):
+		return ErrContainerNotAllowed
+	case errors.Is(err, handler.ErrInvalidPublicationDate):
+		return ErrInvalidPublicationDate
+	case errors.Is(err, handler.ErrInvalidReadStatus):
+		return ErrInvalidReadStatus
+	case errors.Is(err, handler.ErrInvalidContributorRole):
+		return ErrInvalidContributorRole
 
 		// Usecaseが投げるエラーの変換
 	case errors.Is(err, usecase.ErrPolicyNotFound):
@@ -80,8 +94,12 @@ func toApiError(err error) ApiError {
 		return ErrInvalidPolicyType
 	case errors.Is(err, usecase.ErrInvalidPolicyVersion):
 		return ErrInvalidPolicyVersion
+	case errors.Is(err, usecase.ErrReachRegistrationLimit):
+		return ErrReachRegistrationLimit
 
-		// 予期せぬエラー
+	// repository層のエラーはusecaseエラーに変換される前提とするのでなし
+
+	// 予期せぬエラー
 	default:
 		return ErrInternal
 	}

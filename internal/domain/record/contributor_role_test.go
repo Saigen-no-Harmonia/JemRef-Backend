@@ -6,36 +6,36 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_ContributerRole_IsValid(t *testing.T) {
+func Test_ContributorRole_IsValid(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    ContributerRole
+		input    ContributorRole
 		expected bool
 	}{
 		{
 			name:     "正常_著者",
-			input:    ContributerRoleAuthor,
+			input:    ContributorRoleAuthor,
 			expected: true,
 		},
 		{
 			name:     "正常_翻訳者",
-			input:    ContributerRoleInterpreter,
+			input:    ContributorRoleInterpreter,
 			expected: true,
 		},
 		{
 			name:     "正常_編者",
-			input:    ContributerRoleCompiler,
+			input:    ContributorRoleCompiler,
 			expected: true,
 		},
 		{
 			name:     "正常_編著者",
-			input:    ContributerRoleCompilerAuthor,
+			input:    ContributorRoleCompilerAuthor,
 			expected: true,
 		},
 		{
 			name:     "異常_不正な役割",
-			input:    ContributerRole("invalid"),
+			input:    ContributorRole("invalid"),
 			expected: false,
 		},
 	}
@@ -50,41 +50,41 @@ func Test_ContributerRole_IsValid(t *testing.T) {
 	}
 }
 
-func Test_ContributerRole_GetId(t *testing.T) {
+func Test_ContributorRole_GetId(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		input       ContributerRole
+		input       ContributorRole
 		expected    string
 		expectPanic bool
 	}{
 		{
 			name:        "正常_著者",
-			input:       ContributerRoleAuthor,
-			expected:    ContributerRoleIdAuthor,
+			input:       ContributorRoleAuthor,
+			expected:    ContributorRoleIdAuthor,
 			expectPanic: false,
 		},
 		{
 			name:        "正常_翻訳者",
-			input:       ContributerRoleInterpreter,
-			expected:    ContributerRoleIdInterpreter,
+			input:       ContributorRoleInterpreter,
+			expected:    ContributorRoleIdInterpreter,
 			expectPanic: false,
 		},
 		{
 			name:        "正常_編者",
-			input:       ContributerRoleCompiler,
-			expected:    ContributerRoleIdCompiler,
+			input:       ContributorRoleCompiler,
+			expected:    ContributorRoleIdCompiler,
 			expectPanic: false,
 		},
 		{
 			name:        "正常_編著者",
-			input:       ContributerRoleCompilerAuthor,
-			expected:    ContributerRoleIdCompilerAuthor,
+			input:       ContributorRoleCompilerAuthor,
+			expected:    ContributorRoleIdCompilerAuthor,
 			expectPanic: false,
 		},
 		{
 			name:        "異常_不正な役割",
-			input:       ContributerRole("invalid"),
+			input:       ContributorRole("invalid"),
 			expected:    "",
 			expectPanic: true,
 		},
@@ -107,36 +107,36 @@ func Test_ContributerRole_GetId(t *testing.T) {
 	}
 }
 
-func Test_ContributerRole_RoleFromId(t *testing.T) {
+func Test_ContributorRole_RoleFromId(t *testing.T) {
 
 	tests := []struct {
 		name        string
 		input       string
-		expected    ContributerRole
+		expected    ContributorRole
 		expectPanic bool
 	}{
 		{
 			name:        "正常_著者",
-			input:       ContributerRoleIdAuthor,
-			expected:    ContributerRoleAuthor,
+			input:       ContributorRoleIdAuthor,
+			expected:    ContributorRoleAuthor,
 			expectPanic: false,
 		},
 		{
 			name:        "正常_翻訳者",
-			input:       ContributerRoleIdInterpreter,
-			expected:    ContributerRoleInterpreter,
+			input:       ContributorRoleIdInterpreter,
+			expected:    ContributorRoleInterpreter,
 			expectPanic: false,
 		},
 		{
 			name:        "正常_編者",
-			input:       ContributerRoleIdCompiler,
-			expected:    ContributerRoleCompiler,
+			input:       ContributorRoleIdCompiler,
+			expected:    ContributorRoleCompiler,
 			expectPanic: false,
 		},
 		{
 			name:        "正常_編著者",
-			input:       ContributerRoleIdCompilerAuthor,
-			expected:    ContributerRoleCompilerAuthor,
+			input:       ContributorRoleIdCompilerAuthor,
+			expected:    ContributorRoleCompilerAuthor,
 			expectPanic: false,
 		},
 		{

@@ -26,7 +26,7 @@ type UserUsecaseImpl struct {
 	// txManager repository.TxManager
 }
 
-func NewUserUsecase(ur repository.UserRepository, gr repository.GeneralRepository, fr repository.FirebaseRepository, g id.Generator) UserUsecase {
+func NewUserUsecaseImpl(ur repository.UserRepository, gr repository.GeneralRepository, fr repository.FirebaseRepository, g id.Generator) UserUsecase {
 	return &UserUsecaseImpl{
 		userRepo:     ur,
 		generalRepo:  gr,
@@ -34,6 +34,8 @@ func NewUserUsecase(ur repository.UserRepository, gr repository.GeneralRepositor
 		idGen:        g,
 	}
 }
+
+var _ UserUsecase = (*UserUsecaseImpl)(nil)
 
 // Create ユーザを作成し、公開用UIDを返却する
 func (uu *UserUsecaseImpl) Create(ctx context.Context, cu dto.CreateUserInput) (*dto.CreateUserOutput, error) {

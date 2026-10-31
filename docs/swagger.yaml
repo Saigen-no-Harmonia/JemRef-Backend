@@ -1,25 +1,11 @@
 basePath: /api/v0
 definitions:
-  dto.AgreementPolicyRequest:
-    properties:
-      policy_type:
-        description: 規約タイプ
-        example: privacy_policy
-        type: string
-      version:
-        description: 規約バージョン
-        example: "1.4"
-        type: string
-    required:
-    - policy_type
-    - version
-    type: object
   dto.ContainerDetailItem:
     properties:
-      contributers:
+      contributors:
         description: 貢献者情報
         items:
-          $ref: '#/definitions/dto.ContributerInfo'
+          $ref: '#/definitions/dto.ContributorInfo'
         type: array
       issue:
         description: 号
@@ -29,19 +15,18 @@ definitions:
         description: 主題
         example: 第1章 「学校」制度の境界線
         type: string
-      option_value:
+      option_values:
         allOf:
         - $ref: '#/definitions/dto.OptionValues'
         description: オプション書誌項目値情報
       read_status:
-        allOf:
-        - $ref: '#/definitions/record.ReadStatus'
         description: 既読ステータス
         enum:
         - unread
         - reading
         - partially_read
         - read
+        type: string
       sub_title:
         description: 副題
         example: その形成と展開
@@ -50,13 +35,15 @@ definitions:
         description: 巻
         example: 日本教育史講座第1巻
         type: string
+    required:
+    - main_title
     type: object
   dto.ContainerListItemResponse:
     properties:
-      contributers:
+      contributors:
         description: 収録物貢献者情報
         items:
-          $ref: '#/definitions/dto.ContributerInfo'
+          $ref: '#/definitions/dto.ContributorInfo'
         type: array
       issue:
         description: 号
@@ -75,21 +62,23 @@ definitions:
         example: 日本教育史講座第1巻
         type: string
     type: object
-  dto.ContributerInfo:
+  dto.ContributorInfo:
     properties:
       name:
         description: 貢献者名（人物名、研究会名など）
         example: 木村元
         type: string
       role:
-        allOf:
-        - $ref: '#/definitions/record.ContributerRole'
         description: 役割
         enum:
         - author
         - interpreter
         - compiler
         - compiler_author
+        type: string
+    required:
+    - name
+    - role
     type: object
   dto.CreateRecordRequest:
     properties:
@@ -97,10 +86,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/dto.ContainerDetailItem'
         description: 収録物詳細情報
-      contributers:
+      contributors:
         description: 貢献者情報
         items:
-          $ref: '#/definitions/dto.ContributerInfo'
+          $ref: '#/definitions/dto.ContributorInfo'
         type: array
       main_title:
         description: 主題
@@ -111,7 +100,7 @@ definitions:
         items:
           $ref: '#/definitions/dto.MemoInfo'
         type: array
-      option_value:
+      option_values:
         allOf:
         - $ref: '#/definitions/dto.OptionValues'
         description: オプション書誌項目値情報
@@ -128,14 +117,13 @@ definitions:
         example: 東京大学出版会
         type: string
       read_status:
-        allOf:
-        - $ref: '#/definitions/record.ReadStatus'
         description: 既読ステータス
         enum:
         - unread
         - reading
         - partially_read
         - read
+        type: string
       sub_title:
         description: 副題
         example: その形成と展開
@@ -143,9 +131,9 @@ definitions:
       type:
         description: 書誌タイプ
         enum:
-        - monograph
+        - authored_book
         - journal_article
-        - compilation_article
+        - contributed_book_article
         type: string
       urls:
         description: URL情報
@@ -236,10 +224,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/dto.ContainerDetailItem'
         description: 収録物詳細情報
-      contributers:
+      contributors:
         description: 貢献者情報
         items:
-          $ref: '#/definitions/dto.ContributerInfo'
+          $ref: '#/definitions/dto.ContributorInfo'
         type: array
       main_title:
         description: 主題
@@ -250,7 +238,7 @@ definitions:
         items:
           $ref: '#/definitions/dto.MemoInfo'
         type: array
-      option_value:
+      option_values:
         allOf:
         - $ref: '#/definitions/dto.OptionValues'
         description: オプション書誌項目値情報
@@ -267,14 +255,13 @@ definitions:
         example: 東京大学出版会
         type: string
       read_status:
-        allOf:
-        - $ref: '#/definitions/record.ReadStatus'
         description: 既読ステータス
         enum:
         - unread
         - reading
         - partially_read
         - read
+        type: string
       record_id:
         description: ユーザ書誌ID(36桁固定文字列)
         example: AHIF98DJ0SJUFY874H...
@@ -286,9 +273,9 @@ definitions:
       type:
         description: 書誌タイプ
         enum:
-        - monograph
+        - authored_book
         - journal_article
-        - compilation_article
+        - contributed_book_article
         type: string
       urls:
         description: URL情報
@@ -331,6 +318,8 @@ definitions:
         description: ラベル
         example: 要約
         type: string
+    required:
+    - content
     type: object
   dto.OptionValues:
     properties:
@@ -344,16 +333,30 @@ definitions:
         example: School History of Boundary
         type: string
     type: object
+  dto.PolicyAgreementRequest:
+    properties:
+      policy_type:
+        description: 規約タイプ
+        example: privacy_policy
+        type: string
+      version:
+        description: 規約バージョン
+        example: "1.4"
+        type: string
+    required:
+    - policy_type
+    - version
+    type: object
   dto.RecordListItemResponse:
     properties:
       container:
         allOf:
         - $ref: '#/definitions/dto.ContainerListItemResponse'
         description: 収録物情報
-      contributers:
+      contributors:
         description: 貢献者情報
         items:
-          $ref: '#/definitions/dto.ContributerInfo'
+          $ref: '#/definitions/dto.ContributorInfo'
         type: array
       main_title:
         description: 主題
@@ -372,14 +375,13 @@ definitions:
         example: 東京大学出版会
         type: string
       read_status:
-        allOf:
-        - $ref: '#/definitions/record.ReadStatus'
         description: 既読ステータス
         enum:
         - unread
         - reading
         - partially_read
         - read
+        type: string
       record_id:
         description: ユーザ書誌ID(36桁固定文字列)
         example: AHIF98DJ0SJUFY874H...
@@ -391,9 +393,9 @@ definitions:
       type:
         description: 書誌タイプ
         enum:
-        - monograph
+        - authored_book
         - journal_article
-        - compilation_article
+        - contributed_book_article
         type: string
     required:
     - main_title
@@ -412,10 +414,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/dto.ContainerDetailItem'
         description: 収録物詳細情報
-      contributers:
+      contributors:
         description: 貢献者情報
         items:
-          $ref: '#/definitions/dto.ContributerInfo'
+          $ref: '#/definitions/dto.ContributorInfo'
         type: array
       main_title:
         description: 主題
@@ -426,7 +428,7 @@ definitions:
         items:
           $ref: '#/definitions/dto.MemoInfo'
         type: array
-      option_value:
+      option_values:
         allOf:
         - $ref: '#/definitions/dto.OptionValues'
         description: オプション書誌項目値情報
@@ -443,14 +445,13 @@ definitions:
         example: 東京大学出版会
         type: string
       read_status:
-        allOf:
-        - $ref: '#/definitions/record.ReadStatus'
         description: 既読ステータス
         enum:
         - unread
         - reading
         - partially_read
         - read
+        type: string
       sub_title:
         description: 副題
         example: その形成と展開
@@ -458,9 +459,9 @@ definitions:
       type:
         description: 書誌タイプ
         enum:
-        - monograph
+        - authored_book
         - journal_article
-        - compilation_article
+        - contributed_book_article
         type: string
       urls:
         description: URL情報
@@ -475,7 +476,7 @@ definitions:
     properties:
       policies:
         items:
-          $ref: '#/definitions/dto.AgreementPolicyRequest'
+          $ref: '#/definitions/dto.PolicyAgreementRequest'
         type: array
     required:
     - policies
@@ -490,6 +491,8 @@ definitions:
         description: URL
         example: https://example.com/sample
         type: string
+    required:
+    - value
     type: object
   dto.UserAgreementResponse:
     properties:
@@ -532,30 +535,6 @@ definitions:
     required:
     - user_id
     type: object
-  record.ContributerRole:
-    enum:
-    - author
-    - interpreter
-    - compiler
-    - compiler_author
-    type: string
-    x-enum-varnames:
-    - ContributerRoleAuthor
-    - ContributerRoleInterpreter
-    - ContributerRoleCompiler
-    - ContributerRoleCompilerAuthor
-  record.ReadStatus:
-    enum:
-    - read
-    - unread
-    - reading
-    - partial_read
-    type: string
-    x-enum-varnames:
-    - ReadStatusRead
-    - ReadStatusUnread
-    - ReadStatusReading
-    - ReadStatusPertialRead
   user.PolicyAgreementStatus:
     enum:
     - agreed
@@ -586,8 +565,10 @@ paths:
       responses:
         "200":
           description: OK
+        "500":
+          description: Internal Server Error
           schema:
-            $ref: '#/definitions/dto.StatusResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       summary: Health
       tags:
       - health
@@ -615,6 +596,10 @@ paths:
           description: Created
           schema:
             $ref: '#/definitions/dto.CreateUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
         "409":
           description: Conflict
           schema:
@@ -672,7 +657,7 @@ paths:
         type: string
       - description: 名前（検索用：部分一致）
         in: query
-        name: contributerName
+        name: contributorName
         type: string
       - default: 20
         description: リミット
@@ -691,7 +676,7 @@ paths:
         in: query
         name: publish_year
         type: string
-      - default: publish_yaer
+      - default: publish_year
         description: 並びかえキー (出版年、登録日)
         example: insert_date
         in: query

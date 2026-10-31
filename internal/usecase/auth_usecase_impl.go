@@ -20,6 +20,8 @@ func NewAuthUsecaseImpl(ur repository.UserRepository, fr repository.FirebaseRepo
 	}
 }
 
+var _ AuthUsecase = (*AuthUsecaseImpl)(nil)
+
 // Authenticate ユーザ情報を認証する。Ph0ではDBからユーザ情報を取得するだけ。
 func (a *AuthUsecaseImpl) Authenticate(
 	ctx context.Context,

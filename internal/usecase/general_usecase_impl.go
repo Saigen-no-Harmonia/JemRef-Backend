@@ -16,6 +16,8 @@ func NewGeneralUsecaseImpl(r repository.GeneralRepository) *GeneralUsecaseImpl {
 	return &GeneralUsecaseImpl{generalRepo: r}
 }
 
+var _ GeneralUsecase = (*GeneralUsecaseImpl)(nil)
+
 // GetPolicies 最新の規約情報１件を返却する
 func (g *GeneralUsecaseImpl) GetPolicies(
 	ctx context.Context,
