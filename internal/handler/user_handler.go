@@ -33,6 +33,23 @@ func (h *UserHandler) RegisterRoutes(r *gin.RouterGroup) {
 	r.PUT("/users/login", h.Login)
 }
 
+// createUserRequiredErrors CreateUserRequestのbinding:"required"違反に対応するエラー
+//
+// 必須制約自体はDTOのbindingタグが宣言しており、ここはエラーコードの対応表。
+var createUserRequiredErrors = map[string]error{
+	"TermsAgreedVersion":         ErrAgreedVersionRequired,
+	"PrivacyPolicyAgreedVersion": ErrAgreedVersionRequired,
+}
+
+// updateUserAgreementsRequiredErrors UpdateUserAgreementsRequestのbinding:"required"違反に対応するエラー
+//
+// PolicyType / Version はPoliciesのdiveタグにより各要素が検証される。
+var updateUserAgreementsRequiredErrors = map[string]error{
+	"Policies":   ErrPolicyRequired,
+	"PolicyType": ErrPolicyTypeInvalid,
+	"Version":    ErrAgreedVersionRequired,
+}
+
 // @Summary [MEM-API-002] ユーザ情報登録
 // @Description ユーザを作成する。ユーザ情報はfirebase tokenから取得する。
 // @Tags users
@@ -61,7 +78,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 
 	var req dto.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(fmt.Errorf("%w: %v", ErrInvalidRequestBody, err))
+		c.Error(toBindingError(err, createUserRequiredErrors))
 		return
 	}
 
@@ -162,7 +179,7 @@ func (h *UserHandler) UpdateUserAgreements(c *gin.Context) {
 
 	var req handlerDto.UpdateUserAgreementsRequest
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		c.Error(fmt.Errorf("%w: %v", ErrInvalidRequestBody, err))
+		c.Error(toBindingError(err, updateUserAgreementsRequiredErrors))
 		return
 	}
 

@@ -113,7 +113,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 			expectedErrorBody: ErrEmailNotFound,
 		},
 		{
-			name:           "異常_ユーザ登録_リクエスト不正",
+			name:           "異常_ユーザ登録_規約同意バージョン未指定",
 			CtxFirebaseUid: "firebase_uid",
 			CtxEmail:       "test@example.com",
 			body:           handlerDto.CreateUserRequest{},
@@ -129,7 +129,19 @@ func TestUserHandler_CreateUser(t *testing.T) {
 			},
 			usecaseCalled:     false,
 			expectError:       true,
-			expectedErrorBody: ErrInvalidRequestBody,
+			expectedErrorBody: ErrAgreedVersionRequired,
+		},
+		{
+			name:           "異常_ユーザ登録_プライバシーポリシー同意バージョン未指定",
+			CtxFirebaseUid: "firebase_uid",
+			CtxEmail:       "test@example.com",
+			body: handlerDto.CreateUserRequest{
+				TermsAgreedVersion: "0.1",
+			},
+			mockUsecase:       &mock.MockUserUsecase{},
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrAgreedVersionRequired,
 		},
 		{
 			name:           "異常_ユーザ登録_既存ユーザあり",
@@ -551,7 +563,7 @@ func TestUserHandler_UpdateUserAgreements(t *testing.T) {
 			expectedErrorBody: ErrInternalUidNotFound,
 		},
 		{
-			name:           "異常_ユーザ規約同意状況更新_リクエスト形式不正",
+			name:           "異常_ユーザ規約同意状況更新_規約情報がnull",
 			ctxInternalUid: uid,
 			body:           handlerDto.UpdateUserAgreementsRequest{},
 			mockUsecase: &mock.MockUserUsecase{
@@ -561,7 +573,49 @@ func TestUserHandler_UpdateUserAgreements(t *testing.T) {
 			},
 			usecaseCalled:     false,
 			expectError:       true,
-			expectedErrorBody: ErrInvalidRequestBody,
+			expectedErrorBody: ErrPolicyRequired,
+		},
+		{
+			// Policiesのdiveタグにより各要素のbindingタグが検証される
+			name:           "異常_ユーザ規約同意状況更新_要素の規約タイプが未指定",
+			ctxInternalUid: uid,
+			body: handlerDto.UpdateUserAgreementsRequest{
+				Policies: []handlerDto.PolicyAgreementRequest{
+					{PolicyType: "", Version: "0.1"},
+				},
+			},
+			mockUsecase:       &mock.MockUserUsecase{},
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrPolicyTypeInvalid,
+		},
+		{
+			name:           "異常_ユーザ規約同意状況更新_要素の規約バージョンが未指定",
+			ctxInternalUid: uid,
+			body: handlerDto.UpdateUserAgreementsRequest{
+				Policies: []handlerDto.PolicyAgreementRequest{
+					{PolicyType: "terms", Version: ""},
+				},
+			},
+			mockUsecase:       &mock.MockUserUsecase{},
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrAgreedVersionRequired,
+		},
+		{
+			// 2件目以降の要素も検証されること
+			name:           "異常_ユーザ規約同意状況更新_2件目の要素が不正",
+			ctxInternalUid: uid,
+			body: handlerDto.UpdateUserAgreementsRequest{
+				Policies: []handlerDto.PolicyAgreementRequest{
+					{PolicyType: "terms", Version: "0.1"},
+					{PolicyType: "", Version: "0.1"},
+				},
+			},
+			mockUsecase:       &mock.MockUserUsecase{},
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrPolicyTypeInvalid,
 		},
 		{
 			name:           "異常_ユーザ規約同意状況更新_リクエストが空の配列",

@@ -31,7 +31,7 @@ type UserAgreementResponse struct {
 }
 
 type UpdateUserAgreementsRequest struct {
-	Policies []PolicyAgreementRequest `json:"policies" binding:"required"`
+	Policies []PolicyAgreementRequest `json:"policies" binding:"required,dive"`
 }
 
 type PolicyAgreementRequest struct {

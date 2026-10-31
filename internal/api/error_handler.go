@@ -61,11 +61,13 @@ func toApiError(err error) ApiError {
 	case errors.Is(err, handler.ErrEmailNotFound):
 		return ErrInternal
 	case errors.Is(err, handler.ErrPolicyRequired):
-		return ErrBadRequest
+		return ErrPolicyRequired
+	case errors.Is(err, handler.ErrAgreedVersionRequired):
+		return ErrAgreedVersionRequired
 	case errors.Is(err, handler.ErrInvalidRequestBody):
 		return ErrBadRequest
 	case errors.Is(err, handler.ErrPolicyTypeInvalid):
-		return ErrBadRequest
+		return ErrInvalidPolicyType
 	case errors.Is(err, handler.ErrMainTitleRequired):
 		return ErrMainTitleRequired
 	case errors.Is(err, handler.ErrRecordTypeRequired):

@@ -104,4 +104,16 @@ var (
 		Code:       "E0016",
 		Message:    "DB登録件数上限を超えています。",
 	}
+
+	ErrPolicyRequired = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0017",
+		Message:    "規約情報は必須です。",
+	}
+
+	ErrAgreedVersionRequired = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0018",
+		Message:    "規約同意バージョンは必須です。",
+	}
 )

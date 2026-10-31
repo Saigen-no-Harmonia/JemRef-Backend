@@ -96,6 +96,36 @@ func TestErrorHandler(t *testing.T) {
 			},
 		},
 		{
+			name:          "異常_規約情報必須エラーを専用コードに変換する",
+			handlerErrs:   []error{handler.ErrPolicyRequired},
+			handlerStatus: http.StatusOK,
+			expectedCode:  ErrPolicyRequired.StatusCode,
+			expectedBody: handlerDto.ErrorResponse{
+				Code:    ErrPolicyRequired.Code,
+				Message: ErrPolicyRequired.Message,
+			},
+		},
+		{
+			name:          "異常_規約同意バージョン必須エラーを専用コードに変換する",
+			handlerErrs:   []error{handler.ErrAgreedVersionRequired},
+			handlerStatus: http.StatusOK,
+			expectedCode:  ErrAgreedVersionRequired.StatusCode,
+			expectedBody: handlerDto.ErrorResponse{
+				Code:    ErrAgreedVersionRequired.Code,
+				Message: ErrAgreedVersionRequired.Message,
+			},
+		},
+		{
+			name:          "異常_規約タイプ不正エラーを専用コードに変換する",
+			handlerErrs:   []error{handler.ErrPolicyTypeInvalid},
+			handlerStatus: http.StatusOK,
+			expectedCode:  ErrInvalidPolicyType.StatusCode,
+			expectedBody: handlerDto.ErrorResponse{
+				Code:    ErrInvalidPolicyType.Code,
+				Message: ErrInvalidPolicyType.Message,
+			},
+		},
+		{
 			name:          "異常_未登録のエラーは500に変換する",
 			handlerErrs:   []error{errApiTestUnregistered},
 			handlerStatus: http.StatusOK,

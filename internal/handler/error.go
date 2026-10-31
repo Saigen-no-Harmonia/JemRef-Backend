@@ -11,6 +11,7 @@ var (
 	ErrPublicUidNotFound      = errors.New("contextから公開用UIDが取得できませんでした。")
 	ErrEmailNotFound          = errors.New("contextからメールアドレスが取得できませんでした。")
 	ErrPolicyRequired         = errors.New("リクエストに規約情報がありませんでした。")
+	ErrAgreedVersionRequired  = errors.New("規約同意バージョンは必須です。")
 	ErrInvalidRequestBody     = errors.New("リクエストボディの形式が不正です。")
 	ErrPolicyTypeInvalid      = errors.New("規約タイプ指定が不正です。")
 	ErrMainTitleRequired      = errors.New("主題は必須項目です。")
