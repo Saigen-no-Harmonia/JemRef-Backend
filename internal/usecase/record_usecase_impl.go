@@ -109,7 +109,7 @@ func extractContainer(input dto.CreateRecordInput, containerId string) *record.U
 
 	uid := input.InternalUserId
 	optionValues := extractOptionValues(ci.OptionValues, uid, containerId)
-	contributors, contributions := extractContributorRelations(ci.Contributors, uid, containerId)
+	relations := extractContributorRelations(ci.Contributors)
 
 	return &record.UserRecordEntry{
 		RecordEntryId:   containerId,
@@ -124,9 +124,9 @@ func extractContainer(input dto.CreateRecordInput, containerId string) *record.U
 		DatePrecision:   input.RecordInput.DatePrecision,
 		ReadStatus:      ci.ReadStatus,
 		DelFlg:          0,
-		Contributors:    contributors,
-		Contributions:   contributions,
-		OptionValues:    optionValues,
+
+		ContributorRelations: relations,
+		OptionValues:         optionValues,
 	}
 }
 
@@ -135,7 +135,7 @@ func extractArticle(ci dto.CreateRecordInput, recordId string, containerId strin
 	ri := ci.RecordInput
 
 	optionValues := extractOptionValues(ri.OptionValues, uid, recordId)
-	contributors, contributions := extractContributorRelations(ri.Contributors, uid, recordId)
+	relations := extractContributorRelations(ri.Contributors)
 	urls := extractUrls(ri.Urls, uid, recordId)
 	memos := extractMemos(ri.Memos, uid, recordId)
 
@@ -157,54 +157,48 @@ func extractArticle(ci dto.CreateRecordInput, recordId string, containerId strin
 		ReadStatus:      ri.ReadStatus,
 		ParentId:        containerIdPtr,
 		DelFlg:          0,
-		Contributors:    contributors,
-		Contributions:   contributions,
-		Urls:            urls,
-		Memos:           memos,
-		OptionValues:    optionValues,
+
+		ContributorRelations: relations,
+		Urls:                 urls,
+		Memos:                memos,
+		OptionValues:         optionValues,
 	}
 }
 
+// extractContributorRelations 貢献者と貢献情報のペアを取得する
+// 書誌ID・内部用ユーザID・表示順はrepositoryが払い出すor取得可能なので移譲。
 func extractContributorRelations(
 	contributorInput []dto.ContributorInput,
-	uid int64,
-	recordId string,
-) ([]record.ContributorEntry, []record.ContributionEntry) {
-	var contributors []record.ContributorEntry
-	var contributions []record.ContributionEntry
+) []record.ContributorRelation {
+	var relations []record.ContributorRelation
 
-	for i, c := range contributorInput {
-		contributor := record.ContributorEntry{
-			RawName:     c.Name,
-			InternalUid: uid,
-			DelFlg:      0,
-		}
-		contributors = append(contributors, contributor)
-
-		contribution := record.ContributionEntry{
-			RecordEntryId: recordId,
-			Role:          c.Role,
-			DisplayNumber: i,
-			DelFlg:        0,
-		}
-		contributions = append(contributions, contribution)
+	for _, c := range contributorInput {
+		relations = append(relations, record.ContributorRelation{
+			Contributor: record.ContributorEntry{
+				RawName: c.Name,
+				DelFlg:  0,
+			},
+			Contribution: record.ContributionEntry{
+				Role:   c.Role,
+				DelFlg: 0,
+			},
+		})
 	}
 
-	return contributors, contributions
+	return relations
 }
 
 func extractMemos(mi []dto.MemoInput, uid int64, recordId string) []record.MemoEntry {
 	var memos []record.MemoEntry
 	for i, m := range mi {
-		memo := record.MemoEntry{
+		memos = append(memos, record.MemoEntry{
 			RecordEntryId: recordId,
 			DisplayNumber: i,
 			Title:         m.Label,
 			Content:       m.Content,
 			InternalUid:   uid,
 			DelFlg:        0,
-		}
-		memos = append(memos, memo)
+		})
 	}
 	return memos
 }
@@ -212,15 +206,14 @@ func extractMemos(mi []dto.MemoInput, uid int64, recordId string) []record.MemoE
 func extractUrls(ui []dto.UrlInput, uid int64, recordId string) []record.UrlEntry {
 	var urls []record.UrlEntry
 	for i, u := range ui {
-		url := record.UrlEntry{
+		urls = append(urls, record.UrlEntry{
 			RecordEntryId: recordId,
 			DisplayNumber: i,
 			Label:         u.Label,
 			Url:           u.Value,
 			InternalUid:   uid,
 			DelFlg:        0,
-		}
-		urls = append(urls, url)
+		})
 	}
 
 	return urls

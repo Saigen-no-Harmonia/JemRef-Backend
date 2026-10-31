@@ -39,24 +39,16 @@ func TestRecordUsecase_Create(t *testing.T) {
 
 	// 上限件数ちょうどの貢献者情報とその期待値
 	limitContributors := make([]dto.ContributorInput, 0, recordInsertLimit)
-	expectedLimitContributors := make([]record.ContributorEntry, 0, recordInsertLimit)
-	expectedLimitContributions := make([]record.ContributionEntry, 0, recordInsertLimit)
+	expectedLimitRelations := make([]record.ContributorRelation, 0, recordInsertLimit)
 	for i := 0; i < recordInsertLimit; i++ {
 		name := "貢献者" + strconv.Itoa(i)
 		limitContributors = append(limitContributors, dto.ContributorInput{
 			Name: name,
 			Role: record.ContributorRoleAuthor,
 		})
-		expectedLimitContributors = append(expectedLimitContributors, record.ContributorEntry{
-			RawName:     name,
-			InternalUid: recordTestUid,
-			DelFlg:      0,
-		})
-		expectedLimitContributions = append(expectedLimitContributions, record.ContributionEntry{
-			RecordEntryId: recordArticleId,
-			Role:          record.ContributorRoleAuthor,
-			DisplayNumber: i,
-			DelFlg:        0,
+		expectedLimitRelations = append(expectedLimitRelations, record.ContributorRelation{
+			Contributor:  record.ContributorEntry{RawName: name, DelFlg: 0},
+			Contribution: record.ContributionEntry{Role: record.ContributorRoleAuthor, DelFlg: 0},
 		})
 	}
 
@@ -190,15 +182,20 @@ func TestRecordUsecase_Create(t *testing.T) {
 					RecordType:    record.RecordTypeAuthoredBook,
 					MainTitle:     "単著書のタイトル",
 					DelFlg:        0,
-					Contributors: []record.ContributorEntry{
-						{RawName: "貢献者A", InternalUid: recordTestUid, DelFlg: 0},
-						{RawName: "貢献者B", InternalUid: recordTestUid, DelFlg: 0},
-						{RawName: "貢献者C", InternalUid: recordTestUid, DelFlg: 0},
-					},
-					Contributions: []record.ContributionEntry{
-						{RecordEntryId: recordArticleId, Role: record.ContributorRoleAuthor, DisplayNumber: 0, DelFlg: 0},
-						{RecordEntryId: recordArticleId, Role: record.ContributorRoleInterpreter, DisplayNumber: 1, DelFlg: 0},
-						{RecordEntryId: recordArticleId, Role: record.ContributorRoleCompiler, DisplayNumber: 2, DelFlg: 0},
+					// 書誌ID・ユーザID・表示順はrepositoryが設定するためここでは空
+					ContributorRelations: []record.ContributorRelation{
+						{
+							Contributor:  record.ContributorEntry{RawName: "貢献者A", DelFlg: 0},
+							Contribution: record.ContributionEntry{Role: record.ContributorRoleAuthor, DelFlg: 0},
+						},
+						{
+							Contributor:  record.ContributorEntry{RawName: "貢献者B", DelFlg: 0},
+							Contribution: record.ContributionEntry{Role: record.ContributorRoleInterpreter, DelFlg: 0},
+						},
+						{
+							Contributor:  record.ContributorEntry{RawName: "貢献者C", DelFlg: 0},
+							Contribution: record.ContributionEntry{Role: record.ContributorRoleCompiler, DelFlg: 0},
+						},
 					},
 				},
 			},
@@ -231,14 +228,15 @@ func TestRecordUsecase_Create(t *testing.T) {
 					RecordType:    record.RecordTypeJournal,
 					MainTitle:     "雑誌のタイトル",
 					DelFlg:        0,
-					Contributors: []record.ContributorEntry{
-						{RawName: "編者A", InternalUid: recordTestUid, DelFlg: 0},
-						{RawName: "編者B", InternalUid: recordTestUid, DelFlg: 0},
-					},
-					// 貢献情報はコンテナのIDに紐づく
-					Contributions: []record.ContributionEntry{
-						{RecordEntryId: recordContainerId, Role: record.ContributorRoleCompiler, DisplayNumber: 0, DelFlg: 0},
-						{RecordEntryId: recordContainerId, Role: record.ContributorRoleCompilerAuthor, DisplayNumber: 1, DelFlg: 0},
+					ContributorRelations: []record.ContributorRelation{
+						{
+							Contributor:  record.ContributorEntry{RawName: "編者A", DelFlg: 0},
+							Contribution: record.ContributionEntry{Role: record.ContributorRoleCompiler, DelFlg: 0},
+						},
+						{
+							Contributor:  record.ContributorEntry{RawName: "編者B", DelFlg: 0},
+							Contribution: record.ContributionEntry{Role: record.ContributorRoleCompilerAuthor, DelFlg: 0},
+						},
 					},
 				},
 				// 記事側に貢献者は設定されない
@@ -450,10 +448,9 @@ func TestRecordUsecase_Create(t *testing.T) {
 					MainTitle:     "単著書のタイトル",
 					DelFlg:        0,
 					// 長さ0のスライスはnilとして渡される
-					Contributors:  nil,
-					Contributions: nil,
-					Memos:         nil,
-					Urls:          nil,
+					ContributorRelations: nil,
+					Memos:                nil,
+					Urls:                 nil,
 				},
 			},
 			expectedOutput:        &dto.CreateRecordOutput{RecordId: recordArticleId},
@@ -474,13 +471,12 @@ func TestRecordUsecase_Create(t *testing.T) {
 			generatedIds: []string{recordArticleId},
 			expectedEntries: []record.UserRecordEntry{
 				{
-					RecordEntryId: recordArticleId,
-					InternalUid:   recordTestUid,
-					RecordType:    record.RecordTypeAuthoredBook,
-					MainTitle:     "単著書のタイトル",
-					DelFlg:        0,
-					Contributors:  expectedLimitContributors,
-					Contributions: expectedLimitContributions,
+					RecordEntryId:        recordArticleId,
+					InternalUid:          recordTestUid,
+					RecordType:           record.RecordTypeAuthoredBook,
+					MainTitle:            "単著書のタイトル",
+					DelFlg:               0,
+					ContributorRelations: expectedLimitRelations,
 				},
 			},
 			expectedOutput:        &dto.CreateRecordOutput{RecordId: recordArticleId},

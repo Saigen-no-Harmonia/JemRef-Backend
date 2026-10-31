@@ -50,11 +50,8 @@ func TestTxManager_WithTransaction_異常_関数がエラーならロールバ�
 	txManager := NewTxManager(testDb)
 
 	input := newMinimalRecordEntry(testRecordId)
-	input.Contributors = []record.ContributorEntry{
-		{RawName: "貢献者A", InternalUid: testUid, DelFlg: 0},
-	}
-	input.Contributions = []record.ContributionEntry{
-		{RecordEntryId: testRecordId, Role: record.ContributorRoleAuthor, DisplayNumber: 0, DelFlg: 0},
+	input.ContributorRelations = []record.ContributorRelation{
+		newMinimalRelation("貢献者A", record.ContributorRoleAuthor),
 	}
 
 	beforeCnt := testutil.CountRecords(t, testDb)

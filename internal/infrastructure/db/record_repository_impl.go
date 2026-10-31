@@ -30,17 +30,22 @@ func (r *RecordRepositoryImpl) Create(
 		return err
 	}
 
-	// contributor要素数=contribution要素数であることはusecase側で保証する
+	// 貢献者と貢献情報はPh0では純粋な1:1となるため、必要なIDと登録順はここで設定する
+	for i, relation := range input.ContributorRelations {
+		contributor := relation.Contributor
+		contributor.InternalUid = input.InternalUid
 
-	for i := range input.Contributions {
-		contributorId, err := r.insertContributor(ctx, tx, input.Contributors[i])
+		contributorId, err := r.insertContributor(ctx, tx, contributor)
 		if err != nil {
 			return err
 		}
 
-		input.Contributions[i].ContributorEntryId = contributorId
-		err = r.insertContribution(ctx, tx, input.Contributions[i])
-		if err != nil {
+		contribution := relation.Contribution
+		contribution.RecordEntryId = input.RecordEntryId
+		contribution.ContributorEntryId = contributorId
+		contribution.DisplayNumber = i
+
+		if err := r.insertContribution(ctx, tx, contribution); err != nil {
 			return err
 		}
 	}

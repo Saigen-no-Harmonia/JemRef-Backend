@@ -48,11 +48,15 @@ type UserRecordEntry struct {
 	// 更新日
 	UpdDt *time.Time
 
-	Contributors  []ContributorEntry
-	Contributions []ContributionEntry
-	Urls          []UrlEntry
-	Memos         []MemoEntry
-	OptionValues  []OptionValue
+	ContributorRelations []ContributorRelation
+	Urls                 []UrlEntry
+	Memos                []MemoEntry
+	OptionValues         []OptionValue
+}
+
+type ContributorRelation struct {
+	Contributor  ContributorEntry
+	Contribution ContributionEntry
 }
 
 type ContributorEntry struct {

@@ -50,8 +50,6 @@ func testRecordsSetup(t *testing.T, fixturePath string) *RecordRepositoryImpl {
 }
 
 // newRecordTestCtx 書誌情報登録APIのAPI IDを保持するcontextを返す
-//
-// repositoryはctxからAPI IDを取り出してINS_ID/UPD_IDに設定する。
 // 本番では*gin.Context経由で渡るが、Value()の挙動は同じ。
 func newRecordTestCtx() context.Context {
 	return context.WithValue(
@@ -64,6 +62,15 @@ func newRecordTestCtx() context.Context {
 // strPtr string型のポインタを返却する
 func strPtr(s string) *string {
 	return &s
+}
+
+// newMinimalRelation 貢献者と貢献のペアを生成する
+// 書誌ID・内部用ユーザID・表示順はrepositoryが親レコードと登録順から設定する。Ph0では氏名と役割のみを指定。
+func newMinimalRelation(rawName string, role record.ContributorRole) record.ContributorRelation {
+	return record.ContributorRelation{
+		Contributor:  record.ContributorEntry{RawName: rawName, DelFlg: 0},
+		Contribution: record.ContributionEntry{Role: role, DelFlg: 0},
+	}
 }
 
 // newMinimalRecordEntry 必須項目のみを設定したユーザ入力書誌を返す
@@ -147,13 +154,9 @@ func TestRecordRepository_Create_正常_全項目設定(t *testing.T) {
 		ReadStatus:      &readStatus,
 		ParentId:        strPtr(testExistingContainerId),
 		DelFlg:          0,
-		Contributors: []record.ContributorEntry{
-			{RawName: "木村元", InternalUid: testUid, DelFlg: 0},
-			{RawName: "山田太郎", InternalUid: testUid, DelFlg: 0},
-		},
-		Contributions: []record.ContributionEntry{
-			{RecordEntryId: testRecordId, Role: record.ContributorRoleAuthor, DisplayNumber: 0, DelFlg: 0},
-			{RecordEntryId: testRecordId, Role: record.ContributorRoleCompiler, DisplayNumber: 1, DelFlg: 0},
+		ContributorRelations: []record.ContributorRelation{
+			newMinimalRelation("木村元", record.ContributorRoleAuthor),
+			newMinimalRelation("山田太郎", record.ContributorRoleCompiler),
 		},
 		Urls: []record.UrlEntry{
 			{RecordEntryId: testRecordId, DisplayNumber: 0, Label: strPtr("PDF"), Url: "https://example.com/1", InternalUid: testUid, DelFlg: 0},
@@ -216,8 +219,7 @@ func TestRecordRepository_Create_正常_子要素が空スライス(t *testing.T
 	repo := testRecordsSetup(t, recordFixture)
 
 	input := newMinimalRecordEntry(testRecordId)
-	input.Contributors = []record.ContributorEntry{}
-	input.Contributions = []record.ContributionEntry{}
+	input.ContributorRelations = []record.ContributorRelation{}
 	input.Urls = []record.UrlEntry{}
 	input.Memos = []record.MemoEntry{}
 	input.OptionValues = []record.OptionValue{}
@@ -257,15 +259,10 @@ func TestRecordRepository_Create_正常_貢献者複数(t *testing.T) {
 	repo := testRecordsSetup(t, recordFixture)
 
 	input := newMinimalRecordEntry(testRecordId)
-	input.Contributors = []record.ContributorEntry{
-		{RawName: "貢献者A", InternalUid: testUid, DelFlg: 0},
-		{RawName: "貢献者B", InternalUid: testUid, DelFlg: 0},
-		{RawName: "貢献者C", InternalUid: testUid, DelFlg: 0},
-	}
-	input.Contributions = []record.ContributionEntry{
-		{RecordEntryId: testRecordId, Role: record.ContributorRoleAuthor, DisplayNumber: 0, DelFlg: 0},
-		{RecordEntryId: testRecordId, Role: record.ContributorRoleInterpreter, DisplayNumber: 1, DelFlg: 0},
-		{RecordEntryId: testRecordId, Role: record.ContributorRoleCompiler, DisplayNumber: 2, DelFlg: 0},
+	input.ContributorRelations = []record.ContributorRelation{
+		newMinimalRelation("貢献者A", record.ContributorRoleAuthor),
+		newMinimalRelation("貢献者B", record.ContributorRoleInterpreter),
+		newMinimalRelation("貢献者C", record.ContributorRoleCompiler),
 	}
 
 	err := repo.Create(newRecordTestCtx(), testDb, input)
@@ -274,7 +271,7 @@ func TestRecordRepository_Create_正常_貢献者複数(t *testing.T) {
 	contributors := testutil.SelectContributorsByUserId(t, testDb, testUid)
 	require.Len(t, contributors, 3)
 	for i, c := range contributors {
-		assert.Equal(t, input.Contributors[i].RawName, c.RawName)
+		assert.Equal(t, input.ContributorRelations[i].Contributor.RawName, c.RawName)
 		assert.Equal(t, testUid, c.UserId)
 		assert.False(t, c.MContributorId.Valid)
 		assert.Equal(t, 0, c.DelFlg)
@@ -300,17 +297,42 @@ func TestRecordRepository_Create_正常_貢献者複数(t *testing.T) {
 	}
 }
 
+func TestRecordRepository_Create_正常_貢献者の派生項目が親レコードから設定される(t *testing.T) {
+	repo := testRecordsSetup(t, recordFixture)
+
+	// 氏名と役割のみを指定する(書誌ID/ユーザID/表示順は未設定)
+	input := newMinimalRecordEntry(testRecordId)
+	input.ContributorRelations = []record.ContributorRelation{
+		newMinimalRelation("貢献者A", record.ContributorRoleAuthor),
+		newMinimalRelation("貢献者B", record.ContributorRoleCompiler),
+	}
+
+	err := repo.Create(newRecordTestCtx(), testDb, input)
+	require.NoError(t, err)
+
+	// 内部用ユーザIDが親レコードから設定されること
+	contributors := testutil.SelectContributorsByUserId(t, testDb, testUid)
+	require.Len(t, contributors, 2)
+	for _, c := range contributors {
+		assert.Equal(t, testUid, c.UserId)
+	}
+
+	// 書誌IDが親レコードから、表示順が登録順から設定されること
+	contributions := testutil.SelectContributionsByRecordId(t, testDb, testRecordId)
+	require.Len(t, contributions, 2)
+	for i, c := range contributions {
+		assert.Equal(t, testRecordId, c.RecordId)
+		assert.Equal(t, i, c.DisplayNumber)
+	}
+}
+
 func TestRecordRepository_Create_正常_同名貢献者は別レコードで登録される(t *testing.T) {
 	repo := testRecordsSetup(t, recordFixture)
 
 	input := newMinimalRecordEntry(testRecordId)
-	input.Contributors = []record.ContributorEntry{
-		{RawName: "同姓同名", InternalUid: testUid, DelFlg: 0},
-		{RawName: "同姓同名", InternalUid: testUid, DelFlg: 0},
-	}
-	input.Contributions = []record.ContributionEntry{
-		{RecordEntryId: testRecordId, Role: record.ContributorRoleAuthor, DisplayNumber: 0, DelFlg: 0},
-		{RecordEntryId: testRecordId, Role: record.ContributorRoleCompiler, DisplayNumber: 1, DelFlg: 0},
+	input.ContributorRelations = []record.ContributorRelation{
+		newMinimalRelation("同姓同名", record.ContributorRoleAuthor),
+		newMinimalRelation("同姓同名", record.ContributorRoleCompiler),
 	}
 
 	err := repo.Create(newRecordTestCtx(), testDb, input)
@@ -459,17 +481,10 @@ func TestRecordRepository_Create_正常_貢献者が上限件数(t *testing.T) {
 
 	input := newMinimalRecordEntry(testRecordId)
 	for i := 0; i < limit; i++ {
-		input.Contributors = append(input.Contributors, record.ContributorEntry{
-			RawName:     "貢献者" + strconv.Itoa(i),
-			InternalUid: testUid,
-			DelFlg:      0,
-		})
-		input.Contributions = append(input.Contributions, record.ContributionEntry{
-			RecordEntryId: testRecordId,
-			Role:          record.ContributorRoleAuthor,
-			DisplayNumber: i,
-			DelFlg:        0,
-		})
+		input.ContributorRelations = append(
+			input.ContributorRelations,
+			newMinimalRelation("貢献者"+strconv.Itoa(i), record.ContributorRoleAuthor),
+		)
 	}
 
 	err := repo.Create(newRecordTestCtx(), testDb, input)
@@ -537,24 +552,6 @@ func TestRecordRepository_Create_異常_主題が長さ超過(t *testing.T) {
 	assert.Equal(t, beforeCnt, testutil.CountRecords(t, testDb))
 }
 
-func TestRecordRepository_Create_異常_貢献者のユーザIDが存在しない(t *testing.T) {
-	repo := testRecordsSetup(t, recordFixture)
-
-	input := newMinimalRecordEntry(testRecordId)
-	input.Contributors = []record.ContributorEntry{
-		{RawName: "貢献者A", InternalUid: int64(9999), DelFlg: 0},
-	}
-	input.Contributions = []record.ContributionEntry{
-		{RecordEntryId: testRecordId, Role: record.ContributorRoleAuthor, DisplayNumber: 0, DelFlg: 0},
-	}
-
-	err := repo.Create(newRecordTestCtx(), testDb, input)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "insert contributor")
-	assert.Equal(t, 0, testutil.CountContributors(t, testDb))
-	assert.Equal(t, 0, testutil.CountContributions(t, testDb))
-}
-
 func TestRecordRepository_Create_異常_URLの表示順が重複(t *testing.T) {
 	repo := testRecordsSetup(t, recordFixture)
 
@@ -614,11 +611,8 @@ func TestRecordRepository_Create_異常_トランザクション内でロール�
 		RecordType:    record.RecordTypeJournal,
 		MainTitle:     "境界線の学校史",
 		DelFlg:        0,
-		Contributors: []record.ContributorEntry{
-			{RawName: "貢献者A", InternalUid: testUid, DelFlg: 0},
-		},
-		Contributions: []record.ContributionEntry{
-			{RecordEntryId: testContainerId, Role: record.ContributorRoleCompiler, DisplayNumber: 0, DelFlg: 0},
+		ContributorRelations: []record.ContributorRelation{
+			newMinimalRelation("貢献者A", record.ContributorRoleCompiler),
 		},
 	}
 
