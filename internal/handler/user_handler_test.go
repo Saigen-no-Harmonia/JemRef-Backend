@@ -243,6 +243,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 			}
 
 			// 正常系の場合のassertion
+			assert.Equal(t, ctxutil.MEM_API_002, ctxutil.GetApiId(tt.mockUsecase.LastCtx))
 			testutil.AssertResponse(t, rec, tt.expectedBody)
 		})
 	}
@@ -380,6 +381,9 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 				assert.ErrorIs(t, c.Errors.Last().Err, tt.expectedErrorBody)
 				return
 			}
+
+			// 正常系の場合のassertion
+			assert.Equal(t, ctxutil.MEM_API_004, ctxutil.GetApiId(tt.mockUsecase.LastCtx))
 		})
 	}
 }
@@ -512,6 +516,7 @@ func TestUserHandler_GetUserAgreements(t *testing.T) {
 			}
 
 			// 正常系のチェック
+			assert.Equal(t, ctxutil.MEM_API_005, ctxutil.GetApiId(tt.mockUsecase.LastCtx))
 			testutil.AssertResponse(t, rec, tt.expectedBody)
 		})
 	}
@@ -559,7 +564,7 @@ func TestUserHandler_UpdateUserAgreements(t *testing.T) {
 			body:              handlerDto.UpdateUserAgreementsRequest{},
 			mockUsecase:       &mock.MockUserUsecase{},
 			usecaseCalled:     false,
-			expectError:       false,
+			expectError:       true,
 			expectedErrorBody: ErrInternalUidNotFound,
 		},
 		{
@@ -769,6 +774,9 @@ func TestUserHandler_UpdateUserAgreements(t *testing.T) {
 				assert.ErrorIs(t, c.Errors.Last().Err, tt.expectedErrorBody)
 				return
 			}
+
+			// 正常系の場合のassertion
+			assert.Equal(t, ctxutil.MEM_API_006, ctxutil.GetApiId(tt.mockUsecase.LastCtx))
 		})
 	}
 }
@@ -826,6 +834,8 @@ func TestUserHandler_Login(t *testing.T) {
 			}
 
 			// 正常系の場合
+			// Loginはusecaseを呼ばないためcontextの値を直接検証
+			assert.Equal(t, ctxutil.MEM_API_007, c.Keys[ctxutil.CtxKeyApiId])
 			testutil.AssertResponse(t, rec, tt.expectedBody)
 		})
 	}

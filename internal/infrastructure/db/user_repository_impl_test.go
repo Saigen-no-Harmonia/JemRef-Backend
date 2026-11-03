@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	ctxutil "jemref_go/internal/context"
 	"jemref_go/internal/domain/user"
 	"jemref_go/internal/repository"
 	"jemref_go/internal/testutil"
@@ -109,7 +110,7 @@ func TestUserRepository_Create_正常(t *testing.T) {
 
 	beforeCnt := testutil.CountUsers(t, testDb)
 	err := repo.Create(
-		context.Background(),
+		newUserTestCtx(ctxutil.MEM_API_002),
 		u,
 	)
 	require.NoError(t, err)
@@ -130,6 +131,21 @@ func TestUserRepository_Create_正常(t *testing.T) {
 	assert.Nil(t, actual.DeletedAt)
 	assert.WithinDuration(t, now, *actual.InsDt, 3*time.Second)
 	assert.WithinDuration(t, now, *actual.UpdDt, 3*time.Second)
+	// contextのAPI IDが監査列へ設定されること
+	assert.Equal(t, ctxutil.MEM_API_002, actual.InsPg)
+	assert.Equal(t, "system", actual.InsId)
+	assert.Equal(t, ctxutil.MEM_API_002, actual.UpdPg)
+	assert.Equal(t, "system", actual.UpdId)
+}
+
+func TestUserRepository_Create_異常_APIIDが未設定(t *testing.T) {
+	repo := testUsersSetup(t, "")
+	u := &user.User{FirebaseUserId: "_firebase_uid_", PublicUserId: "_public_uid_", Email: "_email_"}
+
+	assert.Panics(t, func() {
+		_ = repo.Create(context.Background(), u)
+	})
+	assert.Equal(t, 0, testutil.CountUsers(t, testDb))
 }
 
 // -------------Delete(context.Context, int64)のテスト-------------
@@ -140,7 +156,7 @@ func TestUserRepository_Delete_正常(t *testing.T) {
 	require.NoError(t, err)
 
 	now := time.Now().Truncate(time.Microsecond).UTC()
-	err = repo.Delete(context.Background(), int64(1001))
+	err = repo.Delete(newUserTestCtx(ctxutil.MEM_API_004), int64(1001))
 	require.NoError(t, err)
 
 	after, err := testutil.SelectUserByPk(t, testDb, int64(1001))
@@ -159,7 +175,7 @@ func TestUserRepository_Delete_正常(t *testing.T) {
 	assert.Equal(t, 1, after.DelFlg)
 	assert.Equal(t, before.InsPg, after.InsPg)
 	assert.Equal(t, before.InsId, after.InsId)
-	assert.Equal(t, "MEM-API-004", after.UpdPg)
+	assert.Equal(t, ctxutil.MEM_API_004, after.UpdPg)
 	assert.Equal(t, "system", after.UpdId)
 	assert.WithinDuration(t, now, *after.UpdDt, 3*time.Second)
 }
@@ -170,7 +186,7 @@ func TestUserRepository_Delete_対象ユーザなし(t *testing.T) {
 	before, err := testutil.SelectUserByPk(t, testDb, int64(1001))
 	require.NoError(t, err)
 
-	err = repo.Delete(context.Background(), int64(1000))
+	err = repo.Delete(newUserTestCtx(ctxutil.MEM_API_004), int64(1000))
 	require.Error(t, err)
 	assert.ErrorIs(t, err, repository.ErrNotFound)
 
@@ -185,7 +201,7 @@ func TestUserRepository_UpdateUserAgreement_正常(t *testing.T) {
 	before, err := testutil.SelectUserByPk(t, testDb, int64(1001))
 	require.NoError(t, err)
 
-	now := time.Now().UTC()
+	now := time.Now().UTC().Round(time.Microsecond)
 	u := *before
 	u.TermsAgreedDt = &now
 	u.TermsVersion = "_terms_updated_"
@@ -193,7 +209,7 @@ func TestUserRepository_UpdateUserAgreement_正常(t *testing.T) {
 	u.PrivacyPolicyVersion = "_prpl_updated_"
 
 	beforeUpd := time.Now().UTC()
-	cnt, err := repo.UpdateUserAgreement(context.Background(), &u)
+	cnt, err := repo.UpdateUserAgreement(newUserTestCtx(ctxutil.MEM_API_006), &u)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, cnt)
 
@@ -204,7 +220,7 @@ func TestUserRepository_UpdateUserAgreement_正常(t *testing.T) {
 	assert.Equal(t, u.TermsVersion, after.TermsVersion)
 	assert.Equal(t, u.PrivacyPolicyAgreedDt, after.PrivacyPolicyAgreedDt)
 	assert.Equal(t, u.PrivacyPolicyVersion, after.PrivacyPolicyVersion)
-	assert.Equal(t, "MEM-API-005", after.UpdPg)
+	assert.Equal(t, ctxutil.MEM_API_006, after.UpdPg)
 	assert.Equal(t, "system", after.UpdId)
 	assert.WithinDuration(t, beforeUpd, *after.UpdDt, 3*time.Second)
 	// 非更新
@@ -230,7 +246,7 @@ func TestUserRepository_UpdateUserAgreement_対象ユーザなし(t *testing.T) 
 	u.PrivacyPolicyAgreedDt = &now
 	u.PrivacyPolicyVersion = "_prpl_updated_"
 
-	cnt, err := repo.UpdateUserAgreement(context.Background(), &u)
+	cnt, err := repo.UpdateUserAgreement(newUserTestCtx(ctxutil.MEM_API_006), &u)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 0, cnt)
 
@@ -238,6 +254,12 @@ func TestUserRepository_UpdateUserAgreement_対象ユーザなし(t *testing.T) 
 	require.NoError(t, err)
 	// 更新
 	assert.Equal(t, before, after)
+}
+
+// newUserTestCtx 指定したAPI IDを保持するcontextを返す
+// 本番では*gin.Context経由で渡るが、Value()の挙動は同じため簡略なヘルパとして実装。
+func newUserTestCtx(apiId string) context.Context {
+	return context.WithValue(context.Background(), ctxutil.CtxKeyApiId, apiId)
 }
 
 // testUsersSetup DBクリーンアップ＋テスト用Fixture投入を済ませたuserRepoを返却する

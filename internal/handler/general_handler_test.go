@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	ctxutil "jemref_go/internal/context"
 	"jemref_go/internal/domain/policy"
 	handlerdto "jemref_go/internal/handler/dto"
 	"jemref_go/internal/usecase"
@@ -128,6 +129,9 @@ func TestGeneralHandler_GetPolicies(t *testing.T) {
 			}
 
 			// 正常系の場合のassertion
+			// usecaseへ渡されたcontextからAPI IDが取得できること
+			assert.Equal(t, ctxutil.GEN_API_001, ctxutil.GetApiId(tt.mockUsecase.LastCtx))
+
 			var actual handlerdto.GetPoliciesResponse
 			err := json.Unmarshal(
 				rec.Body.Bytes(),
@@ -145,11 +149,14 @@ type MockGeneralUsecase struct {
 		context.Context,
 		usecasedto.GetPoliciesInput,
 	) (*usecasedto.GetPoliciesOutput, error)
+
+	LastCtx context.Context
 }
 
 func (m *MockGeneralUsecase) GetPolicies(
 	ctx context.Context,
 	input usecasedto.GetPoliciesInput,
 ) (*usecasedto.GetPoliciesOutput, error) {
+	m.LastCtx = ctx
 	return m.getPoliciesFunc(ctx, input)
 }

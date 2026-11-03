@@ -42,7 +42,8 @@ func TestTxManager_WithTransaction_正常_コミットされる(t *testing.T) {
 	actual, err := testutil.SelectRecordByPk(t, testDb, testRecordId)
 	require.NoError(t, err)
 	assert.Equal(t, testRecordId, actual.Id)
-	assert.Equal(t, ctxutil.REF_API_003, actual.InsId)
+	assert.Equal(t, ctxutil.REF_API_003, actual.InsPg)
+	assert.Equal(t, "system", actual.InsId)
 }
 
 func TestTxManager_WithTransaction_異常_関数がエラーならロールバックされる(t *testing.T) {

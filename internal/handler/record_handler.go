@@ -90,7 +90,7 @@ func (h *RecordHandler) CreateRecord(c *gin.Context) {
 		return
 	}
 
-	c.Set(ctxutil.CtxKeyApiId, ctxutil.REF_API_003)
+	ctxutil.SetApiId(c, ctxutil.REF_API_003)
 	output, err := h.usecase.Create(c, input)
 	if err != nil {
 		c.Error(err)

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"jemref_go/internal/context"
 	ctxutil "jemref_go/internal/context"
 	"jemref_go/internal/domain/policy"
 	"jemref_go/internal/handler/dto"
@@ -83,7 +82,9 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	}
 
 	input := createUserInput(firebaseUserId, email, req)
-	output, err := h.usecase.Create(c.Request.Context(), input)
+
+	ctxutil.SetApiId(c, ctxutil.MEM_API_002)
+	output, err := h.usecase.Create(c, input)
 	if err != nil {
 		c.Error(err)
 		return
@@ -122,7 +123,8 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 
 	input := createDeleteUserInput(internalUid, firebaseUid)
 
-	err := h.usecase.Delete(c.Request.Context(), input)
+	ctxutil.SetApiId(c, ctxutil.MEM_API_004)
+	err := h.usecase.Delete(c, input)
 	if err != nil {
 		c.Error(err)
 		return
@@ -148,7 +150,8 @@ func (h *UserHandler) GetUserAgreements(c *gin.Context) {
 		return
 	}
 
-	output, err := h.usecase.GetUserAgreements(c.Request.Context(), internalUid)
+	ctxutil.SetApiId(c, ctxutil.MEM_API_005)
+	output, err := h.usecase.GetUserAgreements(c, internalUid)
 	if err != nil {
 		c.Error(err)
 		return
@@ -190,7 +193,8 @@ func (h *UserHandler) UpdateUserAgreements(c *gin.Context) {
 
 	input := createUpdateUserAgreementInput(uid, req)
 
-	err := h.usecase.UpdateUserAgreements(c.Request.Context(), input)
+	ctxutil.SetApiId(c, ctxutil.MEM_API_006)
+	err := h.usecase.UpdateUserAgreements(c, input)
 	if err != nil {
 		c.Error(err)
 		return
@@ -210,12 +214,13 @@ func (h *UserHandler) UpdateUserAgreements(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /users/login [put]
 func (h *UserHandler) Login(c *gin.Context) {
-	publicUid, ok := context.GetPublicUid(c)
+	publicUid, ok := ctxutil.GetPublicUid(c)
 	if !ok {
 		c.Error(ErrPublicUidNotFound)
 		return
 	}
 
+	ctxutil.SetApiId(c, ctxutil.MEM_API_007)
 	res := createLoginResponse(publicUid)
 	c.JSON(http.StatusOK, res)
 }

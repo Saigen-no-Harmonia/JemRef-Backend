@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	ctxutil "jemref_go/internal/context"
 	"jemref_go/internal/domain/user"
 	"jemref_go/internal/repository"
 
@@ -99,6 +100,8 @@ func (r *UserRepositoryImpl) Create(
 	user *user.User,
 ) error {
 
+	apiId := ctxutil.GetApiId(ctx)
+
 	_, err := r.db.ExecContext(
 		ctx,
 		createUserQuery,
@@ -109,6 +112,8 @@ func (r *UserRepositoryImpl) Create(
 		user.TermsVersion,
 		user.PrivacyPolicyAgreedDt,
 		user.PrivacyPolicyVersion,
+		apiId,
+		apiId,
 	)
 
 	if err != nil {
@@ -131,6 +136,7 @@ func (r *UserRepositoryImpl) Delete(
 	result, err := r.db.ExecContext(
 		ctx,
 		deleteUserQuery,
+		ctxutil.GetApiId(ctx),
 		internalUid,
 	)
 
@@ -160,6 +166,7 @@ func (r *UserRepositoryImpl) UpdateUserAgreement(ctx context.Context, u *user.Us
 		u.TermsVersion,
 		u.PrivacyPolicyAgreedDt,
 		u.PrivacyPolicyVersion,
+		ctxutil.GetApiId(ctx),
 		u.InternalUserId,
 	)
 	if err != nil {

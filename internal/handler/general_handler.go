@@ -4,6 +4,7 @@ package handler
 
 import (
 	"fmt"
+	ctxutil "jemref_go/internal/context"
 	"jemref_go/internal/domain/policy"
 	handlerdto "jemref_go/internal/handler/dto"
 	"jemref_go/internal/usecase"
@@ -48,7 +49,9 @@ func (h *GeneralHandler) GetPolicies(c *gin.Context) {
 
 	// Usecase呼び出し
 	input := createGetPolicyInput(policyType)
-	output, err := h.usecase.GetPolicies(c.Request.Context(), input)
+
+	ctxutil.SetApiId(c, ctxutil.GEN_API_001)
+	output, err := h.usecase.GetPolicies(c, input)
 	if err != nil {
 		c.Error(err)
 		return

@@ -13,6 +13,7 @@ type MockRecordUsecase struct {
 	) (*usecaseDto.CreateRecordOutput, error)
 
 	CreateCalled    bool
+	LastCtx         context.Context
 	LastCreateInput usecaseDto.CreateRecordInput
 }
 
@@ -20,6 +21,7 @@ func (m *MockRecordUsecase) Create(
 	ctx context.Context,
 	ci usecaseDto.CreateRecordInput,
 ) (*usecaseDto.CreateRecordOutput, error) {
+	m.LastCtx = ctx
 	m.CreateCalled = true
 	m.LastCreateInput = ci
 	return m.CreateFunc(ctx, ci)

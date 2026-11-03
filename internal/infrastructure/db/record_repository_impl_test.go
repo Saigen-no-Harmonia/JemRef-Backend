@@ -117,10 +117,10 @@ func TestRecordRepository_Create_正常_必須項目のみ(t *testing.T) {
 	assert.False(t, actual.MRecordId.Valid)
 
 	assert.Equal(t, 0, actual.DelFlg)
-	assert.Equal(t, "system", actual.InsPg)
-	assert.Equal(t, ctxutil.REF_API_003, actual.InsId)
-	assert.Equal(t, "system", actual.UpdPg)
-	assert.Equal(t, ctxutil.REF_API_003, actual.UpdId)
+	assert.Equal(t, ctxutil.REF_API_003, actual.InsPg)
+	assert.Equal(t, "system", actual.InsId)
+	assert.Equal(t, ctxutil.REF_API_003, actual.UpdPg)
+	assert.Equal(t, "system", actual.UpdId)
 	assert.WithinDuration(t, now, actual.InsDt, 3*time.Second)
 	assert.WithinDuration(t, now, actual.UpdDt, 3*time.Second)
 
@@ -211,8 +211,8 @@ func TestRecordRepository_Create_正常_全項目設定(t *testing.T) {
 	assert.Equal(t, record.RecordFieldIdOriginalTitle, fieldValues[2].RecordFieldId)
 	assert.Equal(t, 30, fieldValues[2].DisplayNumber)
 	assert.Equal(t, testUid, fieldValues[0].UserId)
-	assert.Equal(t, "system", fieldValues[0].InsPg)
-	assert.Equal(t, ctxutil.REF_API_003, fieldValues[0].InsId)
+	assert.Equal(t, ctxutil.REF_API_003, fieldValues[0].InsPg)
+	assert.Equal(t, "system", fieldValues[0].InsId)
 }
 
 func TestRecordRepository_Create_正常_子要素が空スライス(t *testing.T) {
@@ -275,8 +275,8 @@ func TestRecordRepository_Create_正常_貢献者複数(t *testing.T) {
 		assert.Equal(t, testUid, c.UserId)
 		assert.False(t, c.MContributorId.Valid)
 		assert.Equal(t, 0, c.DelFlg)
-		assert.Equal(t, "system", c.InsPg)
-		assert.Equal(t, ctxutil.REF_API_003, c.InsId)
+		assert.Equal(t, ctxutil.REF_API_003, c.InsPg)
+		assert.Equal(t, "system", c.InsId)
 	}
 
 	contributions := testutil.SelectContributionsByRecordId(t, testDb, testRecordId)
@@ -371,8 +371,8 @@ func TestRecordRepository_Create_正常_URLのラベルあり無し混在(t *tes
 	assert.Equal(t, "https://example.com/1", urls[0].RawUrl)
 	assert.Equal(t, testUid, urls[0].UserId)
 	assert.Equal(t, 0, urls[0].DelFlg)
-	assert.Equal(t, "system", urls[0].InsPg)
-	assert.Equal(t, ctxutil.REF_API_003, urls[0].InsId)
+	assert.Equal(t, ctxutil.REF_API_003, urls[0].InsPg)
+	assert.Equal(t, "system", urls[0].InsId)
 
 	assert.Equal(t, 1, urls[1].DisplayNumber)
 	// ラベル未設定はNULLで登録されること

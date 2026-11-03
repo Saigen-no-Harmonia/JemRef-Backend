@@ -60,10 +60,10 @@ values (
 	?,
 	?,
 	?,
+	?,
 	'system',
-	'MEM-API-002',
-	'system',
-	'MEM-API-002'
+	?,
+	'system'
 )
 `
 
@@ -73,7 +73,7 @@ set
   EMAIL = CONCAT('__deleted__', EMAIL, '__', DATE_FORMAT(UTC_TIMESTAMP(), '%Y%m%d%H%i%s')),
   DEL_FLG = 1,
   DELETED_AT = now(),
-  UPD_PG = 'MEM-API-004',
+  UPD_PG = ?,
   UPD_ID = 'system',
   UPD_DT = now()
 WHERE
@@ -87,7 +87,7 @@ set
 	TERMS_VERSION = ?,
 	PRIVACY_POLICY_AGREED_DT = ?,
 	PRIVACY_POLICY_VERSION = ?,
-	UPD_PG = 'MEM-API-005',
+	UPD_PG = ?,
 	UPD_ID = 'system',
 	UPD_DT = now()
 where

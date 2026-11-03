@@ -36,6 +36,7 @@ type MockUserUsecase struct {
 	GetUserAgreementsCalled    bool
 	UpdateUserAgreementsCalled bool
 	LoginCalled                bool
+	LastCtx                    context.Context
 	LastCreateUserInput        usecaseDto.CreateUserInput
 	LastDeleteUserInput        usecaseDto.DeleteUserInput
 	LastUpdateUserInput        usecaseDto.UpdateUserAgreementsInput
@@ -45,6 +46,7 @@ func (m *MockUserUsecase) Create(
 	ctx context.Context,
 	input usecaseDto.CreateUserInput,
 ) (*usecaseDto.CreateUserOutput, error) {
+	m.LastCtx = ctx
 	m.CreateUserCalled = true
 	m.LastCreateUserInput = input
 	return m.CreateUserFunc(ctx, input)
@@ -54,6 +56,7 @@ func (m *MockUserUsecase) Delete(
 	ctx context.Context,
 	input usecaseDto.DeleteUserInput,
 ) error {
+	m.LastCtx = ctx
 	m.DeleteUserCalled = true
 	m.LastDeleteUserInput = input
 	return m.DeleteUserFunc(ctx, input)
@@ -63,6 +66,7 @@ func (m *MockUserUsecase) GetUserAgreements(
 	ctx context.Context,
 	uid int64,
 ) (*usecaseDto.GetUserAgreementsOutput, error) {
+	m.LastCtx = ctx
 	m.GetUserAgreementsCalled = true
 	return m.GetUserAgreementsFunc(ctx, uid)
 }
@@ -71,6 +75,7 @@ func (m *MockUserUsecase) UpdateUserAgreements(
 	ctx context.Context,
 	ua usecaseDto.UpdateUserAgreementsInput,
 ) error {
+	m.LastCtx = ctx
 	m.UpdateUserAgreementsCalled = true
 	m.LastUpdateUserInput = ua
 	return m.UpdateUserAgreementsFunc(ctx, ua)
@@ -80,6 +85,7 @@ func (m *MockUserUsecase) Login(
 	ctx context.Context,
 	input usecaseDto.UserLoginInput,
 ) (*usecaseDto.UserLoginOutput, error) {
+	m.LastCtx = ctx
 	m.LoginCalled = true
 	return m.LoginFunc(ctx, input)
 }

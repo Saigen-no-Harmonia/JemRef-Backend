@@ -103,14 +103,14 @@ func (r *RecordRepositoryImpl) insertRecordEntry(ctx context.Context, tx reposit
 			?,
 			?, 
 			?, 
-			'system',
 			?,
 			'system',
-			?
+			?,
+			'system'
 		)
 	`
 	args := make([]any, 0, 17)
-	apiId := ctx.Value(ctxutil.CtxKeyApiId)
+	apiId := ctxutil.GetApiId(ctx)
 
 	args = append(args,
 		re.RecordEntryId,
@@ -154,14 +154,14 @@ func (r *RecordRepositoryImpl) insertContributor(ctx context.Context, tx reposit
 			?,
 			?,
 			?, 
-			'system',
 			?,
 			'system',
-			?
+			?,
+			'system'
 		)
 	`
 	args := make([]any, 0, 5)
-	apiId := ctx.Value(ctxutil.CtxKeyApiId)
+	apiId := ctxutil.GetApiId(ctx)
 
 	args = append(args,
 		c.RawName,
@@ -202,16 +202,15 @@ func (r *RecordRepositoryImpl) insertContribution(ctx context.Context, tx reposi
 			?,
 			?, 
 			?, 
-			'system',
 			?,
 			'system',
-			?
+			?,
+			'system'
 		)
 	`
 	args := make([]any, 0, 7)
 
-	// TODO 共通helper化
-	apiId := ctx.Value(ctxutil.CtxKeyApiId)
+	apiId := ctxutil.GetApiId(ctx)
 
 	args = append(args,
 		c.RecordEntryId,
@@ -253,10 +252,10 @@ func (r *RecordRepositoryImpl) insertURLs(ctx context.Context, tx repository.DBT
 
 	values := make([]string, 0, len(urls))
 	args := make([]any, 0, len(urls)*8)
-	apiId := ctx.Value(ctxutil.CtxKeyApiId)
+	apiId := ctxutil.GetApiId(ctx)
 
 	for _, u := range urls {
-		values = append(values, "(?, ?, ?, ?, ?, ?,'system',?,'system',?)")
+		values = append(values, "(?, ?, ?, ?, ?, ?,?,'system',?,'system')")
 
 		args = append(args,
 			u.RecordEntryId,
@@ -302,10 +301,10 @@ func (r *RecordRepositoryImpl) insertMemos(ctx context.Context, tx repository.DB
 
 	values := make([]string, 0, len(memos))
 	args := make([]any, 0, len(memos)*9)
-	apiId := ctx.Value(ctxutil.CtxKeyApiId)
+	apiId := ctxutil.GetApiId(ctx)
 
 	for _, m := range memos {
-		values = append(values, "(?, ?, ?, ?, ?, ?,'system',?,'system',?)")
+		values = append(values, "(?, ?, ?, ?, ?, ?,?,'system',?,'system')")
 
 		args = append(args,
 			m.RecordEntryId,
@@ -351,10 +350,10 @@ func (r *RecordRepositoryImpl) insertOptionValues(ctx context.Context, tx reposi
 
 	values := make([]string, 0, len(options))
 	args := make([]any, 0, len(options)*8)
-	apiId := ctx.Value(ctxutil.CtxKeyApiId)
+	apiId := ctxutil.GetApiId(ctx)
 
 	for _, o := range options {
-		values = append(values, "(?, ?, ?, ?, ?, ?,'system',?,'system',?)")
+		values = append(values, "(?, ?, ?, ?, ?, ?,?,'system',?,'system')")
 
 		args = append(args,
 			o.RecordEntryId,

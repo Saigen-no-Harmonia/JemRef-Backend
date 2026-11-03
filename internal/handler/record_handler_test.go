@@ -796,8 +796,7 @@ func TestRecordHandler_CreateRecord(t *testing.T) {
 			// 正常系の場合のassertion
 			require.Len(t, c.Errors, 0)
 			assert.Equal(t, http.StatusCreated, rec.Code)
-			// repositoryがINS_ID/UPD_IDに使うAPI IDが設定されること
-			assert.Equal(t, ctxutil.REF_API_003, c.Keys[ctxutil.CtxKeyApiId])
+			assert.Equal(t, ctxutil.REF_API_003, ctxutil.GetApiId(tt.mockUsecase.LastCtx))
 			testutil.AssertResponse(t, rec, tt.expectedBody)
 		})
 	}
