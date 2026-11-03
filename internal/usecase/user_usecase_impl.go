@@ -61,7 +61,7 @@ func (uu *UserUsecaseImpl) Create(ctx context.Context, cu dto.CreateUserInput) (
 		return nil, fmt.Errorf("プライバシーポリシーマスタ情報が取得できませんでした。:%w", ErrPolicyNotFound)
 	}
 
-	sysDate := time.Now()
+	sysDate := time.Now().UTC()
 
 	user := &user.User{
 		PublicUserId:          publicUserId,
@@ -194,7 +194,7 @@ func (uu *UserUsecaseImpl) UpdateUserAgreements(ctx context.Context, ua dto.Upda
 		return fmt.Errorf("select user by internal uid=%d :%w", ua.InternalUid, err)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	for _, a := range ua.Agreements {
 

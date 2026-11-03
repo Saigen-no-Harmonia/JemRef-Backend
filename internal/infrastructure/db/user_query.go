@@ -72,10 +72,10 @@ update m_users
 set
   EMAIL = CONCAT('__deleted__', EMAIL, '__', DATE_FORMAT(UTC_TIMESTAMP(), '%Y%m%d%H%i%s')),
   DEL_FLG = 1,
-  DELETED_AT = now(),
+  DELETED_AT = UTC_TIMESTAMP(6),
   UPD_PG = ?,
   UPD_ID = 'system',
-  UPD_DT = now()
+  UPD_DT = UTC_TIMESTAMP(6)
 WHERE
   ID = ?
 `
@@ -89,7 +89,7 @@ set
 	PRIVACY_POLICY_VERSION = ?,
 	UPD_PG = ?,
 	UPD_ID = 'system',
-	UPD_DT = now()
+	UPD_DT = UTC_TIMESTAMP(6)
 where
     ID = ?
 `

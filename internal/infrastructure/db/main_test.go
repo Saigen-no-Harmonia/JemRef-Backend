@@ -5,6 +5,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"jemref_go/internal/infrastructure"
 	"os"
 	"testing"
 
@@ -32,10 +33,10 @@ func TestMain(m *testing.M) {
 
 	defer container.Terminate(ctx)
 
+	// 本番と同じDSNパラメータで接続する(時刻の壁時計をUTCに揃えるため)
 	dsn, err := container.ConnectionString(
 		ctx,
-		"parseTime=true",
-		"multiStatements=true",
+		append(infrastructure.DsnParams, "multiStatements=true")...,
 	)
 	if err != nil {
 		panic(err)

@@ -85,5 +85,6 @@ handler (gin) → usecase → repository (interface) → infrastructure/db (実�
 
 - エラーの比較は常に `errors.Is` を使う。テストのエラー検証も `assert.ErrorIs(t, actualErr, tt.expectedErrorBody)`。
 - **DB往復した `time.Time` の比較は `assert.WithinDuration(t, expected, actual, time.Microsecond)` を使う**(`assert.True(t, a.Equal(b))` は不可)。MySQLのカラム精度による丸めで、ローカルでは通ってもCI環境でだけ失敗することがある(実績: コミット `6c571e6`)。
+- **日時はUTCで保存する。** `infrastructure.DsnParams` の `loc=UTC` と `time_zone='+00:00'` で接続単位にUTCへ固定しており(サーバの `system_time_zone` がJSTでも上書きされる)、テストも同じパラメータで接続する。SQLでは `now()` ではなく `UTC_TIMESTAMP(6)` を、Goでは `time.Now().UTC()` を使う。
 - `XxxFromId()` 系を呼ぶ前に `IsValid()` で検証する(未知のidは `panic` する)。
 - 必須チェックはDTOの `binding` タグに寄せ、ハンドラに手書きしない。リクエストDTOの `binding:"required"` が必須制約の**単一の正**(Swaggerの `required` も同じタグから生成される)。ハンドラは bind 失敗を `toBindingError(err, 対応表)`(`handler/binding.go`)で専用 sentinel に翻訳するだけにし、手書きの空文字チェックは置かない。対応表は `map[構造体フィールド名]error` をハンドラごとに定義する(`createRecordRequiredErrors` 等)。キーは `validator.FieldError.StructField()`。複数フィールドが同時に未入力のとき返るエラーはフィールド宣言順に従う。

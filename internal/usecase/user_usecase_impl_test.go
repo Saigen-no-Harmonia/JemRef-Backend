@@ -267,10 +267,9 @@ func TestUserUsecaseImpl_CreateUser(t *testing.T) {
 			assert.Equal(t, tt.inputDto.Email, tt.mockUserRepo.LastInsertUser.Email)
 			assert.Equal(t, "0.01", tt.mockUserRepo.LastInsertUser.TermsVersion)
 			assert.Equal(t, "0.02", tt.mockUserRepo.LastInsertUser.PrivacyPolicyVersion)
-			assert.True(t, timestampBefore.Before(*tt.mockUserRepo.LastInsertUser.TermsAgreedDt))
-			assert.True(t, timestampAfter.After(*tt.mockUserRepo.LastInsertUser.TermsAgreedDt))
-			assert.True(t, timestampBefore.Before(*tt.mockUserRepo.LastInsertUser.PrivacyPolicyAgreedDt))
-			assert.True(t, timestampAfter.After(*tt.mockUserRepo.LastInsertUser.PrivacyPolicyAgreedDt))
+			assert.WithinRange(t, *tt.mockUserRepo.LastInsertUser.TermsAgreedDt, timestampBefore, timestampAfter)
+			assert.WithinRange(t, *tt.mockUserRepo.LastInsertUser.PrivacyPolicyAgreedDt, timestampBefore, timestampAfter)
+			assert.Equal(t, time.UTC, tt.mockUserRepo.LastInsertUser.TermsAgreedDt.Location())
 
 			// outputチェック-------------------
 			assert.NoError(t, err)
@@ -1283,10 +1282,9 @@ func TestUserUsecaseImpl_UpdateUserAgreements(t *testing.T) {
 			assert.Equal(t, tt.generalRepoArgs, tt.mockGeneralRepo.SelectedPrimaryKeys)
 			assert.Equal(t, tt.inputDto.InternalUid, tt.mockUserRepo.LastSelectInternalUid)
 			assert.Equal(t, tt.updateUserAgreementsArgs.InternalUserId, tt.mockUserRepo.LastUpdatedUser.InternalUserId)
-			assert.True(t, before.Before(*tt.mockUserRepo.LastUpdatedUser.TermsAgreedDt))
-			assert.True(t, after.After(*tt.mockUserRepo.LastUpdatedUser.TermsAgreedDt))
-			assert.True(t, before.Before(*tt.mockUserRepo.LastUpdatedUser.PrivacyPolicyAgreedDt))
-			assert.True(t, after.After(*tt.mockUserRepo.LastUpdatedUser.PrivacyPolicyAgreedDt))
+			assert.WithinRange(t, *tt.mockUserRepo.LastUpdatedUser.TermsAgreedDt, before, after)
+			assert.WithinRange(t, *tt.mockUserRepo.LastUpdatedUser.PrivacyPolicyAgreedDt, before, after)
+			assert.Equal(t, time.UTC, tt.mockUserRepo.LastUpdatedUser.TermsAgreedDt.Location())
 			assert.Equal(t, tt.updateUserAgreementsArgs.TermsVersion, tt.mockUserRepo.LastUpdatedUser.TermsVersion)
 			assert.Equal(t, tt.updateUserAgreementsArgs.PrivacyPolicyVersion, tt.mockUserRepo.LastUpdatedUser.PrivacyPolicyVersion)
 
