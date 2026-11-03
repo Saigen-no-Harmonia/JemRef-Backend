@@ -49,6 +49,8 @@ handler (gin) → usecase → repository (interface) → infrastructure/db (実�
   - `record.ContributorRelation` は `ContributorEntry` と `ContributionEntry` のペア(両テーブルは現状1:1で登録し、名寄せはしない)。
 - **internal/repository**: リポジトリのインターフェース、共通 sentinel error(`ErrNotFound`, `ErrDuplicateEntry`)、トランザクション抽象(`tx_manager.go` の `TxManager`、`dbtx.go` の `DBTX`)を定義。実装は `internal/infrastructure/db`(`database/sql` を使った実MySQL実装)。
   - 更新処理は usecase が `txManager.WithTransaction(ctx, func(ctx, tx) error {...})` で囲み、repository は `*sql.DB` ではなく常に引数の `tx repository.DBTX` に対して実行する(テストでは `*sql.DB` をそのまま渡せる)。`TxManagerImpl` は `defer tx.Rollback()` + 正常終了時 `Commit()`。
+  - SQLは `*_query.go`(`user_query.go` / `record_query.go` 等)にパッケージレベルの const として置く。一括INSERTは固定部分(`xxxQueryBase`)と1行分のプレースホルダ(`xxxQueryValues`)に分け、`buildBulkInsertQuery(base, values, rows)` で展開する。
+  - **カラムは明示列挙し、SQLのプレースホルダ順と `args` の順序を一致させる**(SQLと引数が別ファイルになるため、ズレてもコンパイルエラーにならない。全カラムを検証する統合テストが唯一の防波堤)。
 - **internal/usecase**: ビジネスロジック。インターフェースは `interface.go`、実装は `*_impl.go`、入出力DTOは `usecase/dto`、独自の sentinel error は `usecase/errors.go`。
 - **internal/handler**: ginハンドラ。リクエスト/レスポンスDTOは `handler/dto`、独自の sentinel error は `handler/error.go`、ルートパラメータ名は `handler/params.go`、bindエラーの変換は `handler/binding.go`。
 - **internal/middleware**: 各ミドルウェア固有の sentinel error は同ディレクトリの `error.go`。

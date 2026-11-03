@@ -7,7 +7,6 @@ import (
 	ctxutil "jemref_go/internal/context"
 	"jemref_go/internal/domain/record"
 	"jemref_go/internal/repository"
-	"strings"
 )
 
 type RecordRepositoryImpl struct {
@@ -66,49 +65,6 @@ func (r *RecordRepositoryImpl) Create(
 }
 
 func (r *RecordRepositoryImpl) insertRecordEntry(ctx context.Context, tx repository.DBTX, re record.UserRecordEntry) error {
-	const query = `
-		INSERT INTO e_records (
-			ID,
-			USER_ID,
-			TYPE_ID,
-            MAIN_TITLE,
-            SUB_TITLE,
-            PAGE_RANGE,
-            VOLUME,
-            ISSUE,
-            PUBLISHER,
-            PUBLICATION_DATE,
-            DATE_PRECISION,
-            READ_STATUS,
-            PARENT_ID,
-            M_RECORD_ID,
-            DEL_FLG,
-			INS_PG,
-			INS_ID,
-			UPD_PG,
-			UPD_ID
-		) VALUES (
-			?,
-			?,
-			?,
-			?, 
-			?, 
-			?,
-			?,
-			?,
-			?, 
-			?, 
-			?,
-			?,
-			?,
-			?, 
-			?, 
-			?,
-			'system',
-			?,
-			'system'
-		)
-	`
 	args := make([]any, 0, 17)
 	apiId := ctxutil.GetApiId(ctx)
 
@@ -132,7 +88,7 @@ func (r *RecordRepositoryImpl) insertRecordEntry(ctx context.Context, tx reposit
 		apiId,
 	)
 
-	_, err := tx.ExecContext(ctx, query, args...)
+	_, err := tx.ExecContext(ctx, insertRecordEntryQuery, args...)
 	if err != nil {
 		return fmt.Errorf("insert record entry: %w", err)
 	}
@@ -141,25 +97,6 @@ func (r *RecordRepositoryImpl) insertRecordEntry(ctx context.Context, tx reposit
 }
 
 func (r *RecordRepositoryImpl) insertContributor(ctx context.Context, tx repository.DBTX, c record.ContributorEntry) (int64, error) {
-	const query = `
-		INSERT INTO e_contributors (
-			RAW_NAME,
-			USER_ID,
-            DEL_FLG,
-			INS_PG,
-			INS_ID,
-			UPD_PG,
-			UPD_ID
-		) VALUES (
-			?,
-			?,
-			?, 
-			?,
-			'system',
-			?,
-			'system'
-		)
-	`
 	args := make([]any, 0, 5)
 	apiId := ctxutil.GetApiId(ctx)
 
@@ -171,7 +108,7 @@ func (r *RecordRepositoryImpl) insertContributor(ctx context.Context, tx reposit
 		apiId,
 	)
 
-	result, err := tx.ExecContext(ctx, query, args...)
+	result, err := tx.ExecContext(ctx, insertContributorQuery, args...)
 	if err != nil {
 		return 0, fmt.Errorf("insert contributor: %w", err)
 	}
@@ -185,31 +122,7 @@ func (r *RecordRepositoryImpl) insertContributor(ctx context.Context, tx reposit
 }
 
 func (r *RecordRepositoryImpl) insertContribution(ctx context.Context, tx repository.DBTX, c record.ContributionEntry) error {
-	const query = `
-		INSERT INTO e_record_contributions (
-			E_RECORD_ID,
-			E_CONTRIBUTOR_ID,
-            ROLE_ID,
-			DISPLAY_NUMBER,
-            DEL_FLG,
-			INS_PG,
-			INS_ID,
-			UPD_PG,
-			UPD_ID
-		) VALUES (
-			?,
-			?,
-			?,
-			?, 
-			?, 
-			?,
-			'system',
-			?,
-			'system'
-		)
-	`
 	args := make([]any, 0, 7)
-
 	apiId := ctxutil.GetApiId(ctx)
 
 	args = append(args,
@@ -222,7 +135,7 @@ func (r *RecordRepositoryImpl) insertContribution(ctx context.Context, tx reposi
 		apiId,
 	)
 
-	_, err := tx.ExecContext(ctx, query, args...)
+	_, err := tx.ExecContext(ctx, insertContributionQuery, args...)
 	if err != nil {
 		return fmt.Errorf("insert contribution: %w", err)
 	}
@@ -235,28 +148,10 @@ func (r *RecordRepositoryImpl) insertURLs(ctx context.Context, tx repository.DBT
 		return nil
 	}
 
-	const queryBase = `
-        INSERT INTO e_record_urls (
-            E_RECORD_ID,
-            DISPLAY_NUMBER,
-            RAW_LABEL,
-            RAW_URL,
-            USER_ID,
-            DEL_FLG,
-			INS_PG,
-			INS_ID,
-			UPD_PG,
-			UPD_ID
-        ) VALUES
-    `
-
-	values := make([]string, 0, len(urls))
 	args := make([]any, 0, len(urls)*8)
 	apiId := ctxutil.GetApiId(ctx)
 
 	for _, u := range urls {
-		values = append(values, "(?, ?, ?, ?, ?, ?,?,'system',?,'system')")
-
 		args = append(args,
 			u.RecordEntryId,
 			u.DisplayNumber,
@@ -269,7 +164,11 @@ func (r *RecordRepositoryImpl) insertURLs(ctx context.Context, tx repository.DBT
 		)
 	}
 
-	query := queryBase + strings.Join(values, ", ")
+	query := buildBulkInsertQuery(
+		insertRecordUrlsQueryBase,
+		insertRecordUrlsQueryValues,
+		len(urls),
+	)
 
 	_, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
@@ -284,28 +183,10 @@ func (r *RecordRepositoryImpl) insertMemos(ctx context.Context, tx repository.DB
 		return nil
 	}
 
-	const queryBase = `
-        INSERT INTO e_record_memos (
-            E_RECORD_ID,
-            DISPLAY_NUMBER,
-            TITLE,
-            CONTENT,
-            USER_ID,
-            DEL_FLG,
-			INS_PG,
-			INS_ID,
-			UPD_PG,
-			UPD_ID
-        ) VALUES
-    `
-
-	values := make([]string, 0, len(memos))
-	args := make([]any, 0, len(memos)*9)
+	args := make([]any, 0, len(memos)*8)
 	apiId := ctxutil.GetApiId(ctx)
 
 	for _, m := range memos {
-		values = append(values, "(?, ?, ?, ?, ?, ?,?,'system',?,'system')")
-
 		args = append(args,
 			m.RecordEntryId,
 			m.DisplayNumber,
@@ -318,7 +199,11 @@ func (r *RecordRepositoryImpl) insertMemos(ctx context.Context, tx repository.DB
 		)
 	}
 
-	query := queryBase + strings.Join(values, ", ")
+	query := buildBulkInsertQuery(
+		insertRecordMemosQueryBase,
+		insertRecordMemosQueryValues,
+		len(memos),
+	)
 
 	_, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
@@ -333,28 +218,10 @@ func (r *RecordRepositoryImpl) insertOptionValues(ctx context.Context, tx reposi
 		return nil
 	}
 
-	const queryBase = `
-        INSERT INTO e_record_field_values (
-            E_RECORD_ID,
-            RECORD_FIELD_ID,
-            DISPLAY_NUMBER,
-            RAW_VALUE,
-            USER_ID,
-            DEL_FLG,
-			INS_PG,
-			INS_ID,
-			UPD_PG,
-			UPD_ID
-        ) VALUES
-    `
-
-	values := make([]string, 0, len(options))
 	args := make([]any, 0, len(options)*8)
 	apiId := ctxutil.GetApiId(ctx)
 
 	for _, o := range options {
-		values = append(values, "(?, ?, ?, ?, ?, ?,?,'system',?,'system')")
-
 		args = append(args,
 			o.RecordEntryId,
 			o.RecordField.GetId(),
@@ -367,7 +234,11 @@ func (r *RecordRepositoryImpl) insertOptionValues(ctx context.Context, tx reposi
 		)
 	}
 
-	query := queryBase + strings.Join(values, ", ")
+	query := buildBulkInsertQuery(
+		insertRecordFieldValuesQueryBase,
+		insertRecordFieldValuesQueryValues,
+		len(options),
+	)
 
 	_, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
