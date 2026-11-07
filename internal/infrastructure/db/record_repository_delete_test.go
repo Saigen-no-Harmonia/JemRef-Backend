@@ -6,6 +6,7 @@ import (
 	"time"
 
 	ctxutil "jemref_go/internal/context"
+	"jemref_go/internal/domain/record"
 	"jemref_go/internal/repository"
 	"jemref_go/internal/testutil"
 
@@ -45,10 +46,12 @@ func TestRecordRepository_SelectByPk_正常_親なしの書誌を取得(t *testi
 	assert.Equal(t, delSoloId, actual.RecordEntryId)
 	assert.Nil(t, actual.ParentId)
 
-	// 所有権確認と親ID取得のための軽量SELECTであり、他のカラムは取得しない
-	assert.Zero(t, actual.InternalUid)
-	assert.Empty(t, actual.MainTitle)
-	assert.Empty(t, actual.RecordType)
+	// 削除で参照するのは書誌IDと親IDのみだが、詳細参照と共用のため全カラムを取得する
+	assert.Equal(t, testUid, actual.InternalUid)
+	assert.Equal(t, "単独の単著書", actual.MainTitle)
+	assert.Equal(t, record.RecordTypeAuthoredBook, actual.RecordType)
+
+	// 子要素はSelectChildrenの責務であり、ここでは取得しない
 	assert.Nil(t, actual.ContributorRelations)
 }
 

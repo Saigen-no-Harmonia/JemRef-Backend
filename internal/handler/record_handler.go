@@ -54,9 +54,34 @@ func (h *RecordHandler) GetRecords(c *gin.Context) {
 // @Param id path string true "ユーザ書誌ID"
 // @Success 200 {object} dto.GetRecordResponse
 // @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /records/{id} [get]
-func (h *RecordHandler) GetRecord(c *gin.Context) {}
+func (h *RecordHandler) GetRecord(c *gin.Context) {
+	internalUid, ok := ctxutil.GetUserId(c)
+	if !ok {
+		c.Error(ErrInternalUidNotFound)
+		return
+	}
+
+	recordId := c.Param(ParamRecordId)
+	if recordId == "" {
+		c.Error(ErrRecordIdRequired)
+		return
+	}
+
+	ctxutil.SetApiId(c, ctxutil.REF_API_002)
+	output, err := h.usecase.Get(c, usecasedto.GetRecordInput{
+		InternalUserId: internalUid,
+		RecordId:       recordId,
+	})
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, toGetRecordResponse(output))
+}
 
 // @Summary [REF-API-003] 書誌情報登録
 // @Description ユーザに紐づく書誌情報を登録する。ユーザ情報はfirebase tokenから取得する。

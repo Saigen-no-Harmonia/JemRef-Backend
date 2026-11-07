@@ -148,11 +148,24 @@ const insertRecordFieldValuesQueryValues = "(?, ?, ?, ?, ?, ?,?,'system',?,'syst
 // selectRecordByPkQuery 書誌を1件取得する
 //
 // 所有権確認を兼ねるため内部用ユーザIDを条件に含め、論理削除済みは対象外とする。
-// 削除・更新で必要な親IDのみを取得するための軽量クエリ。
+// 詳細参照・削除・更新で共用するため全カラムを取得する(監査列は参照しないので対象外)。
 const selectRecordByPkQuery = `
 	select
 		ID,
-		PARENT_ID
+		USER_ID,
+		TYPE_ID,
+		MAIN_TITLE,
+		SUB_TITLE,
+		PAGE_RANGE,
+		VOLUME,
+		ISSUE,
+		PUBLISHER,
+		PUBLICATION_DATE,
+		DATE_PRECISION,
+		READ_STATUS,
+		PARENT_ID,
+		M_RECORD_ID,
+		DEL_FLG
 	from
 		e_records
 	where
@@ -241,4 +254,104 @@ const logicalDeleteRecordEntryQuery = `
 		ID = ?
 	and
 		DEL_FLG = 0
+`
+
+// 子要素の取得クエリ
+//
+// 記事と収録物の最大2件をまとめて引くため、書誌IDはIN句で渡す(N+1回避)。
+// 固定部分(Base)と末尾(Order)に分け、間のプレースホルダを buildPlaceholders で展開する。
+// いずれも論理削除済みを除外し、表示順の昇順で返す。
+// 書誌IDごとの振り分けに使うため、先頭カラムは必ず E_RECORD_ID とする。
+
+const selectContributionsByRecordIdsQueryBase = `
+	select
+		c.E_RECORD_ID,
+		c.ID,
+		c.ROLE_ID,
+		c.DISPLAY_NUMBER,
+		co.ID,
+		co.RAW_NAME,
+		co.USER_ID,
+		co.M_CONTRIBUTOR_ID
+	from
+		e_record_contributions c
+	inner join
+		e_contributors co
+	on
+		co.ID = c.E_CONTRIBUTOR_ID
+	and
+		co.DEL_FLG = 0
+	where
+		c.DEL_FLG = 0
+	and
+		c.E_RECORD_ID in (`
+
+const selectContributionsByRecordIdsQueryOrder = `)
+	order by
+		c.E_RECORD_ID,
+		c.DISPLAY_NUMBER
+`
+
+const selectUrlsByRecordIdsQueryBase = `
+	select
+		E_RECORD_ID,
+		ID,
+		DISPLAY_NUMBER,
+		RAW_LABEL,
+		RAW_URL,
+		USER_ID
+	from
+		e_record_urls
+	where
+		DEL_FLG = 0
+	and
+		E_RECORD_ID in (`
+
+const selectUrlsByRecordIdsQueryOrder = `)
+	order by
+		E_RECORD_ID,
+		DISPLAY_NUMBER
+`
+
+const selectMemosByRecordIdsQueryBase = `
+	select
+		E_RECORD_ID,
+		ID,
+		DISPLAY_NUMBER,
+		TITLE,
+		CONTENT,
+		USER_ID,
+		SHARE_LEVEL
+	from
+		e_record_memos
+	where
+		DEL_FLG = 0
+	and
+		E_RECORD_ID in (`
+
+const selectMemosByRecordIdsQueryOrder = `)
+	order by
+		E_RECORD_ID,
+		DISPLAY_NUMBER
+`
+
+const selectFieldValuesByRecordIdsQueryBase = `
+	select
+		E_RECORD_ID,
+		ID,
+		RECORD_FIELD_ID,
+		DISPLAY_NUMBER,
+		RAW_VALUE,
+		USER_ID
+	from
+		e_record_field_values
+	where
+		DEL_FLG = 0
+	and
+		E_RECORD_ID in (`
+
+const selectFieldValuesByRecordIdsQueryOrder = `)
+	order by
+		E_RECORD_ID,
+		DISPLAY_NUMBER
 `

@@ -17,11 +17,28 @@ type MockRecordUsecase struct {
 		usecaseDto.DeleteRecordInput,
 	) error
 
+	GetFunc func(
+		context.Context,
+		usecaseDto.GetRecordInput,
+	) (*usecaseDto.GetRecordOutput, error)
+
 	CreateCalled    bool
 	DeleteCalled    bool
+	GetCalled       bool
 	LastCtx         context.Context
 	LastCreateInput usecaseDto.CreateRecordInput
 	LastDeleteInput usecaseDto.DeleteRecordInput
+	LastGetInput    usecaseDto.GetRecordInput
+}
+
+func (m *MockRecordUsecase) Get(
+	ctx context.Context,
+	gi usecaseDto.GetRecordInput,
+) (*usecaseDto.GetRecordOutput, error) {
+	m.LastCtx = ctx
+	m.GetCalled = true
+	m.LastGetInput = gi
+	return m.GetFunc(ctx, gi)
 }
 
 func (m *MockRecordUsecase) Delete(

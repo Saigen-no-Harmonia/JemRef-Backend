@@ -256,7 +256,12 @@ func (r *RecordRepositoryImpl) SelectByPk(
 	internalUid int64,
 ) (*record.UserRecordEntry, error) {
 
-	var entry record.UserRecordEntry
+	var (
+		entry      record.UserRecordEntry
+		typeId     string
+		readStatus *int
+	)
+
 	err := tx.QueryRowContext(
 		ctx,
 		selectRecordByPkQuery,
@@ -264,7 +269,20 @@ func (r *RecordRepositoryImpl) SelectByPk(
 		internalUid,
 	).Scan(
 		&entry.RecordEntryId,
+		&entry.InternalUid,
+		&typeId,
+		&entry.MainTitle,
+		&entry.SubTitle,
+		&entry.PageRange,
+		&entry.Volume,
+		&entry.Issue,
+		&entry.Publisher,
+		&entry.PublicationDate,
+		&entry.DatePrecision,
+		&readStatus,
 		&entry.ParentId,
+		&entry.MRecordId,
+		&entry.DelFlg,
 	)
 
 	if err != nil {
@@ -277,6 +295,16 @@ func (r *RecordRepositoryImpl) SelectByPk(
 			)
 		}
 		return nil, fmt.Errorf("select record by pk record id=%s: %w", recordId, err)
+	}
+
+	// IDから値オブジェクトへ復元する(登録時のGetId()の逆変換)。
+	// TYPE_IDはマスタへのFKがあるため未知の値は入らない。
+	entry.RecordType = record.RecordTypeFromId(typeId)
+
+	// READ_STATUSはFKを持たないTINYINTだが、不正値はバグとして落とす方針のため検証せずに変換する。
+	if readStatus != nil {
+		status := record.ReadStatusFromId(*readStatus)
+		entry.ReadStatus = &status
 	}
 
 	return &entry, nil

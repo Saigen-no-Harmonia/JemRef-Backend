@@ -218,3 +218,134 @@ func nilIfEmpty(s *string) *string {
 	}
 	return s
 }
+
+// toGetRecordResponse 書誌詳細参照のレスポンスを組み立てる
+//
+// domainモデルには露出してはいけない項目(内部用ユーザID、削除フラグ等)が
+// 含まれるため、ここで必要な項目だけを明示的に詰め替える。
+func toGetRecordResponse(output *usecasedto.GetRecordOutput) dto.GetRecordResponse {
+	return dto.GetRecordResponse{
+		RecordId:            output.Record.RecordEntryId,
+		RecordDetailItem:    toRecordDetailItem(output.Record),
+		ContainerDetailItem: toContainerDetailItem(output.Container),
+	}
+}
+
+func toRecordDetailItem(e record.UserRecordEntry) dto.RecordDetailItem {
+	return dto.RecordDetailItem{
+		Type:            string(e.RecordType),
+		MainTitle:       e.MainTitle,
+		SubTitle:        nilIfEmpty(e.SubTitle),
+		PageRange:       nilIfEmpty(e.PageRange),
+		Publisher:       nilIfEmpty(e.Publisher),
+		PublicationDate: record.FormatPublicationDate(e.PublicationDate, e.DatePrecision),
+		ReadStatus:      toReadStatusString(e.ReadStatus),
+		Contributors:    toContributorInfos(e.ContributorRelations),
+		Memos:           toMemoInfos(e.Memos),
+		Urls:            toUrlInfos(e.Urls),
+		OptionValues:    toOptionValuesResponse(e.OptionValues),
+	}
+}
+
+// toContainerDetailItem 収録物のレスポンスを組み立てる
+//
+// 収録物のIDは露出しない。出版者・出版日は登録時に記事側からコピーしているが、
+// 記事側が正であるためレスポンスには含めない(ContainerDetailItemにもフィールドがない)。
+func toContainerDetailItem(e *record.UserRecordEntry) *dto.ContainerDetailItem {
+	if e == nil {
+		return nil
+	}
+
+	return &dto.ContainerDetailItem{
+		MainTitle:    e.MainTitle,
+		SubTitle:     nilIfEmpty(e.SubTitle),
+		Volume:       nilIfEmpty(e.Volume),
+		Issue:        nilIfEmpty(e.Issue),
+		ReadStatus:   toReadStatusString(e.ReadStatus),
+		Contributors: toContributorInfos(e.ContributorRelations),
+		OptionValues: toOptionValuesResponse(e.OptionValues),
+	}
+}
+
+func toContributorInfos(relations []record.ContributorRelation) []dto.ContributorInfo {
+	var contributors []dto.ContributorInfo
+	for _, r := range relations {
+		contributors = append(contributors, dto.ContributorInfo{
+			Name: r.Contributor.RawName,
+			Role: string(r.Contribution.Role),
+		})
+	}
+
+	return contributors
+}
+
+func toMemoInfos(entries []record.MemoEntry) []dto.MemoInfo {
+	var memos []dto.MemoInfo
+	for _, m := range entries {
+		memos = append(memos, dto.MemoInfo{
+			Label:   nilIfEmpty(m.Title),
+			Content: m.Content,
+		})
+	}
+
+	return memos
+}
+
+func toUrlInfos(entries []record.UrlEntry) []dto.UrlInfo {
+	var urls []dto.UrlInfo
+	for _, u := range entries {
+		urls = append(urls, dto.UrlInfo{
+			Label: nilIfEmpty(u.Label),
+			Value: u.Url,
+		})
+	}
+
+	return urls
+}
+
+// toOptionValuesResponse 項目値を入力項目ごとのフィールドへ振り分ける
+//
+// 1件も値がない場合はnilを返す(登録時のtoOptionValuesInputと揃える)。
+func toOptionValuesResponse(values []record.OptionValue) *dto.OptionValues {
+	if len(values) == 0 {
+		return nil
+	}
+
+	var optionValues dto.OptionValues
+	for _, v := range values {
+		value := v.RawValue
+		if value == "" {
+			continue
+		}
+
+		switch v.RecordField {
+		case record.RecordFieldIsbn:
+			optionValues.Isbn = &value
+
+		case record.RecordFieldEdition:
+			optionValues.Edition = &value
+
+		case record.RecordFieldOriginalTitle:
+			optionValues.OriginalTitle = &value
+		}
+	}
+
+	if optionValues.Isbn == nil &&
+		optionValues.Edition == nil &&
+		optionValues.OriginalTitle == nil {
+		return nil
+	}
+
+	return &optionValues
+}
+
+// toReadStatusString 読了ステータスをレスポンス用の文字列に変換する
+func toReadStatusString(s *record.ReadStatus) *string {
+	if s == nil {
+		return nil
+	}
+
+	status := string(*s)
+
+	return &status
+}

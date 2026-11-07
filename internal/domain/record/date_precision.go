@@ -62,3 +62,32 @@ func GetDateAndPrecision(publishDate *string) (*time.Time, *DatePrecision, error
 
 	return &date, &precision, nil
 }
+
+// FormatPublicationDate 出版日と精度から、登録時の入力と同じ形式の文字列を返す（GetDateAndPrecision の逆変換）。
+// 出版日と精度はDB上で別カラム(どちらもNULL許容)なので、片方だけ設定された不整合データが
+// 理論上あり得る。精度が不明なまま日付だけを出力すると月日を捏造することになるため、
+// どちらか一方でも未設定、または未知の精度の場合は nil を返す。
+func FormatPublicationDate(date *time.Time, precision *DatePrecision) *string {
+	if date == nil || precision == nil {
+		return nil
+	}
+
+	var layout string
+	switch *precision {
+	case DatePrecisionDay:
+		layout = "2006-01-02"
+
+	case DatePrecisionMonth:
+		layout = "2006-01"
+
+	case DatePrecisionYear:
+		layout = "2006"
+
+	default:
+		return nil
+	}
+
+	formatted := date.Format(layout)
+
+	return &formatted
+}

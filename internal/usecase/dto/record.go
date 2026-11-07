@@ -65,3 +65,20 @@ type DeleteRecordInput struct {
 	InternalUserId int64
 	RecordId       string
 }
+
+// [REF-API-002] 書誌詳細参照
+type GetRecordInput struct {
+	InternalUserId int64
+	RecordId       string
+}
+
+// GetRecordOutput 書誌詳細参照の結果
+//
+// domainモデルをそのまま保持するが、DBに存在しない派生値(出典フォーマット等)が必要になった場合は、
+// domainのメソッドで算出するか、このstructにフィールドを追加して対応する。
+type GetRecordOutput struct {
+	// 書誌本体
+	Record record.UserRecordEntry
+	// 収録物。持たない場合と、収録物が論理削除済みの場合はnil
+	Container *record.UserRecordEntry
+}

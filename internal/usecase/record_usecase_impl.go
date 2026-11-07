@@ -325,3 +325,83 @@ func (u *RecordUsecaseImpl) Delete(
 		},
 	)
 }
+
+// Get 書誌情報を1件取得する
+//
+// 本体・収録物・子要素を複数回のSELECTで読むため、一貫したスナップショットを得る目的で
+// トランザクション内で実行する(SelectByPkは削除・更新と共用のためtxを必須としている)。
+func (u *RecordUsecaseImpl) Get(
+	ctx context.Context,
+	gi dto.GetRecordInput,
+) (*dto.GetRecordOutput, error) {
+
+	var output dto.GetRecordOutput
+
+	err := u.txManager.WithTransaction(
+		ctx,
+		func(ctx context.Context, tx repository.DBTX) error {
+			// 存在確認と所有権確認を兼ねる
+			article, err := u.recordRepo.SelectByPk(ctx, tx, gi.RecordId, gi.InternalUserId)
+			if err != nil {
+				if errors.Is(err, repository.ErrNotFound) {
+					return fmt.Errorf(
+						"参照対象の書誌が存在しません。record id=%s :%w",
+						gi.RecordId,
+						ErrRecordNotFound,
+					)
+				}
+				return fmt.Errorf("select record error: %w", err)
+			}
+
+			// 収録物(他の書誌の親になっている書誌)は単体の参照対象にしない
+			//
+			// 収録物のIDはAPIレスポンスに露出しないため、指定された場合は
+			// 不正なリクエストとして記録を残す(このエラーはリクエストログのerrorsに出力される)。
+			// レスポンスは存在を漏らさないため404に寄せる。
+			children, err := u.recordRepo.CountActiveChildren(ctx, tx, article.RecordEntryId)
+			if err != nil {
+				return fmt.Errorf("count children of target error: %w", err)
+			}
+
+			if children > 0 {
+				return fmt.Errorf(
+					"収録物の単体参照が要求されました。収録物は参照できません。record id=%s, internal uid=%d, child count=%d :%w",
+					gi.RecordId,
+					gi.InternalUserId,
+					children,
+					ErrRecordNotFound,
+				)
+			}
+
+			var container *record.UserRecordEntry
+			if article.ParentId != nil {
+				container, err = u.recordRepo.SelectByPk(ctx, tx, *article.ParentId, gi.InternalUserId)
+				if err != nil {
+					if !errors.Is(err, repository.ErrNotFound) {
+						return fmt.Errorf("select container record error: %w", err)
+					}
+
+					// 収録物が論理削除済みの場合は、収録物を持たない書誌として返す
+					container = nil
+				}
+			}
+
+			// containerがnilの場合も含めて渡す(repository側でnilを読み飛ばす)
+			if err := u.recordRepo.SelectChildren(
+				ctx, tx, []*record.UserRecordEntry{article, container},
+			); err != nil {
+				return fmt.Errorf("select children error: %w", err)
+			}
+
+			output.Record = *article
+			output.Container = container
+
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &output, nil
+}
