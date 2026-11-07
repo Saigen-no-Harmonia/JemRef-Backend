@@ -13,24 +13,24 @@ values
 "ins_pg","ins_id",now(),"upd_pg","upd_id",now());
 
 insert into e_records
-(ID,USER_ID,TYPE_ID,MAIN_TITLE,PARENT_ID,DEL_FLG,INS_PG,INS_ID,INS_DT,UPD_PG,UPD_ID,UPD_DT)
+(ID,USER_ID,TYPE_ID,MAIN_TITLE,CONTAINER_ID,DEL_FLG,INS_PG,INS_ID,INS_DT,UPD_PG,UPD_ID,UPD_DT)
 values
--- 親を持たない単著書。子要素をフルに持つ(論理削除の主対象)
+-- コンテナを持たない単著書。構成要素をフルに持つ(論理削除の主対象)
 ("DEL_SOLO_0000000000000001",1001,"RT000001","単独の単著書",null,0,
 "ins_pg","system",now(),"upd_pg","system",now()),
 
--- 子1件を持つ収録物と、その子(他の書誌の子要素に影響しないことの確認に使う)
-("DEL_CONTAINER_000000001",1001,"RT000011","子1件の雑誌",null,0,
+-- 書誌1件を持つ収録物と、その書誌(他の書誌の構成要素に影響しないことの確認に使う)
+("DEL_CONTAINER_000000001",1001,"RT000011","書誌1件の雑誌",null,0,
 "ins_pg","system",now(),"upd_pg","system",now()),
-("DEL_CHILD_A_00000000001",1001,"RT000012","子A",'DEL_CONTAINER_000000001',0,
+("DEL_ARTICLE_A_000000001",1001,"RT000012","書誌A",'DEL_CONTAINER_000000001',0,
 "ins_pg","system",now(),"upd_pg","system",now()),
 
--- 子2件(生1/削除済1)を持つ収録物。子要素行は持たない
-("DEL_CONTAINER_000000002",1001,"RT000011","子2件の雑誌",null,0,
+-- 書誌2件(生1/削除済1)を持つ収録物。構成要素行は持たない
+("DEL_CONTAINER_000000002",1001,"RT000011","書誌2件の雑誌",null,0,
 "ins_pg","system",now(),"upd_pg","system",now()),
-("DEL_CHILD_B_00000000001",1001,"RT000012","子B1(生存)",'DEL_CONTAINER_000000002',0,
+("DEL_ARTICLE_B_000000001",1001,"RT000012","書誌B1(生存)",'DEL_CONTAINER_000000002',0,
 "ins_pg","system",now(),"upd_pg","system",now()),
-("DEL_CHILD_B_00000000002",1001,"RT000012","子B2(論理削除済)",'DEL_CONTAINER_000000002',1,
+("DEL_ARTICLE_B_000000002",1001,"RT000012","書誌B2(論理削除済)",'DEL_CONTAINER_000000002',1,
 "ins_pg","system",now(),"already_deleted","system","2020-01-01 00:00:00"),
 
 -- 他ユーザの書誌
@@ -41,8 +41,8 @@ values
 ("DEL_DELETED_00000000001",1001,"RT000001","論理削除済の単著書",null,1,
 "ins_pg","system",now(),"already_deleted","system","2020-01-01 00:00:00"),
 
--- 子要素の一部が論理削除済みの書誌
-("DEL_PARTIAL_00000000001",1001,"RT000001","子要素が一部削除済の単著書",null,0,
+-- 構成要素の一部が論理削除済みの書誌
+("DEL_PARTIAL_00000000001",1001,"RT000001","構成要素が一部削除済の単著書",null,0,
 "ins_pg","system",now(),"upd_pg","system",now());
 
 insert into e_contributors

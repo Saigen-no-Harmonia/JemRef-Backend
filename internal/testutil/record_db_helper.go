@@ -30,7 +30,7 @@ type RecordRow struct {
 	PublicationDate sql.NullTime
 	DatePrecision   sql.NullInt64
 	ReadStatus      sql.NullInt64
-	ParentId        sql.NullString
+	ContainerId     sql.NullString
 	MRecordId       sql.NullString
 	DelFlg          int
 	InsPg           string
@@ -144,7 +144,7 @@ func SelectRecordByPk(t *testing.T, db *sql.DB, recordId string) (*RecordRow, er
 			PUBLICATION_DATE,
 			DATE_PRECISION,
 			READ_STATUS,
-			PARENT_ID,
+			CONTAINER_ID,
 			M_RECORD_ID,
 			DEL_FLG,
 			INS_PG,
@@ -170,7 +170,7 @@ func SelectRecordByPk(t *testing.T, db *sql.DB, recordId string) (*RecordRow, er
 		&r.PublicationDate,
 		&r.DatePrecision,
 		&r.ReadStatus,
-		&r.ParentId,
+		&r.ContainerId,
 		&r.MRecordId,
 		&r.DelFlg,
 		&r.InsPg,

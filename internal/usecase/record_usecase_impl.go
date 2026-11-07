@@ -81,8 +81,8 @@ func (u *RecordUsecaseImpl) Create(
 	}, nil
 }
 
-// recordInsertLimit 子要素1種あたりの登録件数上限
-// 子要素のDISPLAY_NUMBERはTINYINT(0起点)なので128件までしか登録できない。
+// recordInsertLimit 構成要素1種あたりの登録件数上限
+// 構成要素のDISPLAY_NUMBERはTINYINT(0起点)なので128件までしか登録できない。
 const recordInsertLimit = 128
 
 func chkInsertLimit(ci dto.CreateRecordInput) error {
@@ -115,7 +115,7 @@ func extractContainer(input dto.CreateRecordInput, containerId string) *record.U
 	return &record.UserRecordEntry{
 		RecordEntryId:   containerId,
 		InternalUid:     uid,
-		RecordType:      input.RecordInput.Type.GetParent(),
+		RecordType:      input.RecordInput.Type.GetContainerType(),
 		MainTitle:       ci.MainTitle,
 		SubTitle:        ci.SubTitle,
 		Volume:          ci.Volume,
@@ -156,7 +156,7 @@ func extractArticle(ci dto.CreateRecordInput, recordId string, containerId strin
 		PublicationDate: ri.PublicationDate,
 		DatePrecision:   ri.DatePrecision,
 		ReadStatus:      ri.ReadStatus,
-		ParentId:        containerIdPtr,
+		ContainerId:     containerIdPtr,
 		DelFlg:          0,
 
 		ContributorRelations: relations,
@@ -254,7 +254,7 @@ func createOptionValue(recordId string, internalUid int64, field record.RecordFi
 
 // Delete 書誌情報を論理削除する
 //
-// コンテナ(親レコード)は、他に論理削除されていない子が残っていない場合のみ削除する。
+// コンテナ(収録物)は、他に論理削除されていない書誌が残っていない場合のみ削除する。
 // e_contributors はユーザ単位の入力辞書であり書誌に属さないため削除しない。
 func (u *RecordUsecaseImpl) Delete(
 	ctx context.Context,
@@ -277,47 +277,47 @@ func (u *RecordUsecaseImpl) Delete(
 				return fmt.Errorf("select record error: %w", err)
 			}
 
-			// 収録物(他の書誌の親になっている書誌)は単体の削除対象にしない
+			// 収録物(他の書誌のコンテナになっている書誌)は単体の削除対象にしない
 			//
 			// 収録物のIDはAPIレスポンスに露出しないため、指定された場合は
 			// 不正なリクエストとして記録を残す(このエラーはリクエストログのerrorsに出力される)。
 			// レスポンスは存在を漏らさないため404に寄せる。
-			children, err := u.recordRepo.CountActiveChildren(ctx, tx, target.RecordEntryId)
+			articleCount, err := u.recordRepo.CountActiveArticles(ctx, tx, target.RecordEntryId)
 			if err != nil {
-				return fmt.Errorf("count children of target error: %w", err)
+				return fmt.Errorf("count articles of target error: %w", err)
 			}
 
-			if children > 0 {
+			if articleCount > 0 {
 				return fmt.Errorf(
-					"収録物の単体削除が要求されました。収録物は削除できません。record id=%s, internal uid=%d, child count=%d :%w",
+					"収録物の単体削除が要求されました。収録物は削除できません。record id=%s, internal uid=%d, article count=%d :%w",
 					di.RecordId,
 					di.InternalUserId,
-					children,
+					articleCount,
 					ErrRecordNotFound,
 				)
 			}
 
-			// 子要素の論理削除処理
+			// 構成要素の論理削除処理
 			if err := u.recordRepo.LogicalDelete(ctx, tx, target.RecordEntryId); err != nil {
 				return fmt.Errorf("delete article record error: %w", err)
 			}
 
-			if target.ParentId == nil {
+			if target.ContainerId == nil {
 				return nil
 			}
 
-			// 親要素がある場合、親の論理削除処理に進む
-			count, err := u.recordRepo.CountActiveChildren(ctx, tx, *target.ParentId)
+			// コンテナがある場合、コンテナの論理削除処理に進む
+			count, err := u.recordRepo.CountActiveArticles(ctx, tx, *target.ContainerId)
 			if err != nil {
-				return fmt.Errorf("count container children error: %w", err)
+				return fmt.Errorf("count container articles error: %w", err)
 			}
 
-			// 親に紐づく生きている子が残っていれば削除しない
+			// コンテナに紐づく生きている書誌が残っていれば削除しない
 			if count > 0 {
 				return nil
 			}
 
-			if err := u.recordRepo.LogicalDelete(ctx, tx, *target.ParentId); err != nil {
+			if err := u.recordRepo.LogicalDelete(ctx, tx, *target.ContainerId); err != nil {
 				return fmt.Errorf("delete container record error: %w", err)
 			}
 
@@ -328,7 +328,7 @@ func (u *RecordUsecaseImpl) Delete(
 
 // Get 書誌情報を1件取得する
 //
-// 本体・収録物・子要素を複数回のSELECTで読むため、一貫したスナップショットを得る目的で
+// 本体・収録物・構成要素を複数回のSELECTで読むため、一貫したスナップショットを得る目的で
 // トランザクション内で実行する(SelectByPkは削除・更新と共用のためtxを必須としている)。
 func (u *RecordUsecaseImpl) Get(
 	ctx context.Context,
@@ -353,29 +353,29 @@ func (u *RecordUsecaseImpl) Get(
 				return fmt.Errorf("select record error: %w", err)
 			}
 
-			// 収録物(他の書誌の親になっている書誌)は単体の参照対象にしない
+			// 収録物(他の書誌のコンテナになっている書誌)は単体の参照対象にしない
 			//
 			// 収録物のIDはAPIレスポンスに露出しないため、指定された場合は
 			// 不正なリクエストとして記録を残す(このエラーはリクエストログのerrorsに出力される)。
 			// レスポンスは存在を漏らさないため404に寄せる。
-			children, err := u.recordRepo.CountActiveChildren(ctx, tx, article.RecordEntryId)
+			articleCount, err := u.recordRepo.CountActiveArticles(ctx, tx, article.RecordEntryId)
 			if err != nil {
-				return fmt.Errorf("count children of target error: %w", err)
+				return fmt.Errorf("count articles of target error: %w", err)
 			}
 
-			if children > 0 {
+			if articleCount > 0 {
 				return fmt.Errorf(
-					"収録物の単体参照が要求されました。収録物は参照できません。record id=%s, internal uid=%d, child count=%d :%w",
+					"収録物の単体参照が要求されました。収録物は参照できません。record id=%s, internal uid=%d, article count=%d :%w",
 					gi.RecordId,
 					gi.InternalUserId,
-					children,
+					articleCount,
 					ErrRecordNotFound,
 				)
 			}
 
 			var container *record.UserRecordEntry
-			if article.ParentId != nil {
-				container, err = u.recordRepo.SelectByPk(ctx, tx, *article.ParentId, gi.InternalUserId)
+			if article.ContainerId != nil {
+				container, err = u.recordRepo.SelectByPk(ctx, tx, *article.ContainerId, gi.InternalUserId)
 				if err != nil {
 					if !errors.Is(err, repository.ErrNotFound) {
 						return fmt.Errorf("select container record error: %w", err)
@@ -387,10 +387,10 @@ func (u *RecordUsecaseImpl) Get(
 			}
 
 			// containerがnilの場合も含めて渡す(repository側でnilを読み飛ばす)
-			if err := u.recordRepo.SelectChildren(
+			if err := u.recordRepo.SelectComponents(
 				ctx, tx, []*record.UserRecordEntry{article, container},
 			); err != nil {
-				return fmt.Errorf("select children error: %w", err)
+				return fmt.Errorf("select components error: %w", err)
 			}
 
 			output.Record = *article

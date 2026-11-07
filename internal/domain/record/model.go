@@ -30,7 +30,7 @@ type UserRecordEntry struct {
 	// 読了ステータス
 	ReadStatus *ReadStatus
 	// コンテナ書誌ID
-	ParentId *string
+	ContainerId *string
 	// 書誌マスタID
 	MRecordId *string
 	// 削除フラグ

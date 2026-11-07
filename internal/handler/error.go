@@ -17,7 +17,7 @@ var (
 	ErrMainTitleRequired       = errors.New("主題は必須項目です。")
 	ErrRecordTypeRequired      = errors.New("書誌タイプ指定は必須です。")
 	ErrInvalidRecordType       = errors.New("書誌タイプ指定が不正です。")
-	ErrContainerNotAllowed     = errors.New("この書誌タイプは親レコードを持つことができません。")
+	ErrContainerNotAllowed     = errors.New("この書誌タイプは収録物を指定できません。")
 	ErrInvalidPublicationDate  = errors.New("出版日付の指定が不正です。")
 	ErrInvalidReadStatus       = errors.New("読了ステータスが不正です。")
 	ErrInvalidContributorRole  = errors.New("貢献者役割が不正です。")

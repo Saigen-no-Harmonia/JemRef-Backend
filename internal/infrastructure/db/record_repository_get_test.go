@@ -20,17 +20,17 @@ const (
 	recordGetFixture = "testdata/records_get_001.sql"
 
 	// 以下はフィクスチャ(records_get_001.sql)で投入される書誌ID
-	getContainerId  = "GET_CONTAINER_00000000001" // 収録物(雑誌)。子要素あり
-	getFullId       = "GET_FULL_00000000000001"   // 全カラムに値が入った記事。収録物あり
-	getMinimalId    = "GET_MINIMAL_0000000001"    // 必須項目のみ。子要素なし
-	getEmptyStrId   = "GET_EMPTY_STR_000000001"   // 任意項目が空文字
-	getOrderId      = "GET_ORDER_000000000001"    // 子要素を表示順の逆順で登録
-	getDelChildId   = "GET_DEL_CHILD_00000001"    // 子要素に生存/論理削除済みが混在
-	getDelContribId = "GET_DEL_CONTRIB_000001"    // 貢献者本体が論理削除済み
-	getNullChildId  = "GET_NULL_CHILD_0000001"    // 子要素の任意項目がNULL
-	getOtherUserId  = "GET_OTHER_USER_0000001"    // 他ユーザの書誌
-	getDeletedId    = "GET_DELETED_0000000001"    // 論理削除済みの書誌
-	getNotExistsId  = "GET_NOTEXISTS_000000001"   // 存在しない書誌ID
+	getContainerId     = "GET_CONTAINER_00000000001" // 収録物(雑誌)。構成要素あり
+	getFullId          = "GET_FULL_00000000000001"   // 全カラムに値が入った書誌。収録物あり
+	getMinimalId       = "GET_MINIMAL_0000000001"    // 必須項目のみ。構成要素なし
+	getEmptyStrId      = "GET_EMPTY_STR_000000001"   // 任意項目が空文字
+	getOrderId         = "GET_ORDER_000000000001"    // 構成要素を表示順の逆順で登録
+	getDelComponentId  = "GET_DEL_COMPONENT_00001"   // 構成要素に生存/論理削除済みが混在
+	getDelContribId    = "GET_DEL_CONTRIB_000001"    // 貢献者本体が論理削除済み
+	getNullComponentId = "GET_NULL_COMPONENT_0001"   // 構成要素の任意項目がNULL
+	getOtherUserId     = "GET_OTHER_USER_0000001"    // 他ユーザの書誌
+	getDeletedId       = "GET_DELETED_0000000001"    // 論理削除済みの書誌
+	getNotExistsId     = "GET_NOTEXISTS_000000001"   // 存在しない書誌ID
 )
 
 // newRecordGetTestCtx 書誌詳細参照APIのAPI IDを保持するcontextを返す
@@ -77,7 +77,7 @@ func TestRecordRepository_SelectByPk_正常_全カラムを取得(t *testing.T) 
 	assert.Equal(t, record.DatePrecisionDay, *actual.DatePrecision)
 }
 
-func TestRecordRepository_SelectByPk_正常_親ありの書誌を取得(t *testing.T) {
+func TestRecordRepository_SelectByPk_正常_コンテナありの書誌を取得(t *testing.T) {
 	repo := testRecordsSetup(t, recordGetFixture)
 
 	actual, err := repo.SelectByPk(
@@ -85,8 +85,8 @@ func TestRecordRepository_SelectByPk_正常_親ありの書誌を取得(t *testi
 	)
 	require.NoError(t, err)
 
-	require.NotNil(t, actual.ParentId)
-	assert.Equal(t, getContainerId, *actual.ParentId)
+	require.NotNil(t, actual.ContainerId)
+	assert.Equal(t, getContainerId, *actual.ContainerId)
 }
 
 func TestRecordRepository_SelectByPk_正常_任意項目がNULL(t *testing.T) {
@@ -111,7 +111,7 @@ func TestRecordRepository_SelectByPk_正常_任意項目がNULL(t *testing.T) {
 	assert.Nil(t, actual.PublicationDate)
 	assert.Nil(t, actual.DatePrecision)
 	assert.Nil(t, actual.ReadStatus)
-	assert.Nil(t, actual.ParentId)
+	assert.Nil(t, actual.ContainerId)
 	assert.Nil(t, actual.MRecordId)
 }
 
@@ -132,12 +132,12 @@ func TestRecordRepository_SelectByPk_正常_任意項目が空文字(t *testing.
 	assert.Equal(t, strPtr(""), actual.Publisher)
 }
 
-// TestRecordRepository_SelectByPk_正常_子要素は取得しない
-// 子要素の取得は SelectChildren の責務であり、SelectByPk では設定しない。
-func TestRecordRepository_SelectByPk_正常_子要素は取得しない(t *testing.T) {
+// TestRecordRepository_SelectByPk_正常_構成要素は取得しない
+// 構成要素の取得は SelectComponents の責務であり、SelectByPk では設定しない。
+func TestRecordRepository_SelectByPk_正常_構成要素は取得しない(t *testing.T) {
 	repo := testRecordsSetup(t, recordGetFixture)
 
-	// 子要素を4種類とも持つ書誌を指定する
+	// 構成要素を4種類とも持つ書誌を指定する
 	actual, err := repo.SelectByPk(
 		newRecordGetTestCtx(), testDb, getFullId, testUid,
 	)
@@ -183,9 +183,9 @@ func TestRecordRepository_SelectByPk_異常_論理削除済みの書誌(t *testi
 	assert.Nil(t, actual)
 }
 
-// -------------SelectChildren(context.Context, repository.DBTX, []*record.UserRecordEntry)のテスト-------------
+// -------------SelectComponents(context.Context, repository.DBTX, []*record.UserRecordEntry)のテスト-------------
 
-// newGetTargetEntry SelectChildrenに渡す、子要素が未設定の書誌を返す
+// newGetTargetEntry SelectComponentsに渡す、構成要素が未設定の書誌を返す
 func newGetTargetEntry(recordId string) *record.UserRecordEntry {
 	return &record.UserRecordEntry{
 		RecordEntryId: recordId,
@@ -193,11 +193,11 @@ func newGetTargetEntry(recordId string) *record.UserRecordEntry {
 	}
 }
 
-func TestRecordRepository_SelectChildren_正常_全種類の子要素を取得(t *testing.T) {
+func TestRecordRepository_SelectComponents_正常_全種類の構成要素を取得(t *testing.T) {
 	repo := testRecordsSetup(t, recordGetFixture)
 
 	target := newGetTargetEntry(getFullId)
-	err := repo.SelectChildren(
+	err := repo.SelectComponents(
 		newRecordGetTestCtx(), testDb, []*record.UserRecordEntry{target},
 	)
 	require.NoError(t, err)
@@ -258,13 +258,13 @@ func TestRecordRepository_SelectChildren_正常_全種類の子要素を取得(t
 	assert.Equal(t, "School History of Boundary", target.OptionValues[2].RawValue)
 }
 
-// TestRecordRepository_SelectChildren_正常_表示順で並ぶ
+// TestRecordRepository_SelectComponents_正常_表示順で並ぶ
 // フィクスチャは表示順の逆順でINSERTしており、登録順ではなくDISPLAY_NUMBERで並ぶことを検証する。
-func TestRecordRepository_SelectChildren_正常_表示順で並ぶ(t *testing.T) {
+func TestRecordRepository_SelectComponents_正常_表示順で並ぶ(t *testing.T) {
 	repo := testRecordsSetup(t, recordGetFixture)
 
 	target := newGetTargetEntry(getOrderId)
-	err := repo.SelectChildren(
+	err := repo.SelectComponents(
 		newRecordGetTestCtx(), testDb, []*record.UserRecordEntry{target},
 	)
 	require.NoError(t, err)
@@ -290,11 +290,11 @@ func TestRecordRepository_SelectChildren_正常_表示順で並ぶ(t *testing.T)
 	assert.Equal(t, "三番目の項目値", target.OptionValues[2].RawValue)
 }
 
-func TestRecordRepository_SelectChildren_正常_論理削除済みの子要素を除外(t *testing.T) {
+func TestRecordRepository_SelectComponents_正常_論理削除済みの構成要素を除外(t *testing.T) {
 	repo := testRecordsSetup(t, recordGetFixture)
 
-	target := newGetTargetEntry(getDelChildId)
-	err := repo.SelectChildren(
+	target := newGetTargetEntry(getDelComponentId)
+	err := repo.SelectComponents(
 		newRecordGetTestCtx(), testDb, []*record.UserRecordEntry{target},
 	)
 	require.NoError(t, err)
@@ -312,14 +312,14 @@ func TestRecordRepository_SelectChildren_正常_論理削除済みの子要素�
 	assert.Equal(t, "生存の項目値", target.OptionValues[0].RawValue)
 }
 
-// TestRecordRepository_SelectChildren_正常_貢献者本体が論理削除済み
+// TestRecordRepository_SelectComponents_正常_貢献者本体が論理削除済み
 // e_record_contributions は生存していても、e_contributors が論理削除済みなら除外する
-// (論理削除済みの子要素を除外するケースとは別の分岐)。
-func TestRecordRepository_SelectChildren_正常_貢献者本体が論理削除済み(t *testing.T) {
+// (論理削除済みの構成要素を除外するケースとは別の分岐)。
+func TestRecordRepository_SelectComponents_正常_貢献者本体が論理削除済み(t *testing.T) {
 	repo := testRecordsSetup(t, recordGetFixture)
 
 	target := newGetTargetEntry(getDelContribId)
-	err := repo.SelectChildren(
+	err := repo.SelectComponents(
 		newRecordGetTestCtx(), testDb, []*record.UserRecordEntry{target},
 	)
 	require.NoError(t, err)
@@ -328,11 +328,11 @@ func TestRecordRepository_SelectChildren_正常_貢献者本体が論理削除�
 	assert.Equal(t, "生存の貢献者2", target.ContributorRelations[0].Contributor.RawName)
 }
 
-func TestRecordRepository_SelectChildren_正常_子要素がない書誌(t *testing.T) {
+func TestRecordRepository_SelectComponents_正常_構成要素がない書誌(t *testing.T) {
 	repo := testRecordsSetup(t, recordGetFixture)
 
 	target := newGetTargetEntry(getMinimalId)
-	err := repo.SelectChildren(
+	err := repo.SelectComponents(
 		newRecordGetTestCtx(), testDb, []*record.UserRecordEntry{target},
 	)
 	require.NoError(t, err)
@@ -344,20 +344,20 @@ func TestRecordRepository_SelectChildren_正常_子要素がない書誌(t *test
 	assert.Nil(t, target.OptionValues)
 }
 
-// TestRecordRepository_SelectChildren_正常_2件を同時に取得
-// 記事と収録物を1回のクエリでまとめて取得するため、書誌IDでの振り分けを検証する。
-func TestRecordRepository_SelectChildren_正常_2件を同時に取得(t *testing.T) {
+// TestRecordRepository_SelectComponents_正常_2件を同時に取得
+// 書誌と収録物を1回のクエリでまとめて取得するため、書誌IDでの振り分けを検証する。
+func TestRecordRepository_SelectComponents_正常_2件を同時に取得(t *testing.T) {
 	repo := testRecordsSetup(t, recordGetFixture)
 
 	article := newGetTargetEntry(getFullId)
 	container := newGetTargetEntry(getContainerId)
 
-	err := repo.SelectChildren(
+	err := repo.SelectComponents(
 		newRecordGetTestCtx(), testDb, []*record.UserRecordEntry{article, container},
 	)
 	require.NoError(t, err)
 
-	// 記事側
+	// 書誌側
 	require.Len(t, article.ContributorRelations, 2)
 	assert.Equal(t, "木村元", article.ContributorRelations[0].Contributor.RawName)
 	require.Len(t, article.OptionValues, 3)
@@ -365,7 +365,7 @@ func TestRecordRepository_SelectChildren_正常_2件を同時に取得(t *testin
 	assert.Len(t, article.Urls, 2)
 	assert.Len(t, article.Memos, 2)
 
-	// 収録物側(記事の子要素が混入しないこと)
+	// 収録物側(書誌の構成要素が混入しないこと)
 	require.Len(t, container.ContributorRelations, 1)
 	assert.Equal(t, "編者A", container.ContributorRelations[0].Contributor.RawName)
 	assert.Equal(t, record.ContributorRoleCompiler, container.ContributorRelations[0].Contribution.Role)
@@ -375,13 +375,13 @@ func TestRecordRepository_SelectChildren_正常_2件を同時に取得(t *testin
 	assert.Nil(t, container.Memos)
 }
 
-// TestRecordRepository_SelectChildren_正常_nilを含むスライス
-// 収録物を持たない書誌のため、usecaseは [記事, nil] の形で呼び出す。
-func TestRecordRepository_SelectChildren_正常_nilを含むスライス(t *testing.T) {
+// TestRecordRepository_SelectComponents_正常_nilを含むスライス
+// 収録物を持たない書誌のため、usecaseは [対象書誌, nil] の形で呼び出す。
+func TestRecordRepository_SelectComponents_正常_nilを含むスライス(t *testing.T) {
 	repo := testRecordsSetup(t, recordGetFixture)
 
 	article := newGetTargetEntry(getFullId)
-	err := repo.SelectChildren(
+	err := repo.SelectComponents(
 		newRecordGetTestCtx(), testDb, []*record.UserRecordEntry{article, nil},
 	)
 	require.NoError(t, err)
@@ -392,22 +392,22 @@ func TestRecordRepository_SelectChildren_正常_nilを含むスライス(t *test
 	assert.Len(t, article.OptionValues, 3)
 }
 
-// TestRecordRepository_SelectChildren_正常_対象が空
+// TestRecordRepository_SelectComponents_正常_対象が空
 // 対象が0件のときはクエリを発行しない(IN ()は構文エラーであり、buildPlaceholdersもpanicする)。
-func TestRecordRepository_SelectChildren_正常_対象が空(t *testing.T) {
+func TestRecordRepository_SelectComponents_正常_対象が空(t *testing.T) {
 	repo := testRecordsSetup(t, recordGetFixture)
 	ctx := newRecordGetTestCtx()
 
-	assert.NoError(t, repo.SelectChildren(ctx, testDb, []*record.UserRecordEntry{}))
-	assert.NoError(t, repo.SelectChildren(ctx, testDb, nil))
-	assert.NoError(t, repo.SelectChildren(ctx, testDb, []*record.UserRecordEntry{nil}))
+	assert.NoError(t, repo.SelectComponents(ctx, testDb, []*record.UserRecordEntry{}))
+	assert.NoError(t, repo.SelectComponents(ctx, testDb, nil))
+	assert.NoError(t, repo.SelectComponents(ctx, testDb, []*record.UserRecordEntry{nil}))
 }
 
-func TestRecordRepository_SelectChildren_正常_子要素の任意項目がNULL(t *testing.T) {
+func TestRecordRepository_SelectComponents_正常_構成要素の任意項目がNULL(t *testing.T) {
 	repo := testRecordsSetup(t, recordGetFixture)
 
-	target := newGetTargetEntry(getNullChildId)
-	err := repo.SelectChildren(
+	target := newGetTargetEntry(getNullComponentId)
+	err := repo.SelectComponents(
 		newRecordGetTestCtx(), testDb, []*record.UserRecordEntry{target},
 	)
 	require.NoError(t, err)

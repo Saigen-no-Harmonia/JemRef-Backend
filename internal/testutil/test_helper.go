@@ -32,7 +32,7 @@ func LoadFixture(
 	return nil
 }
 
-// cleanUpTargetTables CleanUpTablesの削除対象テーブル(子->親の順)
+// cleanUpTargetTables CleanUpTablesの削除対象テーブル(参照元->参照先の順)
 var cleanUpTargetTables = []string{
 	"e_record_field_values",
 	"e_record_memos",
@@ -53,7 +53,7 @@ var cleanUpTargetTables = []string{
 
 // CleanUpTables テスト実施前に全レコードをdeleteする
 //
-// e_recordsはPARENT_IDで自己参照するため、単一のdelete文であっても
+// e_recordsはCONTAINER_IDで自己参照するため、単一のdelete文であっても
 // 行の削除順序によってはFK違反になりうる。そのためFK制約を一時解除して削除する。
 // SET FOREIGN_KEY_CHECKSはセッション単位の設定なので、コネクションプール越しの
 // db.Execではなく単一コネクション上で一連の処理を実行する

@@ -125,20 +125,20 @@ func TestRecordUsecase_Create(t *testing.T) {
 				{
 					RecordEntryId: recordContainerId,
 					InternalUid:   recordTestUid,
-					// 記事の書誌タイプの親が設定される
+					// 書誌に対応するコンテナの書誌タイプが設定される
 					RecordType: record.RecordTypeJournal,
 					MainTitle:  "境界線の学校史",
 					SubTitle:   recordStrPtr("戦後日本の学校化社会の周辺"),
 					Volume:     recordStrPtr("日本教育史講座第1巻"),
 					Issue:      recordStrPtr("第11号"),
-					// 出版情報は記事から引き継ぐ
+					// 出版情報は書誌から引き継ぐ
 					Publisher:       recordStrPtr("東京大学出版会"),
 					PublicationDate: &publicationDate,
 					DatePrecision:   &datePrecision,
 					ReadStatus:      &containerReadStatus,
 					DelFlg:          0,
 				},
-				// 記事はコンテナのIDを親として登録される
+				// 書誌はコンテナのIDを保持して登録される
 				{
 					RecordEntryId:   recordArticleId,
 					InternalUid:     recordTestUid,
@@ -150,11 +150,11 @@ func TestRecordUsecase_Create(t *testing.T) {
 					PublicationDate: &publicationDate,
 					DatePrecision:   &datePrecision,
 					ReadStatus:      &articleReadStatus,
-					ParentId:        recordStrPtr(recordContainerId),
+					ContainerId:     recordStrPtr(recordContainerId),
 					DelFlg:          0,
 				},
 			},
-			// 返却するIDはコンテナではなく記事のID
+			// 返却するIDはコンテナではなく書誌のID
 			expectedOutput:        &dto.CreateRecordOutput{RecordId: recordArticleId},
 			expectedCreateCalled:  2,
 			expectedGenerateCalls: 2,
@@ -239,13 +239,13 @@ func TestRecordUsecase_Create(t *testing.T) {
 						},
 					},
 				},
-				// 記事側に貢献者は設定されない
+				// 書誌側に貢献者は設定されない
 				{
 					RecordEntryId: recordArticleId,
 					InternalUid:   recordTestUid,
 					RecordType:    record.RecordTypeJournalArticle,
 					MainTitle:     "論文のタイトル",
-					ParentId:      recordStrPtr(recordContainerId),
+					ContainerId:   recordStrPtr(recordContainerId),
 					DelFlg:        0,
 				},
 			},
@@ -418,7 +418,7 @@ func TestRecordUsecase_Create(t *testing.T) {
 					InternalUid:   recordTestUid,
 					RecordType:    record.RecordTypeContributedBookArticle,
 					MainTitle:     "論文のタイトル",
-					ParentId:      recordStrPtr(recordContainerId),
+					ContainerId:   recordStrPtr(recordContainerId),
 					DelFlg:        0,
 				},
 			},
@@ -428,7 +428,7 @@ func TestRecordUsecase_Create(t *testing.T) {
 			expectedTxCalled:      1,
 		},
 		{
-			name: "正常_子要素が空スライス",
+			name: "正常_構成要素が空スライス",
 			input: dto.CreateRecordInput{
 				InternalUserId: recordTestUid,
 				RecordInput: dto.RecordInput{
@@ -459,7 +459,7 @@ func TestRecordUsecase_Create(t *testing.T) {
 			expectedTxCalled:      1,
 		},
 		{
-			name: "正常_子要素が上限件数",
+			name: "正常_構成要素が上限件数",
 			input: dto.CreateRecordInput{
 				InternalUserId: recordTestUid,
 				RecordInput: dto.RecordInput{
@@ -569,7 +569,7 @@ func TestRecordUsecase_Create(t *testing.T) {
 			},
 			generatedIds: []string{recordContainerId, recordArticleId},
 			createErrs:   []error{repository.ErrTestUnexpected},
-			// コンテナの登録のみが試行され、記事の登録は行われない
+			// コンテナの登録のみが試行され、書誌の登録は行われない
 			expectedEntries: []record.UserRecordEntry{
 				{
 					RecordEntryId: recordContainerId,
@@ -587,7 +587,7 @@ func TestRecordUsecase_Create(t *testing.T) {
 			expectedErrorMsg:      "create container record error",
 		},
 		{
-			name: "異常_記事登録失敗",
+			name: "異常_書誌登録失敗",
 			input: dto.CreateRecordInput{
 				InternalUserId: recordTestUid,
 				RecordInput: dto.RecordInput{
@@ -614,7 +614,7 @@ func TestRecordUsecase_Create(t *testing.T) {
 			expectedErrorMsg:      "create article record error",
 		},
 		{
-			name: "異常_コンテナ成功後に記事登録失敗",
+			name: "異常_コンテナ成功後に書誌登録失敗",
 			input: dto.CreateRecordInput{
 				InternalUserId: recordTestUid,
 				RecordInput: dto.RecordInput{
@@ -640,7 +640,7 @@ func TestRecordUsecase_Create(t *testing.T) {
 					InternalUid:   recordTestUid,
 					RecordType:    record.RecordTypeJournalArticle,
 					MainTitle:     "論文のタイトル",
-					ParentId:      recordStrPtr(recordContainerId),
+					ContainerId:   recordStrPtr(recordContainerId),
 					DelFlg:        0,
 				},
 			},
@@ -743,11 +743,11 @@ func TestRecordUsecase_Create(t *testing.T) {
 
 func TestRecordUsecase_Delete(t *testing.T) {
 
-	// SelectByPkが返す書誌(RecordEntryIdとParentIdのみ設定される軽量SELECT)
+	// SelectByPkが返す書誌(RecordEntryIdとContainerIdのみ設定される軽量SELECT)
 	soloTarget := &record.UserRecordEntry{RecordEntryId: recordArticleId}
-	childTarget := &record.UserRecordEntry{
+	articleTarget := &record.UserRecordEntry{
 		RecordEntryId: recordArticleId,
-		ParentId:      recordStrPtr(recordContainerId),
+		ContainerId:   recordStrPtr(recordContainerId),
 	}
 
 	input := dto.DeleteRecordInput{
@@ -761,7 +761,7 @@ func TestRecordUsecase_Delete(t *testing.T) {
 		// selectResult / selectErr はSelectByPkの戻り値
 		selectResult *record.UserRecordEntry
 		selectErr    error
-		// countResults / countErrs はCountActiveChildrenが呼び出し順に返す値
+		// countResults / countErrs はCountActiveArticlesが呼び出し順に返す値
 		countResults []int
 		countErrs    []error
 		// deleteErrs はLogicalDeleteが呼び出し順に返すエラー(nilは成功)
@@ -771,7 +771,7 @@ func TestRecordUsecase_Delete(t *testing.T) {
 			ctx context.Context,
 			fn func(ctx context.Context, tx repository.DBTX) error,
 		) error
-		// expectedCountedIds CountActiveChildrenに渡された書誌IDの呼び出し順
+		// expectedCountedIds CountActiveArticlesに渡された書誌IDの呼び出し順
 		expectedCountedIds []string
 		// expectedDeletedIds LogicalDeleteに渡された書誌IDの呼び出し順
 		expectedDeletedIds   []string
@@ -784,25 +784,25 @@ func TestRecordUsecase_Delete(t *testing.T) {
 		expectedErrorMsgs    []string
 	}{
 		{
-			name:                 "正常_親なしの書誌を削除",
+			name:                 "正常_コンテナなしの書誌を削除",
 			input:                input,
 			selectResult:         soloTarget,
 			countResults:         []int{0},
 			expectedDeletedIds:   []string{recordArticleId},
 			expectedCountedIds:   []string{recordArticleId},
 			expectedSelectCalled: 1,
-			// 親がないため子件数の確認は1回(自身が収録物かの判定)のみ
+			// コンテナがないため書誌件数の確認は1回(自身が収録物かの判定)のみ
 			expectedCountCalled:  1,
 			expectedDeleteCalled: 1,
 			expectedTxCalled:     1,
 		},
 		{
-			name:         "正常_親ありで他に子がいない場合は収録物も削除",
+			name:         "正常_コンテナありで他に書誌がない場合は収録物も削除",
 			input:        input,
-			selectResult: childTarget,
-			// 1回目=自身の子件数, 2回目=収録物に残る子件数
+			selectResult: articleTarget,
+			// 1回目=自身の書誌件数, 2回目=収録物に残る書誌件数
 			countResults: []int{0, 0},
-			// 記事 -> 収録物の順に削除される
+			// 書誌 -> 収録物の順に削除される
 			expectedDeletedIds:   []string{recordArticleId, recordContainerId},
 			expectedCountedIds:   []string{recordArticleId, recordContainerId},
 			expectedSelectCalled: 1,
@@ -811,9 +811,9 @@ func TestRecordUsecase_Delete(t *testing.T) {
 			expectedTxCalled:     1,
 		},
 		{
-			name:         "正常_親ありで他に子が残っている場合は収録物を残す",
+			name:         "正常_コンテナありで他に書誌が残っている場合は収録物を残す",
 			input:        input,
-			selectResult: childTarget,
+			selectResult: articleTarget,
 			countResults: []int{0, 1},
 			// 収録物は削除されない
 			expectedDeletedIds:   []string{recordArticleId},
@@ -826,7 +826,7 @@ func TestRecordUsecase_Delete(t *testing.T) {
 		{
 			name:                 "正常_入力がそのままrepositoryへ渡る",
 			input:                input,
-			selectResult:         childTarget,
+			selectResult:         articleTarget,
 			countResults:         []int{0, 0},
 			expectedDeletedIds:   []string{recordArticleId, recordContainerId},
 			expectedCountedIds:   []string{recordArticleId, recordContainerId},
@@ -836,8 +836,8 @@ func TestRecordUsecase_Delete(t *testing.T) {
 			expectedTxCalled:     1,
 		},
 		{
-			// 収録物ガードが子を持たない書誌を誤って弾かないことの確認
-			name:                 "正常_子を持たない書誌は削除できる",
+			// 収録物ガードが書誌を持たない書誌を誤って弾かないことの確認
+			name:                 "正常_書誌を持たない書誌は削除できる",
 			input:                input,
 			selectResult:         soloTarget,
 			countResults:         []int{0},
@@ -865,7 +865,7 @@ func TestRecordUsecase_Delete(t *testing.T) {
 			name:         "異常_収録物を指定した場合は削除されない",
 			input:        input,
 			selectResult: soloTarget,
-			// 自身が3件の子を持つ=収録物
+			// 自身が3件の書誌を持つ=収録物
 			countResults:         []int{3},
 			expectedCountedIds:   []string{recordArticleId},
 			expectedSelectCalled: 1,
@@ -879,7 +879,7 @@ func TestRecordUsecase_Delete(t *testing.T) {
 				"収録物の単体削除が要求されました",
 				"record id=" + recordArticleId,
 				"internal uid=1001",
-				"child count=3",
+				"article count=3",
 			},
 		},
 		{
@@ -895,7 +895,7 @@ func TestRecordUsecase_Delete(t *testing.T) {
 			expectedErrorMsgs:    []string{"select record error"},
 		},
 		{
-			name:                 "異常_対象の子件数取得に失敗",
+			name:                 "異常_対象の書誌件数取得に失敗",
 			input:                input,
 			selectResult:         soloTarget,
 			countErrs:            []error{repository.ErrTestUnexpected},
@@ -906,10 +906,10 @@ func TestRecordUsecase_Delete(t *testing.T) {
 			expectedTxCalled:     1,
 			expectError:          true,
 			expectedErrorBody:    repository.ErrTestUnexpected,
-			expectedErrorMsgs:    []string{"count children of target error"},
+			expectedErrorMsgs:    []string{"count articles of target error"},
 		},
 		{
-			name:                 "異常_記事の論理削除に失敗",
+			name:                 "異常_書誌の論理削除に失敗",
 			input:                input,
 			selectResult:         soloTarget,
 			countResults:         []int{0},
@@ -925,10 +925,10 @@ func TestRecordUsecase_Delete(t *testing.T) {
 			expectedErrorMsgs:    []string{"delete article record error"},
 		},
 		{
-			name:         "異常_収録物の子件数取得に失敗",
+			name:         "異常_収録物の書誌件数取得に失敗",
 			input:        input,
-			selectResult: childTarget,
-			// 1回目は成功、2回目(収録物の子件数)で失敗
+			selectResult: articleTarget,
+			// 1回目は成功、2回目(収録物の書誌件数)で失敗
 			countResults:         []int{0, 0},
 			countErrs:            []error{nil, repository.ErrTestUnexpected},
 			expectedDeletedIds:   []string{recordArticleId},
@@ -939,12 +939,12 @@ func TestRecordUsecase_Delete(t *testing.T) {
 			expectedTxCalled:     1,
 			expectError:          true,
 			expectedErrorBody:    repository.ErrTestUnexpected,
-			expectedErrorMsgs:    []string{"count container children error"},
+			expectedErrorMsgs:    []string{"count container articles error"},
 		},
 		{
 			name:         "異常_収録物の論理削除に失敗",
 			input:        input,
-			selectResult: childTarget,
+			selectResult: articleTarget,
 			countResults: []int{0, 0},
 			// 2回目(収録物)の削除で失敗
 			deleteErrs:           []error{nil, repository.ErrTestUnexpected},
@@ -994,17 +994,17 @@ func TestRecordUsecase_Delete(t *testing.T) {
 				return tt.selectResult, nil
 			}
 
-			repo.CountActiveChildrenFunc = func(
+			repo.CountActiveArticlesFunc = func(
 				ctx context.Context,
 				tx repository.DBTX,
-				parentRecordId string,
+				containerRecordId string,
 			) (int, error) {
-				// CountActiveChildrenの呼び出し回数に応じた戻り値を返す
-				idx := repo.CountActiveChildrenCalled - 1
+				// CountActiveArticlesの呼び出し回数に応じた戻り値を返す
+				idx := repo.CountActiveArticlesCalled - 1
 				if idx < len(tt.countErrs) && tt.countErrs[idx] != nil {
 					return 0, tt.countErrs[idx]
 				}
-				require.Less(t, idx, len(tt.countResults), "想定外のCountActiveChildren呼び出し")
+				require.Less(t, idx, len(tt.countResults), "想定外のCountActiveArticles呼び出し")
 				return tt.countResults[idx], nil
 			}
 
@@ -1032,7 +1032,7 @@ func TestRecordUsecase_Delete(t *testing.T) {
 
 			// 呼び出しチェック
 			assert.Equal(t, tt.expectedSelectCalled, repo.SelectByPkCalled)
-			assert.Equal(t, tt.expectedCountCalled, repo.CountActiveChildrenCalled)
+			assert.Equal(t, tt.expectedCountCalled, repo.CountActiveArticlesCalled)
 			assert.Equal(t, tt.expectedDeleteCalled, repo.LogicalDeleteCalled)
 			assert.Equal(t, tt.expectedTxCalled, txManager.WithTransactionCalled)
 
@@ -1044,7 +1044,7 @@ func TestRecordUsecase_Delete(t *testing.T) {
 				assert.Equal(t, tt.input.RecordId, repo.LastSelectByPkRecordId)
 				assert.Equal(t, tt.input.InternalUserId, repo.LastSelectByPkInternalUid)
 			}
-			// 子件数の確認は1回目が対象自身(収録物かの判定)、2回目が収録物に対して行われる
+			// 書誌件数の確認は1回目が対象自身(収録物かの判定)、2回目が収録物に対して行われる
 			assert.Equal(t, tt.expectedCountedIds, repo.CountedRecordIds)
 
 			// 異常系の場合のassertion
@@ -1067,19 +1067,19 @@ func TestRecordUsecase_Delete(t *testing.T) {
 
 func TestRecordUsecase_Get(t *testing.T) {
 
-	// SelectByPkが返す書誌(子要素はSelectChildrenが設定するためここでは持たない)
+	// SelectByPkが返す書誌(構成要素はSelectComponentsが設定するためここでは持たない)
 	soloArticle := &record.UserRecordEntry{
 		RecordEntryId: recordArticleId,
 		InternalUid:   recordTestUid,
 		RecordType:    record.RecordTypeAuthoredBook,
 		MainTitle:     "単著書のタイトル",
 	}
-	childArticle := &record.UserRecordEntry{
+	containedArticle := &record.UserRecordEntry{
 		RecordEntryId: recordArticleId,
 		InternalUid:   recordTestUid,
 		RecordType:    record.RecordTypeJournalArticle,
 		MainTitle:     "論文のタイトル",
-		ParentId:      recordStrPtr(recordContainerId),
+		ContainerId:   recordStrPtr(recordContainerId),
 	}
 	container := &record.UserRecordEntry{
 		RecordEntryId: recordContainerId,
@@ -1088,9 +1088,9 @@ func TestRecordUsecase_Get(t *testing.T) {
 		MainTitle:     "雑誌のタイトル",
 	}
 
-	// setChildren 渡されたentryに子要素を設定する(repositoryの振る舞いの模倣)
-	// 記事と収録物を区別できるよう、書誌IDを貢献者名に含める。
-	setChildren := func(
+	// setComponents 渡されたentryに構成要素を設定する(repositoryの振る舞いの模倣)
+	// 書誌と収録物を区別できるよう、書誌IDを貢献者名に含める。
+	setComponents := func(
 		ctx context.Context,
 		tx repository.DBTX,
 		entries []*record.UserRecordEntry,
@@ -1120,11 +1120,11 @@ func TestRecordUsecase_Get(t *testing.T) {
 		// selectResults / selectErrs はSelectByPkが呼び出し順に返す値(最大2回)
 		selectResults []*record.UserRecordEntry
 		selectErrs    []error
-		// countResult / countErr はCountActiveChildrenの戻り値(必ず1回のみ呼ばれる)
+		// countResult / countErr はCountActiveArticlesの戻り値(必ず1回のみ呼ばれる)
 		countResult int
 		countErr    error
-		// selectChildrenFunc nilの場合は子要素を設定せず成功させる
-		selectChildrenFunc func(
+		// selectComponentsFunc nilの場合は構成要素を設定せず成功させる
+		selectComponentsFunc func(
 			ctx context.Context,
 			tx repository.DBTX,
 			entries []*record.UserRecordEntry,
@@ -1136,21 +1136,21 @@ func TestRecordUsecase_Get(t *testing.T) {
 		) error
 		// expectedSelectedIds SelectByPkに渡された書誌IDの呼び出し順
 		expectedSelectedIds []string
-		// expectedCountedIds CountActiveChildrenに渡された書誌IDの呼び出し順
+		// expectedCountedIds CountActiveArticlesに渡された書誌IDの呼び出し順
 		expectedCountedIds []string
-		// expectedChildrenIds SelectChildrenに渡された書誌IDの組(nilは空文字で記録される)
-		expectedChildrenIds    [][]string
-		expectedSelectCalled   int
-		expectedCountCalled    int
-		expectedChildrenCalled int
-		expectedTxCalled       int
+		// expectedComponentIds SelectComponentsに渡された書誌IDの組(nilは空文字で記録される)
+		expectedComponentIds     [][]string
+		expectedSelectCalled     int
+		expectedCountCalled      int
+		expectedComponentsCalled int
+		expectedTxCalled         int
 		// expectedContainerId 収録物の書誌ID。空文字の場合はContainerがnilであることを検証する
 		expectedContainerId string
-		// expectChildrenSet 子要素が設定されていることを検証するか
-		expectChildrenSet bool
-		expectError       bool
-		expectedErrorBody error
-		expectedErrorMsgs []string
+		// expectComponentsSet 構成要素が設定されていることを検証するか
+		expectComponentsSet bool
+		expectError         bool
+		expectedErrorBody   error
+		expectedErrorMsgs   []string
 	}{
 		{
 			name:  "正常_収録物なしの書誌を取得",
@@ -1159,66 +1159,66 @@ func TestRecordUsecase_Get(t *testing.T) {
 			selectResults: []*record.UserRecordEntry{soloArticle},
 			countResult:   0,
 
-			expectedSelectedIds:    []string{recordArticleId},
-			expectedCountedIds:     []string{recordArticleId},
-			expectedChildrenIds:    [][]string{{recordArticleId, ""}},
-			expectedSelectCalled:   1,
-			expectedCountCalled:    1,
-			expectedChildrenCalled: 1,
-			expectedTxCalled:       1,
-			expectedContainerId:    "",
+			expectedSelectedIds:      []string{recordArticleId},
+			expectedCountedIds:       []string{recordArticleId},
+			expectedComponentIds:     [][]string{{recordArticleId, ""}},
+			expectedSelectCalled:     1,
+			expectedCountCalled:      1,
+			expectedComponentsCalled: 1,
+			expectedTxCalled:         1,
+			expectedContainerId:      "",
 		},
 		{
 			name:  "正常_収録物ありの書誌を取得",
 			input: dto.GetRecordInput{InternalUserId: recordTestUid, RecordId: recordArticleId},
 
-			selectResults: []*record.UserRecordEntry{childArticle, container},
+			selectResults: []*record.UserRecordEntry{containedArticle, container},
 			countResult:   0,
 
-			// 1回目が記事、2回目が収録物の順で引かれる
-			expectedSelectedIds:    []string{recordArticleId, recordContainerId},
-			expectedCountedIds:     []string{recordArticleId},
-			expectedChildrenIds:    [][]string{{recordArticleId, recordContainerId}},
-			expectedSelectCalled:   2,
-			expectedCountCalled:    1,
-			expectedChildrenCalled: 1,
-			expectedTxCalled:       1,
-			expectedContainerId:    recordContainerId,
+			// 1回目が書誌、2回目が収録物の順で引かれる
+			expectedSelectedIds:      []string{recordArticleId, recordContainerId},
+			expectedCountedIds:       []string{recordArticleId},
+			expectedComponentIds:     [][]string{{recordArticleId, recordContainerId}},
+			expectedSelectCalled:     2,
+			expectedCountCalled:      1,
+			expectedComponentsCalled: 1,
+			expectedTxCalled:         1,
+			expectedContainerId:      recordContainerId,
 		},
 		{
-			name:  "正常_記事と収録物に子要素が設定される",
+			name:  "正常_書誌と収録物に構成要素が設定される",
 			input: dto.GetRecordInput{InternalUserId: recordTestUid, RecordId: recordArticleId},
 
-			selectResults:      []*record.UserRecordEntry{childArticle, container},
-			countResult:        0,
-			selectChildrenFunc: setChildren,
+			selectResults:        []*record.UserRecordEntry{containedArticle, container},
+			countResult:          0,
+			selectComponentsFunc: setComponents,
 
-			expectedSelectedIds:    []string{recordArticleId, recordContainerId},
-			expectedCountedIds:     []string{recordArticleId},
-			expectedChildrenIds:    [][]string{{recordArticleId, recordContainerId}},
-			expectedSelectCalled:   2,
-			expectedCountCalled:    1,
-			expectedChildrenCalled: 1,
-			expectedTxCalled:       1,
-			expectedContainerId:    recordContainerId,
-			expectChildrenSet:      true,
+			expectedSelectedIds:      []string{recordArticleId, recordContainerId},
+			expectedCountedIds:       []string{recordArticleId},
+			expectedComponentIds:     [][]string{{recordArticleId, recordContainerId}},
+			expectedSelectCalled:     2,
+			expectedCountCalled:      1,
+			expectedComponentsCalled: 1,
+			expectedTxCalled:         1,
+			expectedContainerId:      recordContainerId,
+			expectComponentsSet:      true,
 		},
 		{
 			name:  "正常_収録物が論理削除済み",
 			input: dto.GetRecordInput{InternalUserId: recordTestUid, RecordId: recordArticleId},
 
 			// 2回目(収録物)のSelectByPkがErrNotFoundを返す
-			selectResults: []*record.UserRecordEntry{childArticle, nil},
+			selectResults: []*record.UserRecordEntry{containedArticle, nil},
 			selectErrs:    []error{nil, repository.ErrNotFound},
 			countResult:   0,
 
-			expectedSelectedIds:    []string{recordArticleId, recordContainerId},
-			expectedCountedIds:     []string{recordArticleId},
-			expectedChildrenIds:    [][]string{{recordArticleId, ""}},
-			expectedSelectCalled:   2,
-			expectedCountCalled:    1,
-			expectedChildrenCalled: 1,
-			expectedTxCalled:       1,
+			expectedSelectedIds:      []string{recordArticleId, recordContainerId},
+			expectedCountedIds:       []string{recordArticleId},
+			expectedComponentIds:     [][]string{{recordArticleId, ""}},
+			expectedSelectCalled:     2,
+			expectedCountCalled:      1,
+			expectedComponentsCalled: 1,
+			expectedTxCalled:         1,
 			// 収録物を持たない書誌として返す(エラーにしない)
 			expectedContainerId: "",
 		},
@@ -1231,14 +1231,14 @@ func TestRecordUsecase_Get(t *testing.T) {
 			},
 			countResult: 0,
 
-			expectedSelectedIds:    []string{"OTHERRECORDID0000000000001"},
-			expectedCountedIds:     []string{"OTHERRECORDID0000000000001"},
-			expectedChildrenIds:    [][]string{{"OTHERRECORDID0000000000001", ""}},
-			expectedSelectCalled:   1,
-			expectedCountCalled:    1,
-			expectedChildrenCalled: 1,
-			expectedTxCalled:       1,
-			expectedContainerId:    "",
+			expectedSelectedIds:      []string{"OTHERRECORDID0000000000001"},
+			expectedCountedIds:       []string{"OTHERRECORDID0000000000001"},
+			expectedComponentIds:     [][]string{{"OTHERRECORDID0000000000001", ""}},
+			expectedSelectCalled:     1,
+			expectedCountCalled:      1,
+			expectedComponentsCalled: 1,
+			expectedTxCalled:         1,
+			expectedContainerId:      "",
 		},
 		{
 			name:  "異常_書誌が存在しない",
@@ -1247,40 +1247,40 @@ func TestRecordUsecase_Get(t *testing.T) {
 			selectResults: []*record.UserRecordEntry{nil},
 			selectErrs:    []error{repository.ErrNotFound},
 
-			expectedSelectedIds:    []string{recordArticleId},
-			expectedCountedIds:     nil,
-			expectedChildrenIds:    nil,
-			expectedSelectCalled:   1,
-			expectedCountCalled:    0,
-			expectedChildrenCalled: 0,
-			expectedTxCalled:       1,
-			expectError:            true,
-			expectedErrorBody:      ErrRecordNotFound,
-			expectedErrorMsgs:      []string{"参照対象の書誌が存在しません", recordArticleId},
+			expectedSelectedIds:      []string{recordArticleId},
+			expectedCountedIds:       nil,
+			expectedComponentIds:     nil,
+			expectedSelectCalled:     1,
+			expectedCountCalled:      0,
+			expectedComponentsCalled: 0,
+			expectedTxCalled:         1,
+			expectError:              true,
+			expectedErrorBody:        ErrRecordNotFound,
+			expectedErrorMsgs:        []string{"参照対象の書誌が存在しません", recordArticleId},
 		},
 		{
 			name:  "異常_収録物を指定した場合は参照できない",
 			input: dto.GetRecordInput{InternalUserId: recordTestUid, RecordId: recordContainerId},
 
 			selectResults: []*record.UserRecordEntry{container},
-			// 生きている子が1件いる = 収録物である
+			// 生きている書誌が1件いる = 収録物である
 			countResult: 1,
 
-			expectedSelectedIds:    []string{recordContainerId},
-			expectedCountedIds:     []string{recordContainerId},
-			expectedChildrenIds:    nil,
-			expectedSelectCalled:   1,
-			expectedCountCalled:    1,
-			expectedChildrenCalled: 0,
-			expectedTxCalled:       1,
-			expectError:            true,
-			expectedErrorBody:      ErrRecordNotFound,
-			// リクエストログに残すため、書誌ID・ユーザID・子件数をメッセージに含める
+			expectedSelectedIds:      []string{recordContainerId},
+			expectedCountedIds:       []string{recordContainerId},
+			expectedComponentIds:     nil,
+			expectedSelectCalled:     1,
+			expectedCountCalled:      1,
+			expectedComponentsCalled: 0,
+			expectedTxCalled:         1,
+			expectError:              true,
+			expectedErrorBody:        ErrRecordNotFound,
+			// リクエストログに残すため、書誌ID・ユーザID・書誌件数をメッセージに含める
 			expectedErrorMsgs: []string{
 				"収録物の単体参照が要求されました",
 				recordContainerId,
 				strconv.FormatInt(recordTestUid, 10),
-				"child count=1",
+				"article count=1",
 			},
 		},
 		{
@@ -1290,58 +1290,58 @@ func TestRecordUsecase_Get(t *testing.T) {
 			selectResults: []*record.UserRecordEntry{nil},
 			selectErrs:    []error{ErrTestUnexpected},
 
-			expectedSelectedIds:    []string{recordArticleId},
-			expectedSelectCalled:   1,
-			expectedCountCalled:    0,
-			expectedChildrenCalled: 0,
-			expectedTxCalled:       1,
-			expectError:            true,
-			expectedErrorBody:      ErrTestUnexpected,
-			expectedErrorMsgs:      []string{"select record error"},
+			expectedSelectedIds:      []string{recordArticleId},
+			expectedSelectCalled:     1,
+			expectedCountCalled:      0,
+			expectedComponentsCalled: 0,
+			expectedTxCalled:         1,
+			expectError:              true,
+			expectedErrorBody:        ErrTestUnexpected,
+			expectedErrorMsgs:        []string{"select record error"},
 		},
 		{
-			name:  "異常_子件数の取得に失敗",
+			name:  "異常_書誌件数の取得に失敗",
 			input: dto.GetRecordInput{InternalUserId: recordTestUid, RecordId: recordArticleId},
 
 			selectResults: []*record.UserRecordEntry{soloArticle},
 			countErr:      ErrTestUnexpected,
 
-			expectedSelectedIds:    []string{recordArticleId},
-			expectedCountedIds:     []string{recordArticleId},
-			expectedSelectCalled:   1,
-			expectedCountCalled:    1,
-			expectedChildrenCalled: 0,
-			expectedTxCalled:       1,
-			expectError:            true,
-			expectedErrorBody:      ErrTestUnexpected,
-			expectedErrorMsgs:      []string{"count children of target error"},
+			expectedSelectedIds:      []string{recordArticleId},
+			expectedCountedIds:       []string{recordArticleId},
+			expectedSelectCalled:     1,
+			expectedCountCalled:      1,
+			expectedComponentsCalled: 0,
+			expectedTxCalled:         1,
+			expectError:              true,
+			expectedErrorBody:        ErrTestUnexpected,
+			expectedErrorMsgs:        []string{"count articles of target error"},
 		},
 		{
 			name:  "異常_収録物のSelectByPkが予期しないエラー",
 			input: dto.GetRecordInput{InternalUserId: recordTestUid, RecordId: recordArticleId},
 
 			// ErrNotFound以外は収録物なしとして扱わず、エラーとして返す
-			selectResults: []*record.UserRecordEntry{childArticle, nil},
+			selectResults: []*record.UserRecordEntry{containedArticle, nil},
 			selectErrs:    []error{nil, ErrTestUnexpected},
 			countResult:   0,
 
-			expectedSelectedIds:    []string{recordArticleId, recordContainerId},
-			expectedCountedIds:     []string{recordArticleId},
-			expectedSelectCalled:   2,
-			expectedCountCalled:    1,
-			expectedChildrenCalled: 0,
-			expectedTxCalled:       1,
-			expectError:            true,
-			expectedErrorBody:      ErrTestUnexpected,
-			expectedErrorMsgs:      []string{"select container record error"},
+			expectedSelectedIds:      []string{recordArticleId, recordContainerId},
+			expectedCountedIds:       []string{recordArticleId},
+			expectedSelectCalled:     2,
+			expectedCountCalled:      1,
+			expectedComponentsCalled: 0,
+			expectedTxCalled:         1,
+			expectError:              true,
+			expectedErrorBody:        ErrTestUnexpected,
+			expectedErrorMsgs:        []string{"select container record error"},
 		},
 		{
-			name:  "異常_SelectChildrenが失敗",
+			name:  "異常_SelectComponentsが失敗",
 			input: dto.GetRecordInput{InternalUserId: recordTestUid, RecordId: recordArticleId},
 
 			selectResults: []*record.UserRecordEntry{soloArticle},
 			countResult:   0,
-			selectChildrenFunc: func(
+			selectComponentsFunc: func(
 				ctx context.Context,
 				tx repository.DBTX,
 				entries []*record.UserRecordEntry,
@@ -1349,16 +1349,16 @@ func TestRecordUsecase_Get(t *testing.T) {
 				return ErrTestUnexpected
 			},
 
-			expectedSelectedIds:    []string{recordArticleId},
-			expectedCountedIds:     []string{recordArticleId},
-			expectedChildrenIds:    [][]string{{recordArticleId, ""}},
-			expectedSelectCalled:   1,
-			expectedCountCalled:    1,
-			expectedChildrenCalled: 1,
-			expectedTxCalled:       1,
-			expectError:            true,
-			expectedErrorBody:      ErrTestUnexpected,
-			expectedErrorMsgs:      []string{"select children error"},
+			expectedSelectedIds:      []string{recordArticleId},
+			expectedCountedIds:       []string{recordArticleId},
+			expectedComponentIds:     [][]string{{recordArticleId, ""}},
+			expectedSelectCalled:     1,
+			expectedCountCalled:      1,
+			expectedComponentsCalled: 1,
+			expectedTxCalled:         1,
+			expectError:              true,
+			expectedErrorBody:        ErrTestUnexpected,
+			expectedErrorMsgs:        []string{"select components error"},
 		},
 		{
 			name:  "異常_トランザクション開始失敗",
@@ -1372,12 +1372,12 @@ func TestRecordUsecase_Get(t *testing.T) {
 			},
 
 			// クロージャが実行されないため、repositoryは一度も呼ばれない
-			expectedSelectCalled:   0,
-			expectedCountCalled:    0,
-			expectedChildrenCalled: 0,
-			expectedTxCalled:       1,
-			expectError:            true,
-			expectedErrorBody:      ErrTestUnexpected,
+			expectedSelectCalled:     0,
+			expectedCountCalled:      0,
+			expectedComponentsCalled: 0,
+			expectedTxCalled:         1,
+			expectError:              true,
+			expectedErrorBody:        ErrTestUnexpected,
 		},
 	}
 
@@ -1407,10 +1407,10 @@ func TestRecordUsecase_Get(t *testing.T) {
 				return &copied, nil
 			}
 
-			repo.CountActiveChildrenFunc = func(
+			repo.CountActiveArticlesFunc = func(
 				ctx context.Context,
 				tx repository.DBTX,
-				parentRecordId string,
+				containerRecordId string,
 			) (int, error) {
 				if tt.countErr != nil {
 					return 0, tt.countErr
@@ -1418,13 +1418,13 @@ func TestRecordUsecase_Get(t *testing.T) {
 				return tt.countResult, nil
 			}
 
-			repo.SelectChildrenFunc = func(
+			repo.SelectComponentsFunc = func(
 				ctx context.Context,
 				tx repository.DBTX,
 				entries []*record.UserRecordEntry,
 			) error {
-				if tt.selectChildrenFunc != nil {
-					return tt.selectChildrenFunc(ctx, tx, entries)
+				if tt.selectComponentsFunc != nil {
+					return tt.selectComponentsFunc(ctx, tx, entries)
 				}
 				return nil
 			}
@@ -1440,16 +1440,16 @@ func TestRecordUsecase_Get(t *testing.T) {
 
 			// 呼び出しチェック
 			assert.Equal(t, tt.expectedSelectCalled, repo.SelectByPkCalled)
-			assert.Equal(t, tt.expectedCountCalled, repo.CountActiveChildrenCalled)
-			assert.Equal(t, tt.expectedChildrenCalled, repo.SelectChildrenCalled)
+			assert.Equal(t, tt.expectedCountCalled, repo.CountActiveArticlesCalled)
+			assert.Equal(t, tt.expectedComponentsCalled, repo.SelectComponentsCalled)
 			assert.Equal(t, tt.expectedTxCalled, txManager.WithTransactionCalled)
 
 			// repositoryへ渡された書誌IDと順序の検証
 			assert.Equal(t, tt.expectedSelectedIds, repo.SelectedRecordIds)
 			assert.Equal(t, tt.expectedCountedIds, repo.CountedRecordIds)
 
-			// SelectChildrenには常に[記事, 収録物]の2要素を渡す(収録物なしはnil)
-			assert.Equal(t, tt.expectedChildrenIds, repo.ChildrenTargetIds)
+			// SelectComponentsには常に[対象書誌, 収録物]の2要素を渡す(収録物なしはnil)
+			assert.Equal(t, tt.expectedComponentIds, repo.ComponentTargetIds)
 
 			// 入力がそのままrepositoryへ渡ること
 			if tt.expectedSelectCalled > 0 {
@@ -1480,21 +1480,21 @@ func TestRecordUsecase_Get(t *testing.T) {
 				assert.Equal(t, tt.expectedContainerId, actual.Container.RecordEntryId)
 			}
 
-			if !tt.expectChildrenSet {
+			if !tt.expectComponentsSet {
 				return
 			}
 
-			// SelectChildrenが設定した子要素がOutputに反映されていること
-			// (Outputへのコピーが SelectChildren の後に行われることの検証)
-			assertChildrenSet(t, actual.Record)
+			// SelectComponentsが設定した構成要素がOutputに反映されていること
+			// (Outputへのコピーが SelectComponents の後に行われることの検証)
+			assertComponentsSet(t, actual.Record)
 			require.NotNil(t, actual.Container)
-			assertChildrenSet(t, *actual.Container)
+			assertComponentsSet(t, *actual.Container)
 		})
 	}
 }
 
-// assertChildrenSet 子要素が設定され、書誌IDに対応した値になっていることを検証する
-func assertChildrenSet(t *testing.T, e record.UserRecordEntry) {
+// assertComponentsSet 構成要素が設定され、書誌IDに対応した値になっていることを検証する
+func assertComponentsSet(t *testing.T, e record.UserRecordEntry) {
 	t.Helper()
 
 	require.Len(t, e.ContributorRelations, 1)

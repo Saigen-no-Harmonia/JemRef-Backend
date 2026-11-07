@@ -19,47 +19,47 @@ const (
 	recordDeleteFixture = "testdata/records_delete_001.sql"
 
 	// 以下はフィクスチャ(records_delete_001.sql)で投入される書誌ID
-	delSoloId        = "DEL_SOLO_0000000000000001" // 親なし。子要素フル
-	delContainer1Id  = "DEL_CONTAINER_000000001"   // 子1件の収録物
-	delContainer2Id  = "DEL_CONTAINER_000000002"   // 子2件(生1/削除済1)の収録物
-	delChildB1Id     = "DEL_CHILD_B_00000000001"   // 生存している子
+	delSoloId        = "DEL_SOLO_0000000000000001" // コンテナなし。構成要素フル
+	delContainer1Id  = "DEL_CONTAINER_000000001"   // 書誌1件の収録物
+	delContainer2Id  = "DEL_CONTAINER_000000002"   // 書誌2件(生1/削除済1)の収録物
+	delArticleB1Id   = "DEL_ARTICLE_B_000000001"   // 生存している書誌
 	delDeletedId     = "DEL_DELETED_00000000001"   // すでに論理削除済み
-	delPartialId     = "DEL_PARTIAL_00000000001"   // 子要素の一部が論理削除済み
+	delPartialId     = "DEL_PARTIAL_00000000001"   // 構成要素の一部が論理削除済み
 	delNotExistsId   = "DEL_NOTEXISTS_0000000001"  // 存在しない書誌ID
 	alreadyDeletedPg = "already_deleted"           // 削除済み行のUPD_PG(更新されていないことの判別用)
 )
 
-// -------------CountActiveChildren(context.Context, repository.DBTX, string)のテスト-------------
+// -------------CountActiveArticles(context.Context, repository.DBTX, string)のテスト-------------
 
-func TestRecordRepository_CountActiveChildren_正常_子が0件(t *testing.T) {
+func TestRecordRepository_CountActiveArticles_正常_書誌が0件(t *testing.T) {
 	repo := testRecordsSetup(t, recordDeleteFixture)
 
-	count, err := repo.CountActiveChildren(
+	count, err := repo.CountActiveArticles(
 		newRecordTestCtx(ctxutil.REF_API_005), testDb, delSoloId,
 	)
 	require.NoError(t, err)
 	assert.Equal(t, 0, count)
 }
 
-func TestRecordRepository_CountActiveChildren_正常_論理削除済みの子は数えない(t *testing.T) {
+func TestRecordRepository_CountActiveArticles_正常_論理削除済みの書誌は数えない(t *testing.T) {
 	repo := testRecordsSetup(t, recordDeleteFixture)
 	ctx := newRecordTestCtx(ctxutil.REF_API_005)
 
-	// 子1件(生存)のみの収録物
-	count, err := repo.CountActiveChildren(ctx, testDb, delContainer1Id)
+	// 書誌1件(生存)のみの収録物
+	count, err := repo.CountActiveArticles(ctx, testDb, delContainer1Id)
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
 
-	// 子2件のうち1件が論理削除済みの収録物
-	count, err = repo.CountActiveChildren(ctx, testDb, delContainer2Id)
+	// 書誌2件のうち1件が論理削除済みの収録物
+	count, err = repo.CountActiveArticles(ctx, testDb, delContainer2Id)
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
 }
 
-func TestRecordRepository_CountActiveChildren_正常_存在しない親IDは0件(t *testing.T) {
+func TestRecordRepository_CountActiveArticles_正常_存在しないコンテナIDは0件(t *testing.T) {
 	repo := testRecordsSetup(t, recordDeleteFixture)
 
-	count, err := repo.CountActiveChildren(
+	count, err := repo.CountActiveArticles(
 		newRecordTestCtx(ctxutil.REF_API_005), testDb, delNotExistsId,
 	)
 	require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestRecordRepository_CountActiveChildren_正常_存在しない親IDは0件
 
 // -------------LogicalDelete(context.Context, repository.DBTX, string)のテスト-------------
 
-func TestRecordRepository_LogicalDelete_正常_書誌と子要素が論理削除される(t *testing.T) {
+func TestRecordRepository_LogicalDelete_正常_書誌と構成要素が論理削除される(t *testing.T) {
 	repo := testRecordsSetup(t, recordDeleteFixture)
 	now := time.Now().Truncate(time.Microsecond)
 
@@ -141,10 +141,10 @@ func TestRecordRepository_LogicalDelete_正常_貢献者マスタは削除され
 	}
 }
 
-func TestRecordRepository_LogicalDelete_正常_子要素がない書誌(t *testing.T) {
+func TestRecordRepository_LogicalDelete_正常_構成要素がない書誌(t *testing.T) {
 	repo := testRecordsSetup(t, recordDeleteFixture)
 
-	// 子要素行を持たない収録物
+	// 構成要素行を持たない収録物
 	err := repo.LogicalDelete(
 		newRecordTestCtx(ctxutil.REF_API_005), testDb, delContainer2Id,
 	)
@@ -156,7 +156,7 @@ func TestRecordRepository_LogicalDelete_正常_子要素がない書誌(t *testi
 	assert.Equal(t, ctxutil.REF_API_005, actual.UpdPg)
 }
 
-func TestRecordRepository_LogicalDelete_正常_他の書誌の子要素に影響しない(t *testing.T) {
+func TestRecordRepository_LogicalDelete_正常_他の書誌の構成要素に影響しない(t *testing.T) {
 	repo := testRecordsSetup(t, recordDeleteFixture)
 
 	beforeContributions := testutil.SelectContributionsByRecordId(t, testDb, delContainer1Id)
@@ -169,7 +169,7 @@ func TestRecordRepository_LogicalDelete_正常_他の書誌の子要素に影響
 	)
 	require.NoError(t, err)
 
-	// 別の書誌に紐づく子要素は生存したまま
+	// 別の書誌に紐づく構成要素は生存したまま
 	afterContributions := testutil.SelectContributionsByRecordId(t, testDb, delContainer1Id)
 	require.Len(t, afterContributions, len(beforeContributions))
 	for i, c := range afterContributions {
@@ -190,7 +190,7 @@ func TestRecordRepository_LogicalDelete_正常_他の書誌の子要素に影響
 	assert.Equal(t, 0, container.DelFlg)
 }
 
-func TestRecordRepository_LogicalDelete_正常_削除済みの子要素は更新しない(t *testing.T) {
+func TestRecordRepository_LogicalDelete_正常_削除済みの構成要素は更新しない(t *testing.T) {
 	repo := testRecordsSetup(t, recordDeleteFixture)
 	now := time.Now().Truncate(time.Microsecond)
 

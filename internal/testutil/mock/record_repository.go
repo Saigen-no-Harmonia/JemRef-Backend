@@ -20,10 +20,10 @@ type MockRecordRepository struct {
 		internalUid int64,
 	) (*record.UserRecordEntry, error)
 
-	CountActiveChildrenFunc func(
+	CountActiveArticlesFunc func(
 		ctx context.Context,
 		tx repository.DBTX,
-		parentRecordId string,
+		containerRecordId string,
 	) (int, error)
 
 	LogicalDeleteFunc func(
@@ -32,7 +32,7 @@ type MockRecordRepository struct {
 		recordId string,
 	) error
 
-	SelectChildrenFunc func(
+	SelectComponentsFunc func(
 		ctx context.Context,
 		tx repository.DBTX,
 		entries []*record.UserRecordEntry,
@@ -43,17 +43,17 @@ type MockRecordRepository struct {
 	CreatedEntries []record.UserRecordEntry
 
 	SelectByPkCalled          int
-	CountActiveChildrenCalled int
+	CountActiveArticlesCalled int
 	LogicalDeleteCalled       int
-	SelectChildrenCalled      int
+	SelectComponentsCalled    int
 	LastSelectByPkRecordId    string
 	LastSelectByPkInternalUid int64
 	// SelectedRecordIds SelectByPkに渡された書誌IDを呼び出し順に保持する
 	SelectedRecordIds []string
-	// ChildrenTargetIds SelectChildrenに渡された書誌IDを呼び出しごとに保持する
+	// ComponentTargetIds SelectComponentsに渡された書誌IDを呼び出しごとに保持する
 	// nilの要素は "" として記録し、収録物なしで呼ばれたことを検証できるようにする。
-	ChildrenTargetIds [][]string
-	// CountedRecordIds CountActiveChildrenに渡された書誌IDを呼び出し順に保持する
+	ComponentTargetIds [][]string
+	// CountedRecordIds CountActiveArticlesに渡された書誌IDを呼び出し順に保持する
 	CountedRecordIds []string
 	// DeletedRecordIds LogicalDeleteに渡された書誌IDを呼び出し順に保持する
 	DeletedRecordIds []string
@@ -73,15 +73,15 @@ func (m *MockRecordRepository) SelectByPk(
 	return m.SelectByPkFunc(ctx, tx, recordId, internalUid)
 }
 
-func (m *MockRecordRepository) CountActiveChildren(
+func (m *MockRecordRepository) CountActiveArticles(
 	ctx context.Context,
 	tx repository.DBTX,
-	parentRecordId string,
+	containerRecordId string,
 ) (int, error) {
 	m.Called++
-	m.CountActiveChildrenCalled++
-	m.CountedRecordIds = append(m.CountedRecordIds, parentRecordId)
-	return m.CountActiveChildrenFunc(ctx, tx, parentRecordId)
+	m.CountActiveArticlesCalled++
+	m.CountedRecordIds = append(m.CountedRecordIds, containerRecordId)
+	return m.CountActiveArticlesFunc(ctx, tx, containerRecordId)
 }
 
 func (m *MockRecordRepository) LogicalDelete(
@@ -106,13 +106,13 @@ func (m *MockRecordRepository) Create(
 	return m.CreateFunc(ctx, tx, ur)
 }
 
-func (m *MockRecordRepository) SelectChildren(
+func (m *MockRecordRepository) SelectComponents(
 	ctx context.Context,
 	tx repository.DBTX,
 	entries []*record.UserRecordEntry,
 ) error {
 	m.Called++
-	m.SelectChildrenCalled++
+	m.SelectComponentsCalled++
 
 	ids := make([]string, 0, len(entries))
 	for _, e := range entries {
@@ -122,9 +122,9 @@ func (m *MockRecordRepository) SelectChildren(
 		}
 		ids = append(ids, e.RecordEntryId)
 	}
-	m.ChildrenTargetIds = append(m.ChildrenTargetIds, ids)
+	m.ComponentTargetIds = append(m.ComponentTargetIds, ids)
 
-	return m.SelectChildrenFunc(ctx, tx, entries)
+	return m.SelectComponentsFunc(ctx, tx, entries)
 }
 
 var _ repository.RecordRepository = (*MockRecordRepository)(nil)

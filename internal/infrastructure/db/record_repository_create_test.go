@@ -46,7 +46,7 @@ func TestRecordRepository_Create_正常_必須項目のみ(t *testing.T) {
 	assert.False(t, actual.PublicationDate.Valid)
 	assert.False(t, actual.DatePrecision.Valid)
 	assert.False(t, actual.ReadStatus.Valid)
-	assert.False(t, actual.ParentId.Valid)
+	assert.False(t, actual.ContainerId.Valid)
 	assert.False(t, actual.MRecordId.Valid)
 
 	assert.Equal(t, 0, actual.DelFlg)
@@ -57,7 +57,7 @@ func TestRecordRepository_Create_正常_必須項目のみ(t *testing.T) {
 	assert.WithinDuration(t, now, actual.InsDt, 3*time.Second)
 	assert.WithinDuration(t, now, actual.UpdDt, 3*time.Second)
 
-	// 子要素は1件も登録されないこと
+	// 構成要素は1件も登録されないこと
 	assert.Equal(t, 0, testutil.CountContributors(t, testDb))
 	assert.Equal(t, 0, testutil.CountContributions(t, testDb))
 	assert.Equal(t, 0, testutil.CountUrls(t, testDb))
@@ -85,7 +85,7 @@ func TestRecordRepository_Create_正常_全項目設定(t *testing.T) {
 		PublicationDate: &publicationDate,
 		DatePrecision:   &datePrecision,
 		ReadStatus:      &readStatus,
-		ParentId:        strPtr(testExistingContainerId),
+		ContainerId:     strPtr(testExistingContainerId),
 		DelFlg:          0,
 		ContributorRelations: []record.ContributorRelation{
 			newMinimalRelation("木村元", record.ContributorRoleAuthor),
@@ -122,11 +122,11 @@ func TestRecordRepository_Create_正常_全項目設定(t *testing.T) {
 	assert.WithinDuration(t, publicationDate, actual.PublicationDate.Time, time.Microsecond)
 	assert.Equal(t, int64(record.DatePrecisionDay), actual.DatePrecision.Int64)
 	assert.Equal(t, int64(record.ReadStatusIdRead), actual.ReadStatus.Int64)
-	assert.Equal(t, testExistingContainerId, actual.ParentId.String)
+	assert.Equal(t, testExistingContainerId, actual.ContainerId.String)
 	assert.False(t, actual.MRecordId.Valid)
 	assert.Equal(t, 0, actual.DelFlg)
 
-	// 子要素の件数
+	// 構成要素の件数
 	assert.Equal(t, 2, testutil.CountContributors(t, testDb))
 	assert.Equal(t, 2, testutil.CountContributions(t, testDb))
 	assert.Equal(t, 2, testutil.CountUrls(t, testDb))
@@ -148,7 +148,7 @@ func TestRecordRepository_Create_正常_全項目設定(t *testing.T) {
 	assert.Equal(t, "system", fieldValues[0].InsId)
 }
 
-func TestRecordRepository_Create_正常_子要素が空スライス(t *testing.T) {
+func TestRecordRepository_Create_正常_構成要素が空スライス(t *testing.T) {
 	repo := testRecordsSetup(t, recordFixture)
 
 	input := newMinimalRecordEntry(testRecordId)
@@ -230,7 +230,7 @@ func TestRecordRepository_Create_正常_貢献者複数(t *testing.T) {
 	}
 }
 
-func TestRecordRepository_Create_正常_貢献者の派生項目が親レコードから設定される(t *testing.T) {
+func TestRecordRepository_Create_正常_貢献者の派生項目が収録物から設定される(t *testing.T) {
 	repo := testRecordsSetup(t, recordFixture)
 
 	// 氏名と役割のみを指定する(書誌ID/ユーザID/表示順は未設定)
@@ -243,14 +243,14 @@ func TestRecordRepository_Create_正常_貢献者の派生項目が親レコー�
 	err := repo.Create(newRecordTestCtx(ctxutil.REF_API_003), testDb, input)
 	require.NoError(t, err)
 
-	// 内部用ユーザIDが親レコードから設定されること
+	// 内部用ユーザIDが収録物から設定されること
 	contributors := testutil.SelectContributorsByUserId(t, testDb, testUid)
 	require.Len(t, contributors, 2)
 	for _, c := range contributors {
 		assert.Equal(t, testUid, c.UserId)
 	}
 
-	// 書誌IDが親レコードから、表示順が登録順から設定されること
+	// 書誌IDが収録物から、表示順が登録順から設定されること
 	contributions := testutil.SelectContributionsByRecordId(t, testDb, testRecordId)
 	require.Len(t, contributions, 2)
 	for i, c := range contributions {
@@ -363,7 +363,7 @@ func TestRecordRepository_Create_正常_オプション書誌項目値が一部�
 	assert.Equal(t, 0, fieldValues[0].DelFlg)
 }
 
-func TestRecordRepository_Create_正常_コンテナ付き親子(t *testing.T) {
+func TestRecordRepository_Create_正常_コンテナと書誌(t *testing.T) {
 	repo := testRecordsSetup(t, recordFixture)
 	ctx := newRecordTestCtx(ctxutil.REF_API_003)
 
@@ -380,13 +380,13 @@ func TestRecordRepository_Create_正常_コンテナ付き親子(t *testing.T) {
 		InternalUid:   testUid,
 		RecordType:    record.RecordTypeJournalArticle,
 		MainTitle:     "第1章 「学校」制度の境界線",
-		ParentId:      strPtr(testContainerId),
+		ContainerId:   strPtr(testContainerId),
 		DelFlg:        0,
 	}
 
 	beforeCnt := testutil.CountRecords(t, testDb)
 
-	// コンテナ -> 記事の順に登録する(記事のPARENT_IDがFK制約を満たすため)
+	// コンテナ -> 書誌の順に登録する(書誌のCONTAINER_IDがFK制約を満たすため)
 	err := repo.Create(ctx, testDb, container)
 	require.NoError(t, err)
 	err = repo.Create(ctx, testDb, article)
@@ -397,13 +397,13 @@ func TestRecordRepository_Create_正常_コンテナ付き親子(t *testing.T) {
 	actualContainer, err := testutil.SelectRecordByPk(t, testDb, testContainerId)
 	require.NoError(t, err)
 	assert.Equal(t, record.RecordTypeIdJournal, actualContainer.TypeId)
-	assert.False(t, actualContainer.ParentId.Valid)
+	assert.False(t, actualContainer.ContainerId.Valid)
 
 	actualArticle, err := testutil.SelectRecordByPk(t, testDb, testRecordId)
 	require.NoError(t, err)
 	assert.Equal(t, record.RecordTypeIdJournalArticle, actualArticle.TypeId)
-	assert.True(t, actualArticle.ParentId.Valid)
-	assert.Equal(t, actualContainer.Id, actualArticle.ParentId.String)
+	assert.True(t, actualArticle.ContainerId.Valid)
+	assert.Equal(t, actualContainer.Id, actualArticle.ContainerId.String)
 }
 
 func TestRecordRepository_Create_正常_貢献者が上限件数(t *testing.T) {
@@ -457,12 +457,12 @@ func TestRecordRepository_Create_異常_存在しないユーザID(t *testing.T)
 	assert.Equal(t, beforeCnt, testutil.CountRecords(t, testDb))
 }
 
-func TestRecordRepository_Create_異常_存在しない親ID(t *testing.T) {
+func TestRecordRepository_Create_異常_存在しないコンテナID(t *testing.T) {
 	repo := testRecordsSetup(t, recordFixture)
 
 	input := newMinimalRecordEntry(testRecordId)
 	input.RecordType = record.RecordTypeJournalArticle
-	input.ParentId = strPtr("NOTEXISTSCONTAINER00000001")
+	input.ContainerId = strPtr("NOTEXISTSCONTAINER00000001")
 
 	beforeCnt := testutil.CountRecords(t, testDb)
 	err := repo.Create(newRecordTestCtx(ctxutil.REF_API_003), testDb, input)
@@ -549,7 +549,7 @@ func TestRecordRepository_Create_異常_トランザクション内でロール�
 		},
 	}
 
-	// 記事側はIDが重複しており必ず失敗する
+	// 書誌側はIDが重複しており必ず失敗する
 	article := newMinimalRecordEntry(testExistingContainerId)
 
 	beforeCnt := testutil.CountRecords(t, testDb)

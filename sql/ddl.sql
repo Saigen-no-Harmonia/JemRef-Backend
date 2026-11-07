@@ -200,7 +200,7 @@ CREATE TABLE e_records (
   PUBLICATION_DATE DATE          NULL                   COMMENT '出版年月日',
   DATE_PRECISION   TINYINT       NULL                   COMMENT '出版年月日精度: 0=YYYYMMDD 1=YYYYMM 2=YYYY',
   READ_STATUS      TINYINT       NULL                   COMMENT '読了ステータス: read=1, unread=2, reading=3, partially_read=4。',
-  PARENT_ID        CHAR(36)      NULL                   COMMENT 'コンテナ書誌ID (循環参照はサーバ側でチェック)',
+  CONTAINER_ID     CHAR(36)      NULL                   COMMENT 'コンテナ書誌ID (循環参照はサーバ側でチェック)',
   M_RECORD_ID      CHAR(36)      NULL                   COMMENT '書誌マスタID (突合後に登録。Ph0未使用)',
   DEL_FLG  TINYINT        NOT NULL DEFAULT 0,
   INS_PG   VARCHAR(64)    NOT NULL,
@@ -213,7 +213,7 @@ CREATE TABLE e_records (
   CONSTRAINT fk_er_user   FOREIGN KEY (USER_ID)     REFERENCES m_users        (ID),
   CONSTRAINT fk_er_type   FOREIGN KEY (TYPE_ID)     REFERENCES m_record_types (ID),
   CONSTRAINT fk_er_master FOREIGN KEY (M_RECORD_ID) REFERENCES m_records      (ID),
-  CONSTRAINT fk_er_parent FOREIGN KEY (PARENT_ID)   REFERENCES e_records      (ID),
+  CONSTRAINT fk_er_container FOREIGN KEY (CONTAINER_ID) REFERENCES e_records   (ID),
   INDEX idx_user      (USER_ID, DEL_FLG),
   INDEX idx_user_type (USER_ID, TYPE_ID, DEL_FLG)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='ユーザ入力書誌エントリ';

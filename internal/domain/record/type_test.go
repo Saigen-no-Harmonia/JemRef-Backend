@@ -120,7 +120,7 @@ func TestRecordType_GetId(t *testing.T) {
 	}
 }
 
-func TestRecordType_HasParent(t *testing.T) {
+func TestRecordType_IsArticle(t *testing.T) {
 
 	tests := []struct {
 		name     string
@@ -128,27 +128,27 @@ func TestRecordType_HasParent(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "正常_雑誌記事は親を持つ",
+			name:     "正常_雑誌記事はコンテナを持つ",
 			input:    RecordTypeJournalArticle,
 			expected: true,
 		},
 		{
-			name:     "正常_編著書記事は親を持つ",
+			name:     "正常_編著書記事はコンテナを持つ",
 			input:    RecordTypeContributedBookArticle,
 			expected: true,
 		},
 		{
-			name:     "正常_単著書は親を持たない",
+			name:     "正常_単著書はコンテナを持たない",
 			input:    RecordTypeAuthoredBook,
 			expected: false,
 		},
 		{
-			name:     "正常_雑誌は親を持たない",
+			name:     "正常_雑誌はコンテナを持たない",
 			input:    RecordTypeJournal,
 			expected: false,
 		},
 		{
-			name:     "正常_編著書は親を持たない",
+			name:     "正常_編著書はコンテナを持たない",
 			input:    RecordTypeContributedBook,
 			expected: false,
 		},
@@ -161,14 +161,14 @@ func TestRecordType_HasParent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := tt.input.HasParent()
+			actual := tt.input.IsArticle()
 
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
 }
 
-func TestRecordType_GetParent(t *testing.T) {
+func TestRecordType_GetContainerType(t *testing.T) {
 
 	tests := []struct {
 		name        string
@@ -177,19 +177,19 @@ func TestRecordType_GetParent(t *testing.T) {
 		expectPanic bool
 	}{
 		{
-			name:        "正常_雑誌記事の親は雑誌",
+			name:        "正常_雑誌記事のコンテナは雑誌",
 			input:       RecordTypeJournalArticle,
 			expected:    RecordTypeJournal,
 			expectPanic: false,
 		},
 		{
-			name:        "正常_編著書記事の親は編著書",
+			name:        "正常_編著書記事のコンテナは編著書",
 			input:       RecordTypeContributedBookArticle,
 			expected:    RecordTypeContributedBook,
 			expectPanic: false,
 		},
 		{
-			name:        "異常_親を持たない書誌タイプ",
+			name:        "異常_コンテナを持たない書誌タイプ",
 			input:       RecordTypeAuthoredBook,
 			expectPanic: true,
 		},
@@ -205,12 +205,12 @@ func TestRecordType_GetParent(t *testing.T) {
 
 			if tt.expectPanic {
 				assert.Panics(t, func() {
-					tt.input.GetParent()
+					tt.input.GetContainerType()
 				})
 				return
 			}
 
-			actual := tt.input.GetParent()
+			actual := tt.input.GetContainerType()
 			assert.Equal(t, tt.expected, actual)
 		})
 	}

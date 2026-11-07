@@ -59,6 +59,16 @@ handler (gin) → usecase → repository (interface) → infrastructure/db (実�
 - **internal/context**: gin.Context に格納する値のキー定数(`keys.go`)と、型安全に取り出す `GetUserId`/`GetFirebaseUid`/`GetPublicUid`/`GetEmail`(`auth.go`)。ミドルウェアが `c.Set` し、以降のハンドラ/ミドルウェアがこれらのgetterで読む。
 - **internal/api**: エラーをHTTPレスポンスへ変換する層。`error.go`(`ApiError` 定義)と `error_handler.go`(`ErrorHandler()` ミドルウェアと `toApiError`)。
 
+### 書誌の用語(「親」「子」を使わない)
+
+`e_records` は `CONTAINER_ID` で自己参照するため「親子」と呼ぶと、書誌に紐づく別テーブル(貢献/URL/メモ/項目値)の「子」と混同する。次の3語を使い分け、**「親」「子」「parent」「child」はコード・コメント・テスト名のいずれでも使わない**。
+
+- **コンテナ / 収録物**(`Container`): 他の書誌を収録する側(雑誌・編著書)。`CONTAINER_ID` が指す先。収録物を単体で削除・参照する要求は `CountActiveArticles > 0` で404に寄せる。
+- **書誌**(`Article`): コンテナに収録される側。`RecordType.IsArticle()` が真になるのは雑誌記事・編著書記事だけで単著書は含まないため、**日本語では「記事」と呼ばず「書誌」**(対比が必要な箇所のみ「対象書誌」)とする。
+- **構成要素**(`Components`): 書誌に紐づく別テーブルの行(貢献/URL/メモ/項目値)。`SelectComponents` で一括取得し、同じentryに2回呼ぶと重複する。
+
+「雑誌記事」「編著書記事」は書誌タイプの固有名詞(`m_record_types.DISPLAY_NAME`)なのでそのまま使う。
+
 ### エラーハンドリングの流れ
 
 各レイヤーは `c.Error(err)` で gin の `c.Errors` にエラーを積むだけで、HTTPステータスやレスポンス形式を意識しない。最後に `internal/api.ErrorHandler()`(ginミドルウェア)が `c.Errors.Last()` を見て `toApiError` でHTTPレスポンスに変換する。
@@ -80,7 +90,7 @@ handler (gin) → usecase → repository (interface) → infrastructure/db (実�
 - **handler / usecase / middleware / domain**: テーブル駆動テスト + `t.Run`(サブテスト名は日本語で `正常_xxx` / `異常_xxx`)。
 - **internal/infrastructure/db**: モックを使わず testcontainers-go で実MySQLを起動する統合テスト。テーブル駆動にせず、`TestUserRepository_Create_正常` のように**1ケース1関数**でケース名を関数名に含める。メソッド群ごとにファイルを分け(`record_repository_create_test.go` / `_delete_test.go`)、共通のセットアップ・ヘルパ・定数は `<実装>_test.go` に置く。
 - DB統合テストは `sql/seed.sql`(マスタ。本番と同じものを使う) → `testdata/*.sql`(フィクスチャ)の順に読み込む。repositoryは `ctxutil.GetApiId` でAPI IDを取り出すため、**ctxにAPI IDを入れないとpanicする**(`newRecordTestCtx(apiId)` を使う)。検証はDBの生値を保持する行構造体(`testutil/record_db_helper.go`)で行う(NULLと空文字を区別するため)。「更新されないこと」を検証する行は、フィクスチャで `UPD_PG='already_deleted'` のように判別できる値にしておく。
-- `testutil.CleanUpTables` は `e_records` が `PARENT_ID` で自己参照FKを持つため、**単一コネクション上で `FOREIGN_KEY_CHECKS` を一時解除**して削除する(セッション単位の設定なのでプール越しの `db.Exec` では効かない)。
+- `testutil.CleanUpTables` は `e_records` が `CONTAINER_ID` で自己参照FKを持つため、**単一コネクション上で `FOREIGN_KEY_CHECKS` を一時解除**して削除する(セッション単位の設定なのでプール越しの `db.Exec` では効かない)。
 - モック(`internal/testutil/mock`)は `MockXxx` に `XxxFunc func(...) (...)` を持たせ、呼び出し記録を残してから `XxxFunc` に委譲する。**repository系**は1リクエストで複数回呼ばれうるためカウンタを `int` とし、引数は `CreatedEntries` / `DeletedRecordIds` のように呼び出し順のスライスで保持する。**usecase系**は1リクエスト1回なのでカウンタは `bool`、引数は `LastXxxInput` と、handlerが渡したcontextを検証する `LastCtx`。
 - `var _ repository.Xxx = (*MockXxx)(nil)` でインターフェース適合を固定できるのはrepository系のみ(usecase系は `internal/usecase` のテストが `internal/testutil/mock` をimportしているためimport cycleになる)。
 - 各レイヤーに `ErrTestUnexpected` という専用の sentinel error を設置し、「分岐でカバーしていない予期しないエラー」のテストに使う。

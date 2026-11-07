@@ -7,11 +7,11 @@ import (
 	"jemref_go/internal/repository"
 )
 
-// SelectChildren 渡された書誌に、子要素(貢献者/URL/メモ/項目値)を設定する
+// SelectComponents 渡された書誌に、構成要素(貢献者/URL/メモ/項目値)を設定する
 //
-// 記事と収録物を同時に渡せるよう、書誌IDのIN句で一括取得してから振り分ける。
+// 書誌と収録物を同時に渡せるよう、書誌IDのIN句で一括取得してから振り分ける。
 // 4テーブルを個別に引くと最大8クエリになるため、4クエリに抑えている。
-func (r *RecordRepositoryImpl) SelectChildren(
+func (r *RecordRepositoryImpl) SelectComponents(
 	ctx context.Context,
 	tx repository.DBTX,
 	entries []*record.UserRecordEntry,

@@ -246,7 +246,7 @@ func TestRecordHandler_CreateRecord(t *testing.T) {
 			},
 		},
 		{
-			name:           "正常_親を持てるtypeでcontainer省略",
+			name:           "正常_コンテナを持てるtypeでcontainer省略",
 			ctxInternalUid: recordTestInternalUid,
 			ctxPublicUid:   recordTestPublicUid,
 			body:           `{"type":"journal_article","main_title":"論文"}`,
@@ -475,7 +475,7 @@ func TestRecordHandler_CreateRecord(t *testing.T) {
 			},
 		},
 		{
-			name:           "正常_子要素が空配列",
+			name:           "正常_構成要素が空配列",
 			ctxInternalUid: recordTestInternalUid,
 			ctxPublicUid:   recordTestPublicUid,
 			body: `{"type":"authored_book","main_title":"単著書",
@@ -588,7 +588,7 @@ func TestRecordHandler_CreateRecord(t *testing.T) {
 			expectedErrorBody: ErrInvalidRecordType,
 		},
 		{
-			name:              "異常_親なしtypeにcontainer同送",
+			name:              "異常_コンテナを持てないtypeにcontainer同送",
 			ctxInternalUid:    recordTestInternalUid,
 			ctxPublicUid:      recordTestPublicUid,
 			body:              `{"type":"authored_book","main_title":"単著書","container":{"main_title":"雑誌"}}`,
@@ -1033,7 +1033,7 @@ func TestRecordHandler_GetRecord(t *testing.T) {
 		return article
 	}
 
-	// 全項目と子要素4種を持つ記事
+	// 全項目と構成要素4種を持つ書誌
 	fullRecord := record.UserRecordEntry{
 		RecordEntryId:   recordGetTargetId,
 		InternalUid:     recordTestInternalUid,
@@ -1045,7 +1045,7 @@ func TestRecordHandler_GetRecord(t *testing.T) {
 		PublicationDate: &dayDate,
 		DatePrecision:   &precisionDay,
 		ReadStatus:      &readStatusReading,
-		ParentId:        recordStrPtr(recordGetContainerId),
+		ContainerId:     recordStrPtr(recordGetContainerId),
 		ContributorRelations: []record.ContributorRelation{
 			{
 				Contributor:  record.ContributorEntry{RawName: "木村元"},
@@ -1071,7 +1071,7 @@ func TestRecordHandler_GetRecord(t *testing.T) {
 		},
 	}
 
-	// 全項目と子要素を持つ収録物
+	// 全項目と構成要素を持つ収録物
 	fullContainer := record.UserRecordEntry{
 		RecordEntryId: recordGetContainerId,
 		InternalUid:   recordTestInternalUid,
@@ -1092,7 +1092,7 @@ func TestRecordHandler_GetRecord(t *testing.T) {
 		},
 	}
 
-	// 空文字を持つ記事と収録物(NULL化の検証用)
+	// 空文字を持つ書誌と収録物(NULL化の検証用)
 	emptyStrRecord := minimalRecord()
 	emptyStrRecord.SubTitle = recordStrPtr("")
 	emptyStrRecord.PageRange = recordStrPtr("")
@@ -1199,7 +1199,7 @@ func TestRecordHandler_GetRecord(t *testing.T) {
 				RecordDetailItem: handlerDto.RecordDetailItem{
 					Type:      "authored_book",
 					MainTitle: "単著書のタイトル",
-					// 任意項目と子要素はすべてnil(空スライスではない)
+					// 任意項目と構成要素はすべてnil(空スライスではない)
 					SubTitle:        nil,
 					PageRange:       nil,
 					Publisher:       nil,

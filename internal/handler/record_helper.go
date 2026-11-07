@@ -43,16 +43,16 @@ var createRecordRequiredErrors = map[string]error{
 
 // chkCreateParam レコード登録APIのうち、bindingタグで表現できないバリデーションを行う
 func chkCreateParam(req dto.CreateRecordRequest) error {
-	// 子レコードへのチェック
+	// 書誌へのチェック
 	recordType := record.RecordType(req.Type)
 	if !recordType.IsValid() {
 		return ErrInvalidRecordType
 	}
 
-	// 親レコードへのチェック
+	// 収録物へのチェック
 	container := req.ContainerDetailItem
 	if container != nil {
-		if !recordType.HasParent() {
+		if !recordType.IsArticle() {
 			return ErrContainerNotAllowed
 		}
 	}
@@ -249,8 +249,8 @@ func toRecordDetailItem(e record.UserRecordEntry) dto.RecordDetailItem {
 
 // toContainerDetailItem 収録物のレスポンスを組み立てる
 //
-// 収録物のIDは露出しない。出版者・出版日は登録時に記事側からコピーしているが、
-// 記事側が正であるためレスポンスには含めない(ContainerDetailItemにもフィールドがない)。
+// 収録物のIDは露出しない。出版者・出版日は登録時に書誌側からコピーしているが、
+// 書誌側が正であるためレスポンスには含めない(ContainerDetailItemにもフィールドがない)。
 func toContainerDetailItem(e *record.UserRecordEntry) *dto.ContainerDetailItem {
 	if e == nil {
 		return nil

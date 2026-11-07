@@ -82,7 +82,7 @@ func (r *RecordRepositoryImpl) insertRecordEntry(ctx context.Context, tx reposit
 		re.PublicationDate,
 		re.DatePrecision,
 		re.ReadStatus.GetNullableId(),
-		re.ParentId,
+		re.ContainerId,
 		re.MRecordId,
 		re.DelFlg,
 		apiId,
@@ -280,7 +280,7 @@ func (r *RecordRepositoryImpl) SelectByPk(
 		&entry.PublicationDate,
 		&entry.DatePrecision,
 		&readStatus,
-		&entry.ParentId,
+		&entry.ContainerId,
 		&entry.MRecordId,
 		&entry.DelFlg,
 	)
@@ -310,21 +310,21 @@ func (r *RecordRepositoryImpl) SelectByPk(
 	return &entry, nil
 }
 
-func (r *RecordRepositoryImpl) CountActiveChildren(
+func (r *RecordRepositoryImpl) CountActiveArticles(
 	ctx context.Context,
 	tx repository.DBTX,
-	parentRecordId string,
+	containerRecordId string,
 ) (int, error) {
 
 	var count int
 	err := tx.QueryRowContext(
 		ctx,
-		countActiveChildRecordsQuery,
-		parentRecordId,
+		countActiveArticlesQuery,
+		containerRecordId,
 	).Scan(&count)
 
 	if err != nil {
-		return 0, fmt.Errorf("count active children parent id=%s: %w", parentRecordId, err)
+		return 0, fmt.Errorf("count active articles container id=%s: %w", containerRecordId, err)
 	}
 
 	return count, nil
@@ -332,7 +332,7 @@ func (r *RecordRepositoryImpl) CountActiveChildren(
 
 // logicalDeleteTargets 論理削除の対象クエリ
 //
-// 子要素から消す順に並べている(子要素 -> 書誌本体の順)。
+// 構成要素から消す順に並べている(構成要素 -> 書誌本体の順)。
 var logicalDeleteTargets = []struct {
 	name  string
 	query string

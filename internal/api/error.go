@@ -78,7 +78,7 @@ var (
 	ErrContainerNotAllowed = ApiError{
 		StatusCode: http.StatusBadRequest,
 		Code:       "E0012",
-		Message:    "この書誌タイプは親レコードを持つことができません。",
+		Message:    "この書誌タイプは収録物を指定できません。",
 	}
 
 	ErrInvalidPublicationDate = ApiError{

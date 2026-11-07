@@ -34,7 +34,7 @@ var idToTypeMap = map[string]RecordType{
 	RecordTypeIdContributedBookArticle: RecordTypeContributedBookArticle,
 }
 
-var childToParentMap = map[RecordType]RecordType{
+var articleToContainerMap = map[RecordType]RecordType{
 	RecordTypeJournalArticle:         RecordTypeJournal,
 	RecordTypeContributedBookArticle: RecordTypeContributedBook,
 }
@@ -49,20 +49,23 @@ func (t RecordType) GetId() string {
 	return id
 }
 
-func (t RecordType) HasParent() bool {
-	_, ok := childToParentMap[t]
+// IsArticle コンテナに収録される書誌タイプかを返却する
+//
+// 雑誌記事・編著書記事のみtrueとなる。単著書や収録物側(雑誌・編著書)はfalse。
+func (t RecordType) IsArticle() bool {
+	_, ok := articleToContainerMap[t]
 	return ok
 }
 
-// GetParent コンテナに当たる書誌の書誌タイプを返却する
-func (t RecordType) GetParent() RecordType {
-	parent, ok := childToParentMap[t]
+// GetContainerType コンテナに当たる書誌の書誌タイプを返却する
+func (t RecordType) GetContainerType() RecordType {
+	container, ok := articleToContainerMap[t]
 	if !ok {
-		// フロントとの契約上、親を持たない書誌タイプからは呼ばれない前提とする
-		panic("invalid type as child")
+		// フロントとの契約上、コンテナを持たない書誌タイプからは呼ばれない前提とする
+		panic("invalid type as article")
 	}
 
-	return parent
+	return container
 }
 
 // RecordTypeFromId 書誌タイプIDをもとに書誌タイプを返却する

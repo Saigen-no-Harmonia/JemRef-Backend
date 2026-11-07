@@ -20,7 +20,7 @@ const insertRecordEntryQuery = `
             PUBLICATION_DATE,
             DATE_PRECISION,
             READ_STATUS,
-            PARENT_ID,
+            CONTAINER_ID,
             M_RECORD_ID,
             DEL_FLG,
 			INS_PG,
@@ -163,7 +163,7 @@ const selectRecordByPkQuery = `
 		PUBLICATION_DATE,
 		DATE_PRECISION,
 		READ_STATUS,
-		PARENT_ID,
+		CONTAINER_ID,
 		M_RECORD_ID,
 		DEL_FLG
 	from
@@ -176,14 +176,14 @@ const selectRecordByPkQuery = `
 		DEL_FLG = 0
 `
 
-// countActiveChildRecordsQuery 指定した書誌を親とする、論理削除されていない書誌の件数
-const countActiveChildRecordsQuery = `
+// countActiveArticlesQuery 指定した書誌をコンテナとする、論理削除されていない書誌の件数
+const countActiveArticlesQuery = `
 	select
 		COUNT(*)
 	from
 		e_records
 	where
-		PARENT_ID = ?
+		CONTAINER_ID = ?
 	and
 		DEL_FLG = 0
 `
@@ -256,9 +256,9 @@ const logicalDeleteRecordEntryQuery = `
 		DEL_FLG = 0
 `
 
-// 子要素の取得クエリ
+// 構成要素の取得クエリ
 //
-// 記事と収録物の最大2件をまとめて引くため、書誌IDはIN句で渡す(N+1回避)。
+// 対象書誌と収録物の最大2件をまとめて引くため、書誌IDはIN句で渡す(N+1回避)。
 // 固定部分(Base)と末尾(Order)に分け、間のプレースホルダを buildPlaceholders で展開する。
 // いずれも論理削除済みを除外し、表示順の昇順で返す。
 // 書誌IDごとの振り分けに使うため、先頭カラムは必ず E_RECORD_ID とする。
