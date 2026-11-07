@@ -31,6 +31,9 @@ type RecordRepository interface {
 	// 論理削除済みの子要素と、貢献者本体(e_contributors)が論理削除済みの貢献は除外する。
 	// 各スライスは表示順(DISPLAY_NUMBER)の昇順で設定し、該当なしの場合はnilのままとする。
 	// entriesの要素にnilが含まれていても良い(収録物を持たない書誌のために許容する)。
+	//
+	// 結果は引数のentryにappendするため、同じentryに対して2回呼ぶと子要素が重複する。
+	// 1つのentryに対して1回だけ呼ぶこと。
 	SelectChildren(
 		ctx context.Context,
 		tx DBTX,

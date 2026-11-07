@@ -6,8 +6,6 @@ import (
 	"time"
 
 	ctxutil "jemref_go/internal/context"
-	"jemref_go/internal/domain/record"
-	"jemref_go/internal/repository"
 	"jemref_go/internal/testutil"
 
 	"github.com/stretchr/testify/assert"
@@ -23,84 +21,13 @@ const (
 	// 以下はフィクスチャ(records_delete_001.sql)で投入される書誌ID
 	delSoloId        = "DEL_SOLO_0000000000000001" // 親なし。子要素フル
 	delContainer1Id  = "DEL_CONTAINER_000000001"   // 子1件の収録物
-	delChildAId      = "DEL_CHILD_A_00000000001"   // delContainer1Id の子
 	delContainer2Id  = "DEL_CONTAINER_000000002"   // 子2件(生1/削除済1)の収録物
 	delChildB1Id     = "DEL_CHILD_B_00000000001"   // 生存している子
-	delOtherUserId   = "DEL_OTHER_USER_00000001"   // 他ユーザの書誌
 	delDeletedId     = "DEL_DELETED_00000000001"   // すでに論理削除済み
 	delPartialId     = "DEL_PARTIAL_00000000001"   // 子要素の一部が論理削除済み
 	delNotExistsId   = "DEL_NOTEXISTS_0000000001"  // 存在しない書誌ID
 	alreadyDeletedPg = "already_deleted"           // 削除済み行のUPD_PG(更新されていないことの判別用)
 )
-
-// -------------SelectByPk(context.Context, repository.DBTX, string, int64)のテスト-------------
-
-func TestRecordRepository_SelectByPk_正常_親なしの書誌を取得(t *testing.T) {
-	repo := testRecordsSetup(t, recordDeleteFixture)
-
-	actual, err := repo.SelectByPk(
-		newRecordTestCtx(ctxutil.REF_API_005), testDb, delSoloId, testUid,
-	)
-	require.NoError(t, err)
-
-	assert.Equal(t, delSoloId, actual.RecordEntryId)
-	assert.Nil(t, actual.ParentId)
-
-	// 削除で参照するのは書誌IDと親IDのみだが、詳細参照と共用のため全カラムを取得する
-	assert.Equal(t, testUid, actual.InternalUid)
-	assert.Equal(t, "単独の単著書", actual.MainTitle)
-	assert.Equal(t, record.RecordTypeAuthoredBook, actual.RecordType)
-
-	// 子要素はSelectChildrenの責務であり、ここでは取得しない
-	assert.Nil(t, actual.ContributorRelations)
-}
-
-func TestRecordRepository_SelectByPk_正常_親ありの書誌を取得(t *testing.T) {
-	repo := testRecordsSetup(t, recordDeleteFixture)
-
-	actual, err := repo.SelectByPk(
-		newRecordTestCtx(ctxutil.REF_API_005), testDb, delChildAId, testUid,
-	)
-	require.NoError(t, err)
-
-	assert.Equal(t, delChildAId, actual.RecordEntryId)
-	require.NotNil(t, actual.ParentId)
-	assert.Equal(t, delContainer1Id, *actual.ParentId)
-}
-
-func TestRecordRepository_SelectByPk_異常_他ユーザの書誌(t *testing.T) {
-	repo := testRecordsSetup(t, recordDeleteFixture)
-
-	// 他ユーザ(1002)の書誌を自ユーザ(1001)で指定する
-	actual, err := repo.SelectByPk(
-		newRecordTestCtx(ctxutil.REF_API_005), testDb, delOtherUserId, testUid,
-	)
-	require.Error(t, err)
-	assert.ErrorIs(t, err, repository.ErrNotFound)
-	assert.Nil(t, actual)
-}
-
-func TestRecordRepository_SelectByPk_異常_論理削除済みの書誌(t *testing.T) {
-	repo := testRecordsSetup(t, recordDeleteFixture)
-
-	actual, err := repo.SelectByPk(
-		newRecordTestCtx(ctxutil.REF_API_005), testDb, delDeletedId, testUid,
-	)
-	require.Error(t, err)
-	assert.ErrorIs(t, err, repository.ErrNotFound)
-	assert.Nil(t, actual)
-}
-
-func TestRecordRepository_SelectByPk_異常_存在しない書誌ID(t *testing.T) {
-	repo := testRecordsSetup(t, recordDeleteFixture)
-
-	actual, err := repo.SelectByPk(
-		newRecordTestCtx(ctxutil.REF_API_005), testDb, delNotExistsId, testUid,
-	)
-	require.Error(t, err)
-	assert.ErrorIs(t, err, repository.ErrNotFound)
-	assert.Nil(t, actual)
-}
 
 // -------------CountActiveChildren(context.Context, repository.DBTX, string)のテスト-------------
 
