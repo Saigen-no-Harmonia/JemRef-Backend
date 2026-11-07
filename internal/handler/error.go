@@ -25,4 +25,5 @@ var (
 	ErrContributorRoleRequired = errors.New("貢献者の役割は必須です。")
 	ErrMemoContentRequired     = errors.New("メモの内容は必須です。")
 	ErrUrlValueRequired        = errors.New("URLの値は必須です。")
+	ErrRecordIdRequired        = errors.New("書誌IDは必須です。")
 )

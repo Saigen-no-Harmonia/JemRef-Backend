@@ -144,3 +144,101 @@ const insertRecordFieldValuesQueryBase = `
     `
 
 const insertRecordFieldValuesQueryValues = "(?, ?, ?, ?, ?, ?,?,'system',?,'system')"
+
+// selectRecordByPkQuery 書誌を1件取得する
+//
+// 所有権確認を兼ねるため内部用ユーザIDを条件に含め、論理削除済みは対象外とする。
+// 削除・更新で必要な親IDのみを取得するための軽量クエリ。
+const selectRecordByPkQuery = `
+	select
+		ID,
+		PARENT_ID
+	from
+		e_records
+	where
+		ID = ?
+	and
+		USER_ID = ?
+	and
+		DEL_FLG = 0
+`
+
+// countActiveChildRecordsQuery 指定した書誌を親とする、論理削除されていない書誌の件数
+const countActiveChildRecordsQuery = `
+	select
+		COUNT(*)
+	from
+		e_records
+	where
+		PARENT_ID = ?
+	and
+		DEL_FLG = 0
+`
+
+// 論理削除クエリ
+//
+// DEL_FLG = 0 を条件に含めるので、すでに削除済みの行は処理しない。
+const logicalDeleteRecordFieldValuesQuery = `
+	update e_record_field_values
+	set
+		DEL_FLG = 1,
+		UPD_PG = ?,
+		UPD_ID = 'system',
+		UPD_DT = UTC_TIMESTAMP(6)
+	where
+		E_RECORD_ID = ?
+	and
+		DEL_FLG = 0
+`
+
+const logicalDeleteRecordMemosQuery = `
+	update e_record_memos
+	set
+		DEL_FLG = 1,
+		UPD_PG = ?,
+		UPD_ID = 'system',
+		UPD_DT = UTC_TIMESTAMP(6)
+	where
+		E_RECORD_ID = ?
+	and
+		DEL_FLG = 0
+`
+
+const logicalDeleteRecordUrlsQuery = `
+	update e_record_urls
+	set
+		DEL_FLG = 1,
+		UPD_PG = ?,
+		UPD_ID = 'system',
+		UPD_DT = UTC_TIMESTAMP(6)
+	where
+		E_RECORD_ID = ?
+	and
+		DEL_FLG = 0
+`
+
+const logicalDeleteRecordContributionsQuery = `
+	update e_record_contributions
+	set
+		DEL_FLG = 1,
+		UPD_PG = ?,
+		UPD_ID = 'system',
+		UPD_DT = UTC_TIMESTAMP(6)
+	where
+		E_RECORD_ID = ?
+	and
+		DEL_FLG = 0
+`
+
+const logicalDeleteRecordEntryQuery = `
+	update e_records
+	set
+		DEL_FLG = 1,
+		UPD_PG = ?,
+		UPD_ID = 'system',
+		UPD_DT = UTC_TIMESTAMP(6)
+	where
+		ID = ?
+	and
+		DEL_FLG = 0
+`

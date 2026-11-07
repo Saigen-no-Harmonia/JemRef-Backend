@@ -4,10 +4,14 @@ import (
 	ctxutil "jemref_go/internal/context"
 	handlerdto "jemref_go/internal/handler/dto"
 	"jemref_go/internal/usecase"
+	usecasedto "jemref_go/internal/usecase/dto"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
+
+// statusOk StatusResponseで返すステータス文字列
+const statusOk = "OK"
 
 type RecordHandler struct {
 	usecase usecase.RecordUsecase
@@ -21,10 +25,10 @@ func NewRecordHandler(uc usecase.RecordUsecase) *RecordHandler {
 // 共通認証ルート
 func (h *RecordHandler) RegisterRoutes(r *gin.RouterGroup) {
 	r.GET("/records", h.GetRecords)
-	r.GET("/records/:id", h.GetRecord)
+	r.GET("/records/:"+ParamRecordId, h.GetRecord)
 	r.POST("/records", h.CreateRecord)
-	r.PUT("/records/:id", h.UpdateRecord)
-	r.DELETE("/records/:id", h.DeleteRecord)
+	r.PUT("/records/:"+ParamRecordId, h.UpdateRecord)
+	r.DELETE("/records/:"+ParamRecordId, h.DeleteRecord)
 }
 
 // @Summary [REF-API-001] 書誌一覧参照
@@ -128,6 +132,31 @@ func (h *RecordHandler) UpdateRecord(c *gin.Context) {}
 // @Param id path string true "ユーザ書誌ID"
 // @Success 200 {object} dto.StatusResponse
 // @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /records/{id} [delete]
-func (h *RecordHandler) DeleteRecord(c *gin.Context) {}
+func (h *RecordHandler) DeleteRecord(c *gin.Context) {
+	internalUid, ok := ctxutil.GetUserId(c)
+	if !ok {
+		c.Error(ErrInternalUidNotFound)
+		return
+	}
+
+	recordId := c.Param(ParamRecordId)
+	if recordId == "" {
+		c.Error(ErrRecordIdRequired)
+		return
+	}
+
+	ctxutil.SetApiId(c, ctxutil.REF_API_005)
+	err := h.usecase.Delete(c, usecasedto.DeleteRecordInput{
+		InternalUserId: internalUid,
+		RecordId:       recordId,
+	})
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, handlerdto.StatusResponse{Status: statusOk})
+}

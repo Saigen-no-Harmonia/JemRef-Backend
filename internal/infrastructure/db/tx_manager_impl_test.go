@@ -28,7 +28,7 @@ func TestTxManager_WithTransaction_正常_コミットされる(t *testing.T) {
 
 	called := false
 	err := txManager.WithTransaction(
-		newRecordTestCtx(),
+		newRecordTestCtx(ctxutil.REF_API_003),
 		func(ctx context.Context, tx repository.DBTX) error {
 			called = true
 			return repo.Create(ctx, tx, input)
@@ -58,7 +58,7 @@ func TestTxManager_WithTransaction_異常_関数がエラーならロールバ�
 	beforeCnt := testutil.CountRecords(t, testDb)
 
 	err := txManager.WithTransaction(
-		newRecordTestCtx(),
+		newRecordTestCtx(ctxutil.REF_API_003),
 		func(ctx context.Context, tx repository.DBTX) error {
 			// 登録に成功した後でエラーを返す
 			if err := repo.Create(ctx, tx, input); err != nil {

@@ -58,4 +58,9 @@ type RecordUsecase interface {
 		ctx context.Context,
 		ci dto.CreateRecordInput,
 	) (*dto.CreateRecordOutput, error)
+
+	Delete(
+		ctx context.Context,
+		di dto.DeleteRecordInput,
+	) error
 }

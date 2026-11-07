@@ -738,3 +738,327 @@ func TestRecordUsecase_Create(t *testing.T) {
 		})
 	}
 }
+
+// -------------Delete(context.Context, dto.DeleteRecordInput)のテスト-------------
+
+func TestRecordUsecase_Delete(t *testing.T) {
+
+	// SelectByPkが返す書誌(RecordEntryIdとParentIdのみ設定される軽量SELECT)
+	soloTarget := &record.UserRecordEntry{RecordEntryId: recordArticleId}
+	childTarget := &record.UserRecordEntry{
+		RecordEntryId: recordArticleId,
+		ParentId:      recordStrPtr(recordContainerId),
+	}
+
+	input := dto.DeleteRecordInput{
+		InternalUserId: recordTestUid,
+		RecordId:       recordArticleId,
+	}
+
+	tests := []struct {
+		name  string
+		input dto.DeleteRecordInput
+		// selectResult / selectErr はSelectByPkの戻り値
+		selectResult *record.UserRecordEntry
+		selectErr    error
+		// countResults / countErrs はCountActiveChildrenが呼び出し順に返す値
+		countResults []int
+		countErrs    []error
+		// deleteErrs はLogicalDeleteが呼び出し順に返すエラー(nilは成功)
+		deleteErrs []error
+		// withTransactionFunc nilの場合は更新処理をそのまま実行する
+		withTransactionFunc func(
+			ctx context.Context,
+			fn func(ctx context.Context, tx repository.DBTX) error,
+		) error
+		// expectedCountedIds CountActiveChildrenに渡された書誌IDの呼び出し順
+		expectedCountedIds []string
+		// expectedDeletedIds LogicalDeleteに渡された書誌IDの呼び出し順
+		expectedDeletedIds   []string
+		expectedSelectCalled int
+		expectedCountCalled  int
+		expectedDeleteCalled int
+		expectedTxCalled     int
+		expectError          bool
+		expectedErrorBody    error
+		expectedErrorMsgs    []string
+	}{
+		{
+			name:                 "正常_親なしの書誌を削除",
+			input:                input,
+			selectResult:         soloTarget,
+			countResults:         []int{0},
+			expectedDeletedIds:   []string{recordArticleId},
+			expectedCountedIds:   []string{recordArticleId},
+			expectedSelectCalled: 1,
+			// 親がないため子件数の確認は1回(自身が収録物かの判定)のみ
+			expectedCountCalled:  1,
+			expectedDeleteCalled: 1,
+			expectedTxCalled:     1,
+		},
+		{
+			name:         "正常_親ありで他に子がいない場合は収録物も削除",
+			input:        input,
+			selectResult: childTarget,
+			// 1回目=自身の子件数, 2回目=収録物に残る子件数
+			countResults: []int{0, 0},
+			// 記事 -> 収録物の順に削除される
+			expectedDeletedIds:   []string{recordArticleId, recordContainerId},
+			expectedCountedIds:   []string{recordArticleId, recordContainerId},
+			expectedSelectCalled: 1,
+			expectedCountCalled:  2,
+			expectedDeleteCalled: 2,
+			expectedTxCalled:     1,
+		},
+		{
+			name:         "正常_親ありで他に子が残っている場合は収録物を残す",
+			input:        input,
+			selectResult: childTarget,
+			countResults: []int{0, 1},
+			// 収録物は削除されない
+			expectedDeletedIds:   []string{recordArticleId},
+			expectedCountedIds:   []string{recordArticleId, recordContainerId},
+			expectedSelectCalled: 1,
+			expectedCountCalled:  2,
+			expectedDeleteCalled: 1,
+			expectedTxCalled:     1,
+		},
+		{
+			name:                 "正常_入力がそのままrepositoryへ渡る",
+			input:                input,
+			selectResult:         childTarget,
+			countResults:         []int{0, 0},
+			expectedDeletedIds:   []string{recordArticleId, recordContainerId},
+			expectedCountedIds:   []string{recordArticleId, recordContainerId},
+			expectedSelectCalled: 1,
+			expectedCountCalled:  2,
+			expectedDeleteCalled: 2,
+			expectedTxCalled:     1,
+		},
+		{
+			// 収録物ガードが子を持たない書誌を誤って弾かないことの確認
+			name:                 "正常_子を持たない書誌は削除できる",
+			input:                input,
+			selectResult:         soloTarget,
+			countResults:         []int{0},
+			expectedDeletedIds:   []string{recordArticleId},
+			expectedCountedIds:   []string{recordArticleId},
+			expectedSelectCalled: 1,
+			expectedCountCalled:  1,
+			expectedDeleteCalled: 1,
+			expectedTxCalled:     1,
+		},
+		{
+			name:      "異常_書誌が存在しない",
+			input:     input,
+			selectErr: repository.ErrNotFound,
+			// 存在確認で中断するため以降は呼ばれない
+			expectedSelectCalled: 1,
+			expectedCountCalled:  0,
+			expectedDeleteCalled: 0,
+			expectedTxCalled:     1,
+			expectError:          true,
+			expectedErrorBody:    ErrRecordNotFound,
+			expectedErrorMsgs:    []string{"削除対象の書誌が存在しません"},
+		},
+		{
+			name:         "異常_収録物を指定した場合は削除されない",
+			input:        input,
+			selectResult: soloTarget,
+			// 自身が3件の子を持つ=収録物
+			countResults:         []int{3},
+			expectedCountedIds:   []string{recordArticleId},
+			expectedSelectCalled: 1,
+			expectedCountCalled:  1,
+			expectedDeleteCalled: 0,
+			expectedTxCalled:     1,
+			expectError:          true,
+			expectedErrorBody:    ErrRecordNotFound,
+			// ログに残す必要がある情報がメッセージに含まれること
+			expectedErrorMsgs: []string{
+				"収録物の単体削除が要求されました",
+				"record id=" + recordArticleId,
+				"internal uid=1001",
+				"child count=3",
+			},
+		},
+		{
+			name:                 "異常_SelectByPkが予期しないエラー",
+			input:                input,
+			selectErr:            repository.ErrTestUnexpected,
+			expectedSelectCalled: 1,
+			expectedCountCalled:  0,
+			expectedDeleteCalled: 0,
+			expectedTxCalled:     1,
+			expectError:          true,
+			expectedErrorBody:    repository.ErrTestUnexpected,
+			expectedErrorMsgs:    []string{"select record error"},
+		},
+		{
+			name:                 "異常_対象の子件数取得に失敗",
+			input:                input,
+			selectResult:         soloTarget,
+			countErrs:            []error{repository.ErrTestUnexpected},
+			expectedCountedIds:   []string{recordArticleId},
+			expectedSelectCalled: 1,
+			expectedCountCalled:  1,
+			expectedDeleteCalled: 0,
+			expectedTxCalled:     1,
+			expectError:          true,
+			expectedErrorBody:    repository.ErrTestUnexpected,
+			expectedErrorMsgs:    []string{"count children of target error"},
+		},
+		{
+			name:                 "異常_記事の論理削除に失敗",
+			input:                input,
+			selectResult:         soloTarget,
+			countResults:         []int{0},
+			deleteErrs:           []error{repository.ErrTestUnexpected},
+			expectedDeletedIds:   []string{recordArticleId},
+			expectedCountedIds:   []string{recordArticleId},
+			expectedSelectCalled: 1,
+			expectedCountCalled:  1,
+			expectedDeleteCalled: 1,
+			expectedTxCalled:     1,
+			expectError:          true,
+			expectedErrorBody:    repository.ErrTestUnexpected,
+			expectedErrorMsgs:    []string{"delete article record error"},
+		},
+		{
+			name:         "異常_収録物の子件数取得に失敗",
+			input:        input,
+			selectResult: childTarget,
+			// 1回目は成功、2回目(収録物の子件数)で失敗
+			countResults:         []int{0, 0},
+			countErrs:            []error{nil, repository.ErrTestUnexpected},
+			expectedDeletedIds:   []string{recordArticleId},
+			expectedCountedIds:   []string{recordArticleId, recordContainerId},
+			expectedSelectCalled: 1,
+			expectedCountCalled:  2,
+			expectedDeleteCalled: 1,
+			expectedTxCalled:     1,
+			expectError:          true,
+			expectedErrorBody:    repository.ErrTestUnexpected,
+			expectedErrorMsgs:    []string{"count container children error"},
+		},
+		{
+			name:         "異常_収録物の論理削除に失敗",
+			input:        input,
+			selectResult: childTarget,
+			countResults: []int{0, 0},
+			// 2回目(収録物)の削除で失敗
+			deleteErrs:           []error{nil, repository.ErrTestUnexpected},
+			expectedDeletedIds:   []string{recordArticleId, recordContainerId},
+			expectedCountedIds:   []string{recordArticleId, recordContainerId},
+			expectedSelectCalled: 1,
+			expectedCountCalled:  2,
+			expectedDeleteCalled: 2,
+			expectedTxCalled:     1,
+			expectError:          true,
+			expectedErrorBody:    repository.ErrTestUnexpected,
+			expectedErrorMsgs:    []string{"delete container record error"},
+		},
+		{
+			name:  "異常_トランザクション開始失敗",
+			input: input,
+			withTransactionFunc: func(
+				ctx context.Context,
+				fn func(ctx context.Context, tx repository.DBTX) error,
+			) error {
+				// 更新処理を実行せずにエラーを返す
+				return repository.ErrTestUnexpected
+			},
+			expectedSelectCalled: 0,
+			expectedCountCalled:  0,
+			expectedDeleteCalled: 0,
+			expectedTxCalled:     1,
+			expectError:          true,
+			expectedErrorBody:    repository.ErrTestUnexpected,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			repo := &mock.MockRecordRepository{}
+
+			repo.SelectByPkFunc = func(
+				ctx context.Context,
+				tx repository.DBTX,
+				recordId string,
+				internalUid int64,
+			) (*record.UserRecordEntry, error) {
+				if tt.selectErr != nil {
+					return nil, tt.selectErr
+				}
+				return tt.selectResult, nil
+			}
+
+			repo.CountActiveChildrenFunc = func(
+				ctx context.Context,
+				tx repository.DBTX,
+				parentRecordId string,
+			) (int, error) {
+				// CountActiveChildrenの呼び出し回数に応じた戻り値を返す
+				idx := repo.CountActiveChildrenCalled - 1
+				if idx < len(tt.countErrs) && tt.countErrs[idx] != nil {
+					return 0, tt.countErrs[idx]
+				}
+				require.Less(t, idx, len(tt.countResults), "想定外のCountActiveChildren呼び出し")
+				return tt.countResults[idx], nil
+			}
+
+			repo.LogicalDeleteFunc = func(
+				ctx context.Context,
+				tx repository.DBTX,
+				recordId string,
+			) error {
+				// LogicalDeleteの呼び出し回数に応じたエラーを返す
+				idx := repo.LogicalDeleteCalled - 1
+				if idx < len(tt.deleteErrs) {
+					return tt.deleteErrs[idx]
+				}
+				return nil
+			}
+
+			txManager := mock.NewMockTxManager()
+			if tt.withTransactionFunc != nil {
+				txManager.WithTransactionFunc = tt.withTransactionFunc
+			}
+
+			uc := NewRecordUsecaseImpl(repo, txManager, &mock.MockIdGen{})
+
+			err := uc.Delete(context.Background(), tt.input)
+
+			// 呼び出しチェック
+			assert.Equal(t, tt.expectedSelectCalled, repo.SelectByPkCalled)
+			assert.Equal(t, tt.expectedCountCalled, repo.CountActiveChildrenCalled)
+			assert.Equal(t, tt.expectedDeleteCalled, repo.LogicalDeleteCalled)
+			assert.Equal(t, tt.expectedTxCalled, txManager.WithTransactionCalled)
+
+			// 論理削除に渡された書誌IDと順序の検証
+			assert.Equal(t, tt.expectedDeletedIds, repo.DeletedRecordIds)
+
+			// 入力がそのままrepositoryへ渡ること
+			if tt.expectedSelectCalled > 0 {
+				assert.Equal(t, tt.input.RecordId, repo.LastSelectByPkRecordId)
+				assert.Equal(t, tt.input.InternalUserId, repo.LastSelectByPkInternalUid)
+			}
+			// 子件数の確認は1回目が対象自身(収録物かの判定)、2回目が収録物に対して行われる
+			assert.Equal(t, tt.expectedCountedIds, repo.CountedRecordIds)
+
+			// 異常系の場合のassertion
+			if tt.expectError {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedErrorBody)
+				for _, msg := range tt.expectedErrorMsgs {
+					assert.Contains(t, err.Error(), msg)
+				}
+				return
+			}
+
+			// 正常系の場合のassertion
+			require.NoError(t, err)
+		})
+	}
+}

@@ -90,6 +90,8 @@ func toApiError(err error) ApiError {
 		return ErrMemoContentRequired
 	case errors.Is(err, handler.ErrUrlValueRequired):
 		return ErrUrlValueRequired
+	case errors.Is(err, handler.ErrRecordIdRequired):
+		return ErrRecordIdRequired
 
 		// Usecaseが投げるエラーの変換
 	case errors.Is(err, usecase.ErrPolicyNotFound):
@@ -106,6 +108,8 @@ func toApiError(err error) ApiError {
 		return ErrInvalidPolicyVersion
 	case errors.Is(err, usecase.ErrReachRegistrationLimit):
 		return ErrReachRegistrationLimit
+	case errors.Is(err, usecase.ErrRecordNotFound):
+		return ErrRecordNotFound
 
 	// repository層のエラーはusecaseエラーに変換される前提とするのでなし
 

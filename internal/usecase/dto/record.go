@@ -60,3 +60,8 @@ type OptionValuesInput struct {
 type CreateRecordOutput struct {
 	RecordId string
 }
+
+type DeleteRecordInput struct {
+	InternalUserId int64
+	RecordId       string
+}

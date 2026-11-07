@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	ctxutil "jemref_go/internal/context"
 	"jemref_go/internal/domain/record"
@@ -243,6 +244,91 @@ func (r *RecordRepositoryImpl) insertOptionValues(ctx context.Context, tx reposi
 	_, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("insert option value: %w", err)
+	}
+
+	return nil
+}
+
+func (r *RecordRepositoryImpl) SelectByPk(
+	ctx context.Context,
+	tx repository.DBTX,
+	recordId string,
+	internalUid int64,
+) (*record.UserRecordEntry, error) {
+
+	var entry record.UserRecordEntry
+	err := tx.QueryRowContext(
+		ctx,
+		selectRecordByPkQuery,
+		recordId,
+		internalUid,
+	).Scan(
+		&entry.RecordEntryId,
+		&entry.ParentId,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf(
+				"書誌情報が存在しません。record id=%s, internal uid=%d :%w",
+				recordId,
+				internalUid,
+				repository.ErrNotFound,
+			)
+		}
+		return nil, fmt.Errorf("select record by pk record id=%s: %w", recordId, err)
+	}
+
+	return &entry, nil
+}
+
+func (r *RecordRepositoryImpl) CountActiveChildren(
+	ctx context.Context,
+	tx repository.DBTX,
+	parentRecordId string,
+) (int, error) {
+
+	var count int
+	err := tx.QueryRowContext(
+		ctx,
+		countActiveChildRecordsQuery,
+		parentRecordId,
+	).Scan(&count)
+
+	if err != nil {
+		return 0, fmt.Errorf("count active children parent id=%s: %w", parentRecordId, err)
+	}
+
+	return count, nil
+}
+
+// logicalDeleteTargets 論理削除の対象クエリ
+//
+// 子要素から消す順に並べている(子要素 -> 書誌本体の順)。
+var logicalDeleteTargets = []struct {
+	name  string
+	query string
+}{
+	{"field values", logicalDeleteRecordFieldValuesQuery},
+	{"memos", logicalDeleteRecordMemosQuery},
+	{"urls", logicalDeleteRecordUrlsQuery},
+	{"contributions", logicalDeleteRecordContributionsQuery},
+	{"record entry", logicalDeleteRecordEntryQuery},
+}
+
+func (r *RecordRepositoryImpl) LogicalDelete(
+	ctx context.Context,
+	tx repository.DBTX,
+	recordId string,
+) error {
+
+	apiId := ctxutil.GetApiId(ctx)
+
+	for _, target := range logicalDeleteTargets {
+		_, err := tx.ExecContext(ctx, target.query, apiId, recordId)
+		if err != nil {
+			return fmt.Errorf("logical delete %s record id=%s: %w", target.name, recordId, err)
+		}
 	}
 
 	return nil

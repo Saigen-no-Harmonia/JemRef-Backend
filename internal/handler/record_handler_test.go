@@ -801,3 +801,140 @@ func TestRecordHandler_CreateRecord(t *testing.T) {
 		})
 	}
 }
+
+// -------------DeleteRecord(*gin.Context)のテスト-------------
+
+// recordDeleteTargetId 削除対象として指定する書誌ID
+const recordDeleteTargetId = "DELETETARGET00000000000001"
+
+// newRecordDeleteUsecaseMock 削除が成功するMockRecordUsecaseを返す
+func newRecordDeleteUsecaseMock() *mock.MockRecordUsecase {
+	return &mock.MockRecordUsecase{
+		DeleteFunc: func(
+			ctx context.Context,
+			di usecaseDto.DeleteRecordInput,
+		) error {
+			return nil
+		},
+	}
+}
+
+// newRecordDeleteUsecaseErrMock 指定したエラーを返すMockRecordUsecaseを返す
+func newRecordDeleteUsecaseErrMock(err error) *mock.MockRecordUsecase {
+	return &mock.MockRecordUsecase{
+		DeleteFunc: func(
+			ctx context.Context,
+			di usecaseDto.DeleteRecordInput,
+		) error {
+			return err
+		},
+	}
+}
+
+func TestRecordHandler_DeleteRecord(t *testing.T) {
+
+	path := "/api/v0/records/" + recordDeleteTargetId
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name string
+		// ctxInternalUid 0の場合はcontextから取得できない状態を表す
+		ctxInternalUid int64
+		// recordId パスパラメータ。空文字の場合はパラメータ未設定を表す
+		recordId    string
+		mockUsecase *mock.MockRecordUsecase
+		// expectedInput usecaseへ渡される入力(nilの場合は検証しない)
+		expectedInput     *usecaseDto.DeleteRecordInput
+		usecaseCalled     bool
+		expectedBody      handlerDto.StatusResponse
+		expectError       bool
+		expectedErrorBody error
+	}{
+		{
+			name:           "正常_書誌を削除",
+			ctxInternalUid: recordTestInternalUid,
+			recordId:       recordDeleteTargetId,
+			mockUsecase:    newRecordDeleteUsecaseMock(),
+			// パスパラメータと内部ユーザIDがそのままusecaseへ渡る
+			expectedInput: &usecaseDto.DeleteRecordInput{
+				InternalUserId: recordTestInternalUid,
+				RecordId:       recordDeleteTargetId,
+			},
+			usecaseCalled: true,
+			expectedBody:  handlerDto.StatusResponse{Status: statusOk},
+		},
+		{
+			name:              "異常_internalUid取得失敗",
+			ctxInternalUid:    0,
+			recordId:          recordDeleteTargetId,
+			mockUsecase:       newRecordDeleteUsecaseMock(),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInternalUidNotFound,
+		},
+		{
+			name:              "異常_書誌IDが空",
+			ctxInternalUid:    recordTestInternalUid,
+			recordId:          "",
+			mockUsecase:       newRecordDeleteUsecaseMock(),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrRecordIdRequired,
+		},
+		{
+			name:              "異常_usecaseが書誌なしエラー",
+			ctxInternalUid:    recordTestInternalUid,
+			recordId:          recordDeleteTargetId,
+			mockUsecase:       newRecordDeleteUsecaseErrMock(usecase.ErrRecordNotFound),
+			usecaseCalled:     true,
+			expectError:       true,
+			expectedErrorBody: usecase.ErrRecordNotFound,
+		},
+		{
+			name:              "異常_usecaseが予期しないエラー",
+			ctxInternalUid:    recordTestInternalUid,
+			recordId:          recordDeleteTargetId,
+			mockUsecase:       newRecordDeleteUsecaseErrMock(usecase.ErrTestUnexpected),
+			usecaseCalled:     true,
+			expectError:       true,
+			expectedErrorBody: usecase.ErrTestUnexpected,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			rec := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(rec)
+			c.Set(ctxutil.CtxKeyUid, tt.ctxInternalUid)
+
+			if tt.recordId != "" {
+				c.Params = gin.Params{{Key: ParamRecordId, Value: tt.recordId}}
+			}
+
+			c.Request = httptest.NewRequest(http.MethodDelete, path, nil)
+
+			h := NewRecordHandler(tt.mockUsecase)
+			h.DeleteRecord(c)
+
+			// 呼び出しチェック
+			assert.Equal(t, tt.usecaseCalled, tt.mockUsecase.DeleteCalled)
+			if tt.expectedInput != nil {
+				assert.Equal(t, *tt.expectedInput, tt.mockUsecase.LastDeleteInput)
+			}
+
+			// 異常系の場合のassertion
+			if tt.expectError {
+				require.Len(t, c.Errors, 1)
+				assert.ErrorIs(t, c.Errors.Last().Err, tt.expectedErrorBody)
+				return
+			}
+
+			// 正常系の場合のassertion
+			require.Len(t, c.Errors, 0)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, ctxutil.REF_API_005, ctxutil.GetApiId(tt.mockUsecase.LastCtx))
+			testutil.AssertResponse(t, rec, tt.expectedBody)
+		})
+	}
+}

@@ -140,4 +140,18 @@ var (
 		Code:       "E0022",
 		Message:    "URLの値は必須です。",
 	}
+
+	ErrRecordIdRequired = ApiError{
+		StatusCode: http.StatusBadRequest,
+		Code:       "E0023",
+		Message:    "書誌IDは必須です。",
+	}
+
+	// ErrRecordNotFound 他ユーザの書誌を指定された場合もこれを返す
+	// (403と区別すると他ユーザの書誌IDの存在が漏れるため)
+	ErrRecordNotFound = ApiError{
+		StatusCode: http.StatusNotFound,
+		Code:       "E0024",
+		Message:    "指定された書誌情報が存在しません。",
+	}
 )

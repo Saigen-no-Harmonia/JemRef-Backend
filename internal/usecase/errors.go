@@ -14,4 +14,5 @@ var (
 	ErrInvalidPolicyVersion   = errors.New("invalid policy version")
 	ErrUnexpectedPolicy       = errors.New("unexpected policy")
 	ErrReachRegistrationLimit = errors.New("reach DB registration limit")
+	ErrRecordNotFound         = errors.New("record not found")
 )

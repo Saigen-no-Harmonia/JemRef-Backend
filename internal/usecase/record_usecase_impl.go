@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"jemref_go/internal/domain/id"
 	"jemref_go/internal/domain/record"
@@ -249,4 +250,78 @@ func createOptionValue(recordId string, internalUid int64, field record.RecordFi
 		InternalUid:   internalUid,
 		DelFlg:        0,
 	}
+}
+
+// Delete 書誌情報を論理削除する
+//
+// コンテナ(親レコード)は、他に論理削除されていない子が残っていない場合のみ削除する。
+// e_contributors はユーザ単位の入力辞書であり書誌に属さないため削除しない。
+func (u *RecordUsecaseImpl) Delete(
+	ctx context.Context,
+	di dto.DeleteRecordInput,
+) error {
+
+	return u.txManager.WithTransaction(
+		ctx,
+		func(ctx context.Context, tx repository.DBTX) error {
+			// 存在確認と所有権確認を兼ねる
+			target, err := u.recordRepo.SelectByPk(ctx, tx, di.RecordId, di.InternalUserId)
+			if err != nil {
+				if errors.Is(err, repository.ErrNotFound) {
+					return fmt.Errorf(
+						"削除対象の書誌が存在しません。record id=%s :%w",
+						di.RecordId,
+						ErrRecordNotFound,
+					)
+				}
+				return fmt.Errorf("select record error: %w", err)
+			}
+
+			// 収録物(他の書誌の親になっている書誌)は単体の削除対象にしない
+			//
+			// 収録物のIDはAPIレスポンスに露出しないため、指定された場合は
+			// 不正なリクエストとして記録を残す(このエラーはリクエストログのerrorsに出力される)。
+			// レスポンスは存在を漏らさないため404に寄せる。
+			children, err := u.recordRepo.CountActiveChildren(ctx, tx, target.RecordEntryId)
+			if err != nil {
+				return fmt.Errorf("count children of target error: %w", err)
+			}
+
+			if children > 0 {
+				return fmt.Errorf(
+					"収録物の単体削除が要求されました。収録物は削除できません。record id=%s, internal uid=%d, child count=%d :%w",
+					di.RecordId,
+					di.InternalUserId,
+					children,
+					ErrRecordNotFound,
+				)
+			}
+
+			// 子要素の論理削除処理
+			if err := u.recordRepo.LogicalDelete(ctx, tx, target.RecordEntryId); err != nil {
+				return fmt.Errorf("delete article record error: %w", err)
+			}
+
+			if target.ParentId == nil {
+				return nil
+			}
+
+			// 親要素がある場合、親の論理削除処理に進む
+			count, err := u.recordRepo.CountActiveChildren(ctx, tx, *target.ParentId)
+			if err != nil {
+				return fmt.Errorf("count container children error: %w", err)
+			}
+
+			// 親に紐づく生きている子が残っていれば削除しない
+			if count > 0 {
+				return nil
+			}
+
+			if err := u.recordRepo.LogicalDelete(ctx, tx, *target.ParentId); err != nil {
+				return fmt.Errorf("delete container record error: %w", err)
+			}
+
+			return nil
+		},
+	)
 }
