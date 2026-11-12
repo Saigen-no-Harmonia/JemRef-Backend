@@ -2,28 +2,41 @@ package handler
 
 import (
 	"errors"
+
+	"jemref_go/internal/apperr"
 )
 
+// ErrTestUnexpected 分岐でカバーしていない予期しないエラーのテスト用
+// apperr.Errorにしないことで、変換されず500に落ちることを検証できる。
+var ErrTestUnexpected = errors.New("handler test unexpected")
+
+// contextからの値取得失敗はいずれもサーバ側の不具合なので、
+// レスポンスは共通の500に寄せ、どの値が取れなかったかはログに残す。
 var (
-	ErrTestUnexpected          = errors.New("handler test unexpected")
-	ErrInternalUidNotFound     = errors.New("contextからinternal uidが取得できませんでした。")
-	ErrFirebaseUidNotFound     = errors.New("contextからfirebase uidが取得できませんでした。")
-	ErrPublicUidNotFound       = errors.New("contextから公開用UIDが取得できませんでした。")
-	ErrEmailNotFound           = errors.New("contextからメールアドレスが取得できませんでした。")
-	ErrPolicyRequired          = errors.New("リクエストに規約情報がありませんでした。")
-	ErrAgreedVersionRequired   = errors.New("規約同意バージョンは必須です。")
-	ErrInvalidRequestBody      = errors.New("リクエストボディの形式が不正です。")
-	ErrPolicyTypeInvalid       = errors.New("規約タイプ指定が不正です。")
-	ErrMainTitleRequired       = errors.New("主題は必須項目です。")
-	ErrRecordTypeRequired      = errors.New("書誌タイプ指定は必須です。")
-	ErrInvalidRecordType       = errors.New("書誌タイプ指定が不正です。")
-	ErrContainerNotAllowed     = errors.New("この書誌タイプは収録物を指定できません。")
-	ErrInvalidPublicationDate  = errors.New("出版日付の指定が不正です。")
-	ErrInvalidReadStatus       = errors.New("読了ステータスが不正です。")
-	ErrInvalidContributorRole  = errors.New("貢献者役割が不正です。")
-	ErrContributorNameRequired = errors.New("貢献者の氏名は必須です。")
-	ErrContributorRoleRequired = errors.New("貢献者の役割は必須です。")
-	ErrMemoContentRequired     = errors.New("メモの内容は必須です。")
-	ErrUrlValueRequired        = errors.New("URLの値は必須です。")
-	ErrRecordIdRequired        = errors.New("書誌IDは必須です。")
+	ErrInternalUidNotFound = apperr.Internal.New("contextからinternal uidが取得できませんでした。")
+	ErrFirebaseUidNotFound = apperr.Internal.New("contextからfirebase uidが取得できませんでした。")
+	ErrPublicUidNotFound   = apperr.Internal.New("contextから公開用UIDが取得できませんでした。")
+	ErrEmailNotFound       = apperr.Internal.New("contextからメールアドレスが取得できませんでした。")
+)
+
+// リクエストの不備。フロント側に見せる文言がそのまま原因の説明になるものはErr()を使う。
+var (
+	ErrInvalidRequestBody    = apperr.BadRequest.Err()
+	ErrPolicyRequired        = apperr.PolicyRequired.Err()
+	ErrInvalidPolicyType     = apperr.InvalidPolicyType.Err()
+	ErrAgreedVersionRequired = apperr.AgreedVersionRequired.Err()
+
+	ErrMainTitleRequired      = apperr.MainTitleRequired.Err()
+	ErrRecordTypeRequired     = apperr.RecordTypeRequired.Err()
+	ErrInvalidRecordType      = apperr.InvalidRecordType.Err()
+	ErrContainerNotAllowed    = apperr.ContainerNotAllowed.Err()
+	ErrInvalidPublicationDate = apperr.InvalidPublicationDate.Err()
+	ErrInvalidReadStatus      = apperr.InvalidReadStatus.Err()
+	ErrRecordIdRequired       = apperr.RecordIdRequired.Err()
+
+	ErrInvalidContributorRole  = apperr.InvalidContributorRole.Err()
+	ErrContributorNameRequired = apperr.ContributorNameRequired.Err()
+	ErrContributorRoleRequired = apperr.ContributorRoleRequired.Err()
+	ErrMemoContentRequired     = apperr.MemoContentRequired.Err()
+	ErrUrlValueRequired        = apperr.UrlValueRequired.Err()
 )

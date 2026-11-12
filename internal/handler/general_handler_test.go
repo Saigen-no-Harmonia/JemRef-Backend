@@ -62,7 +62,7 @@ func TestGeneralHandler_GetPolicies(t *testing.T) {
 			name:              "異常_パラメータ不正",
 			policyType:        "invalid",
 			expectError:       true,
-			expectedErrorBody: ErrPolicyTypeInvalid,
+			expectedErrorBody: ErrInvalidPolicyType,
 		},
 		{
 			name:       "異常_リクエストされた規約がDBに存在しない",

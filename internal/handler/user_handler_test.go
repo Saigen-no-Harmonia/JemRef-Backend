@@ -592,7 +592,7 @@ func TestUserHandler_UpdateUserAgreements(t *testing.T) {
 			mockUsecase:       &mock.MockUserUsecase{},
 			usecaseCalled:     false,
 			expectError:       true,
-			expectedErrorBody: ErrPolicyTypeInvalid,
+			expectedErrorBody: ErrInvalidPolicyType,
 		},
 		{
 			name:           "異常_ユーザ規約同意状況更新_要素の規約バージョンが未指定",
@@ -620,7 +620,7 @@ func TestUserHandler_UpdateUserAgreements(t *testing.T) {
 			mockUsecase:       &mock.MockUserUsecase{},
 			usecaseCalled:     false,
 			expectError:       true,
-			expectedErrorBody: ErrPolicyTypeInvalid,
+			expectedErrorBody: ErrInvalidPolicyType,
 		},
 		{
 			name:           "異常_ユーザ規約同意状況更新_リクエストが空の配列",

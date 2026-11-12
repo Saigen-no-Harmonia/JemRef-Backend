@@ -45,7 +45,7 @@ var createUserRequiredErrors = map[string]error{
 // PolicyType / Version はPoliciesのdiveタグにより各要素が検証される。
 var updateUserAgreementsRequiredErrors = map[string]error{
 	"Policies":   ErrPolicyRequired,
-	"PolicyType": ErrPolicyTypeInvalid,
+	"PolicyType": ErrInvalidPolicyType,
 	"Version":    ErrAgreedVersionRequired,
 }
 

@@ -57,7 +57,8 @@ handler (gin) → usecase → repository (interface) → infrastructure/db (実�
   - `auth.go`: `FirebaseAuth`(IDトークン検証 → email/firebaseUid をcontextへ)、`ChkUnregistered`(会員登録APIで「未登録であること」を検証)、`FindCurrentUser`(DBからユーザを引いて internal uid / public uid をcontextへ。退会済みならFirebaseユーザを削除して中断)。
   - `logger.go`: リクエストログ。`/api/v0/health` はログ対象外。テストからログ出力先を差し替えられるよう `CommonLoggerWithWriter(cfg, io.Writer)` を用意し、`CommonLogger(cfg)` はその `os.Stdout` 版。
 - **internal/context**: gin.Context に格納する値のキー定数(`keys.go`)と、型安全に取り出す `GetUserId`/`GetFirebaseUid`/`GetPublicUid`/`GetEmail`(`auth.go`)。ミドルウェアが `c.Set` し、以降のハンドラ/ミドルウェアがこれらのgetterで読む。
-- **internal/api**: エラーをHTTPレスポンスへ変換する層。`error.go`(`ApiError` 定義)と `error_handler.go`(`ErrorHandler()` ミドルウェアと `toApiError`)。
+- **internal/apperr**: アプリケーションエラーの表現。コードと公開メッセージの台帳(`catalog.go`)と `Def`/`Error` 型(`apperr.go`)。どの層からも参照されるリーフパッケージで、HTTPもginも知らない。
+- **internal/api**: エラーをHTTPレスポンスへ変換する層。`error.go`(`ApiError` と `Kind`→HTTPステータスの対応)と `error_handler.go`(`ErrorHandler()` ミドルウェアと `toApiError`)。
 
 ### 書誌の用語(「親」「子」を使わない)
 
@@ -71,14 +72,28 @@ handler (gin) → usecase → repository (interface) → infrastructure/db (実�
 
 ### エラーハンドリングの流れ
 
-各レイヤーは `c.Error(err)` で gin の `c.Errors` にエラーを積むだけで、HTTPステータスやレスポンス形式を意識しない。最後に `internal/api.ErrorHandler()`(ginミドルウェア)が `c.Errors.Last()` を見て `toApiError` でHTTPレスポンスに変換する。
+各レイヤーは `c.Error(err)` で gin の `c.Errors` にエラーを積むだけで、HTTPステータスやレスポンス形式を意識しない。最後に `internal/api.ErrorHandler()`(ginミドルウェア)が `c.Errors.Last()` を見てHTTPレスポンスに変換する。
 
-新しいエラーを追加する際の流れ:
-1. 発生元のレイヤー(`middleware`/`handler`/`usecase`)の `errors.go` に sentinel error を定義
-2. `internal/api/error_handler.go` の `toApiError` に `errors.Is(err, ...)` の分岐を追加
-3. 対応する `ApiError`(ステータスコード・エラーコード・メッセージ)が無ければ `internal/api/error.go` に追加
+エラーは**1つの値で3つの読み手に応える**(`internal/apperr`)。
 
-**2 の追加漏れはコンパイルエラーにならず、`default` の 500(`ErrInternal`)に落ちる。** 別レイヤーの sentinel error を包み直して返す場合(例: usecase のエラーを middleware 側の sentinel error でラップする)は特に、包み直した後のエラーが `toApiError` に登録されているかを必ず確認すること。
+| 読み手 | 情報 | 出力先 |
+|---|---|---|
+| フロント | `Def.Code`(`E0009` 等) | レスポンス |
+| エンドユーザ | `Def.Message` | レスポンス |
+| 運用者 | `Error()`(ログ用の詳細) | リクエストログの `errors` |
+
+- **`internal/apperr/catalog.go` が、フロントへ公開するエラーコードと文言の唯一の正**。他にコード・メッセージを定義する場所はない(Swaggerにもコードの値は出ず、`dto.ErrorResponse` の形だけが載る)。`Def` は必ず `def(kind, code, message)` 経由で宣言し、`All()` に自動登録される(直接 `Def{...}` と書くと不変条件テストの対象から漏れる)。
+- `Kind` は意味的な分類で、**HTTPステータスを知るのは `internal/api` だけ**(`kindToStatus`)。つまりステータスは「台帳の `Kind`」×「`kindToStatus`」で決まる。
+- 各レイヤーの `errors.go` は台帳を参照して sentinel を定義する。公開メッセージがそのまま原因の説明になるなら `Xxx.Err()`、ログに別の詳細を残すなら `Xxx.New("詳細")`。**認証失敗の5件が `Unauthorized.New(...)` で同じ `E0001` を共有する**ように、N:1の集約は台帳の共有で表現する。
+- `internal/api` に**変換表はない**。`errors.As` で `*apperr.Error` を取り出すだけで、`apperr.Error` でないエラー(想定外の失敗)は内容を漏らさず500に寄せる。
+
+新しいエラーを追加する際の流れ(**テストの修正は不要**):
+1. `internal/apperr/catalog.go` に `def(...)` で1行追加(コードは連番)
+2. 発生元のレイヤーの `errors.go` に `apperr.Xxx.Err()` または `apperr.Xxx.New("ログ用の詳細")` で sentinel を定義
+
+テストは台帳を走査する作りにしてあるため、エラーを増やしても追随する。`Kind` の書き忘れは `KindUnspecified`(ゼロ値)として `apperr` の不変条件テストが検出する(実行時は `kindToStatus` の `default` で500に倒れる)。意図して500にする場合は `apperr.Internal` を使い、意図を明示する。
+
+**コードとHTTPステータスの対応(`E0009` は400 等)はテストで固定していない。** 期待値を台帳から読むとトートロジーになるため、台帳側は構造的な不変条件(Kind設定済み・コード一意・形式・メッセージ非空)のみを検証し、対応の妥当性はレビューと実機確認で担保する方針。
 
 
 ### ミドルウェアの登録順序に依存関係がある

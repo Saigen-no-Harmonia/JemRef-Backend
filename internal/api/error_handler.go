@@ -2,10 +2,9 @@ package api
 
 import (
 	"errors"
-	"jemref_go/internal/handler"
+
+	"jemref_go/internal/apperr"
 	handlerDto "jemref_go/internal/handler/dto"
-	"jemref_go/internal/middleware"
-	"jemref_go/internal/usecase"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,88 +32,15 @@ func ErrorHandler() gin.HandlerFunc {
 }
 
 // toApiError エラー情報を元にレスポンス用構造体を返却する
+//
+// 各層のsentinel errorは apperr.Error として定義されており、コードと公開メッセージを
+// 自身が持つ。したがってここに変換表は不要で、連鎖から取り出すだけでよい。
+// apperr.Error でないエラー(想定外の失敗)は、内容を漏らさず500に寄せる。
 func toApiError(err error) ApiError {
-	switch {
-	// Middlewareが投げるエラーの変換
-	case errors.Is(err, middleware.ErrRequireAuthHeader):
-		return ErrUnAuthorized
-	case errors.Is(err, middleware.ErrRequireBearerToken):
-		return ErrUnAuthorized
-	case errors.Is(err, middleware.ErrRequireFirebaseUid):
-		return ErrUnAuthorized
-	case errors.Is(err, middleware.ErrInvalidFirebaseToken):
-		return ErrUnAuthorized
-	case errors.Is(err, middleware.ErrRequireEmail):
-		return ErrUnAuthorized
-	case errors.Is(err, middleware.ErrUserAlreadyExists):
-		return ErrUserAlreadyExists
-	case errors.Is(err, middleware.ErrUserDeleted):
-		return ErrUserDeleted
-
-	// Handler層が投げるエラーの変換
-	case errors.Is(err, handler.ErrInternalUidNotFound):
-		return ErrInternal
-	case errors.Is(err, handler.ErrFirebaseUidNotFound):
-		return ErrInternal
-	case errors.Is(err, handler.ErrPublicUidNotFound):
-		return ErrInternal
-	case errors.Is(err, handler.ErrEmailNotFound):
-		return ErrInternal
-	case errors.Is(err, handler.ErrPolicyRequired):
-		return ErrPolicyRequired
-	case errors.Is(err, handler.ErrAgreedVersionRequired):
-		return ErrAgreedVersionRequired
-	case errors.Is(err, handler.ErrInvalidRequestBody):
-		return ErrBadRequest
-	case errors.Is(err, handler.ErrPolicyTypeInvalid):
-		return ErrInvalidPolicyType
-	case errors.Is(err, handler.ErrMainTitleRequired):
-		return ErrMainTitleRequired
-	case errors.Is(err, handler.ErrRecordTypeRequired):
-		return ErrRecordTypeRequired
-	case errors.Is(err, handler.ErrInvalidRecordType):
-		return ErrInvalidRecordType
-	case errors.Is(err, handler.ErrContainerNotAllowed):
-		return ErrContainerNotAllowed
-	case errors.Is(err, handler.ErrInvalidPublicationDate):
-		return ErrInvalidPublicationDate
-	case errors.Is(err, handler.ErrInvalidReadStatus):
-		return ErrInvalidReadStatus
-	case errors.Is(err, handler.ErrInvalidContributorRole):
-		return ErrInvalidContributorRole
-	case errors.Is(err, handler.ErrContributorNameRequired):
-		return ErrContributorNameRequired
-	case errors.Is(err, handler.ErrContributorRoleRequired):
-		return ErrContributorRoleRequired
-	case errors.Is(err, handler.ErrMemoContentRequired):
-		return ErrMemoContentRequired
-	case errors.Is(err, handler.ErrUrlValueRequired):
-		return ErrUrlValueRequired
-	case errors.Is(err, handler.ErrRecordIdRequired):
-		return ErrRecordIdRequired
-
-		// Usecaseが投げるエラーの変換
-	case errors.Is(err, usecase.ErrPolicyNotFound):
-		return ErrPolicyNotFound
-	case errors.Is(err, usecase.ErrUserAlreadyExists):
-		return ErrUserAlreadyExists
-	case errors.Is(err, usecase.ErrUserNotFound):
-		return ErrUserNotFound
-	case errors.Is(err, usecase.ErrUserDeleted):
-		return ErrUserDeleted
-	case errors.Is(err, usecase.ErrInvalidPolicyType):
-		return ErrInvalidPolicyType
-	case errors.Is(err, usecase.ErrInvalidPolicyVersion):
-		return ErrInvalidPolicyVersion
-	case errors.Is(err, usecase.ErrReachRegistrationLimit):
-		return ErrReachRegistrationLimit
-	case errors.Is(err, usecase.ErrRecordNotFound):
-		return ErrRecordNotFound
-
-	// repository層のエラーはusecaseエラーに変換される前提とするのでなし
-
-	// 予期せぬエラー
-	default:
-		return ErrInternal
+	var appErr *apperr.Error
+	if !errors.As(err, &appErr) {
+		return fromDef(apperr.Internal)
 	}
+
+	return fromDef(appErr.Def())
 }

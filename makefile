@@ -42,5 +42,13 @@ cover-middleware:
 	go test -coverprofile=cover.out ./internal/middleware
 	go tool cover -func=cover.out
 
+cover-api:
+	go test -coverprofile=cover.out ./internal/api
+	go tool cover -func=cover.out
+
+cover-apperr:
+	go test -coverprofile=cover.out ./internal/api
+	go tool cover -func=cover.out
+
 show-cover:
 	go tool cover -html=cover.out

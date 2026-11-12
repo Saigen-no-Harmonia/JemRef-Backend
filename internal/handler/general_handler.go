@@ -42,7 +42,7 @@ func (h *GeneralHandler) GetPolicies(c *gin.Context) {
 			"規約が存在しません。targetPolicy=%s, policyType=%s :%w",
 			policyType,
 			targetPolicy,
-			ErrPolicyTypeInvalid,
+			ErrInvalidPolicyType,
 		))
 		return
 	}
