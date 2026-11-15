@@ -135,7 +135,7 @@ func (h *RecordHandler) CreateRecord(c *gin.Context) {
 }
 
 // @Summary [REF-API-004] 書誌情報更新
-// @Description ユーザに紐づく書誌情報を更新する。ユーザ情報はfirebase tokenから取得する。<br>
+// @Description ユーザに紐づく書誌情報を更新する（ユーザ情報はfirebase tokenから取得する）。コンテナは指定不可。<br>
 // @Tags records
 // @Accept json
 // @Produce json
@@ -144,12 +144,45 @@ func (h *RecordHandler) CreateRecord(c *gin.Context) {
 // @Param Record body dto.UpdateRecordRequest true "書誌情報更新リクエスト"
 // @Success 200 {object} dto.StatusResponse
 // @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /records/{id} [put]
-func (h *RecordHandler) UpdateRecord(c *gin.Context) {}
+func (h *RecordHandler) UpdateRecord(c *gin.Context) {
+	internalUid, ok := ctxutil.GetUserId(c)
+	if !ok {
+		c.Error(ErrInternalUidNotFound)
+		return
+	}
+
+	recordId := c.Param(ParamRecordId)
+	if recordId == "" {
+		c.Error(ErrRecordIdRequired)
+		return
+	}
+
+	var req handlerdto.UpdateRecordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(toBindingError(err, updateRecordRequiredErrors))
+		return
+	}
+
+	input, err := toUpdateRecordInput(internalUid, recordId, req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	ctxutil.SetApiId(c, ctxutil.REF_API_004)
+	if err := h.usecase.Update(c, input); err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, handlerdto.StatusResponse{Status: statusOk})
+}
 
 // @Summary [REF-API-005] 書誌情報削除
-// @Description ユーザに紐づく書誌情報を論理削除する。ユーザ情報はfirebase tokenから取得する。<br>
+// @Description ユーザに紐づく書誌情報を論理削除する（ユーザ情報はfirebase tokenから取得する）。コンテナは指定不可<br>
 // @Tags records
 // @Accept json
 // @Produce json

@@ -19,8 +19,9 @@ var (
 	ErrInvalidPolicyType    = apperr.InvalidPolicyType.Err()
 	ErrInvalidPolicyVersion = apperr.InvalidPolicyVersion.Err()
 
-	ErrReachRegistrationLimit = apperr.ReachRegistrationLimit.Err()
-	ErrRecordNotFound         = apperr.RecordNotFound.Err()
+	ErrReachRegistrationLimit  = apperr.ReachRegistrationLimit.Err()
+	ErrRecordNotFound          = apperr.RecordNotFound.Err()
+	ErrRecordTypeNotChangeable = apperr.RecordTypeNotChangeable.Err()
 )
 
 // データ不整合・更新失敗はユーザが対処できないため、意図して500を返す。
@@ -29,4 +30,6 @@ var (
 	ErrUserDataInconsistent = apperr.Internal.New("invalid user data")
 	ErrUserDeleteFailed     = apperr.Internal.New("failed db update to delete user")
 	ErrUnexpectedPolicy     = apperr.Internal.New("unexpected policy")
+	ErrContainerNotFound    = apperr.Internal.New("container record not found")
+	ErrRecordUpdateFailed   = apperr.Internal.New("target record lost after select")
 )

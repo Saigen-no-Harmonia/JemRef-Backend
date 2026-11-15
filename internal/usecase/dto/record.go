@@ -61,6 +61,16 @@ type CreateRecordOutput struct {
 	RecordId string
 }
 
+// [REF-API-004] 書誌情報更新
+//
+// 登録と同じ入力を受け取り、リクエストの内容でそのまま上書きする。
+type UpdateRecordInput struct {
+	InternalUserId int64
+	RecordId       string
+	RecordInput    RecordInput
+	ContainerInput *ContainerInput
+}
+
 type DeleteRecordInput struct {
 	InternalUserId int64
 	RecordId       string

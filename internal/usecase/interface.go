@@ -64,6 +64,11 @@ type RecordUsecase interface {
 		gi dto.GetRecordInput,
 	) (*dto.GetRecordOutput, error)
 
+	Update(
+		ctx context.Context,
+		ui dto.UpdateRecordInput,
+	) error
+
 	Delete(
 		ctx context.Context,
 		di dto.DeleteRecordInput,

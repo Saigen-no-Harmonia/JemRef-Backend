@@ -349,3 +349,59 @@ func toReadStatusString(s *record.ReadStatus) *string {
 
 	return &status
 }
+
+// updateRecordRequiredErrors Updateエンドポイントのbinding:"required"違反に対応するエラー
+// リクエストDTOはCreateと同一構造のため、対応表も同じ内容になる。
+var updateRecordRequiredErrors = map[string]error{
+	"Type":      ErrRecordTypeRequired,
+	"MainTitle": ErrMainTitleRequired,
+	"Name":      ErrContributorNameRequired,
+	"Role":      ErrContributorRoleRequired,
+	"Content":   ErrMemoContentRequired,
+	"Value":     ErrUrlValueRequired,
+}
+
+func toUpdateRecordInput(
+	internalUid int64,
+	recordId string,
+	req dto.UpdateRecordRequest,
+) (usecasedto.UpdateRecordInput, error) {
+
+	if err := chkUpdateParam(req); err != nil {
+		return usecasedto.UpdateRecordInput{}, err
+	}
+
+	recordInput, err := toRecordInput(req.RecordDetailItem)
+	if err != nil {
+		return usecasedto.UpdateRecordInput{}, err
+	}
+
+	containerInput, err := toContainerInput(req.ContainerDetailItem)
+	if err != nil {
+		return usecasedto.UpdateRecordInput{}, err
+	}
+
+	return usecasedto.UpdateRecordInput{
+		InternalUserId: internalUid,
+		RecordId:       recordId,
+		RecordInput:    recordInput,
+		ContainerInput: containerInput,
+	}, nil
+}
+
+// chkUpdateParam 更新APIのうち、bindingタグで表現できないバリデーションを行う
+//
+// 検証内容はCreateと同一。書誌タイプが変更されていないかは、更新前の値が必要なため
+// usecase側で判定する。
+func chkUpdateParam(req dto.UpdateRecordRequest) error {
+	recordType := record.RecordType(req.Type)
+	if !recordType.IsValid() {
+		return ErrInvalidRecordType
+	}
+
+	if req.ContainerDetailItem != nil && !recordType.IsArticle() {
+		return ErrContainerNotAllowed
+	}
+
+	return nil
+}

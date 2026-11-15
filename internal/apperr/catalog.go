@@ -56,13 +56,14 @@ var (
 	AgreedVersionRequired = def(KindBadRequest, "E0018", "規約同意バージョンは必須です。")
 
 	// 書誌
-	MainTitleRequired      = def(KindBadRequest, "E0009", "主題は必須項目です。")
-	RecordTypeRequired     = def(KindBadRequest, "E0010", "書誌タイプ指定は必須です。")
-	InvalidRecordType      = def(KindBadRequest, "E0011", "書誌タイプ指定が不正です。")
-	ContainerNotAllowed    = def(KindBadRequest, "E0012", "この書誌タイプは収録物を指定できません。")
-	InvalidPublicationDate = def(KindBadRequest, "E0013", "出版日付の指定が不正です。")
-	InvalidReadStatus      = def(KindBadRequest, "E0014", "読了ステータスが不正です。")
-	RecordIdRequired       = def(KindBadRequest, "E0023", "書誌IDは必須です。")
+	MainTitleRequired       = def(KindBadRequest, "E0009", "主題は必須項目です。")
+	RecordTypeRequired      = def(KindBadRequest, "E0010", "書誌タイプ指定は必須です。")
+	InvalidRecordType       = def(KindBadRequest, "E0011", "書誌タイプ指定が不正です。")
+	ContainerNotAllowed     = def(KindBadRequest, "E0012", "この書誌タイプは収録物を指定できません。")
+	InvalidPublicationDate  = def(KindBadRequest, "E0013", "出版日付の指定が不正です。")
+	InvalidReadStatus       = def(KindBadRequest, "E0014", "読了ステータスが不正です。")
+	RecordIdRequired        = def(KindBadRequest, "E0023", "書誌IDは必須です。")
+	RecordTypeNotChangeable = def(KindBadRequest, "E0025", "書誌タイプは変更できません。")
 
 	// RecordNotFound 他ユーザの書誌を指定された場合もこれを返す
 	// (403と区別すると他ユーザの書誌IDの存在が漏れるため)

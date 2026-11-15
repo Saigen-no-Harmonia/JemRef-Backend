@@ -357,7 +357,7 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "ユーザに紐づく書誌情報を更新する。ユーザ情報はfirebase tokenから取得する。\u003cbr\u003e",
+                "description": "ユーザに紐づく書誌情報を更新する（ユーザ情報はfirebase tokenから取得する）。コンテナは指定不可。\u003cbr\u003e",
                 "consumes": [
                     "application/json"
                 ],
@@ -406,6 +406,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -415,7 +421,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "ユーザに紐づく書誌情報を論理削除する。ユーザ情報はfirebase tokenから取得する。\u003cbr\u003e",
+                "description": "ユーザに紐づく書誌情報を論理削除する（ユーザ情報はfirebase tokenから取得する）。コンテナは指定不可\u003cbr\u003e",
                 "consumes": [
                     "application/json"
                 ],

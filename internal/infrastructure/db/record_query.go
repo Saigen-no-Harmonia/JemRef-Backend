@@ -355,3 +355,103 @@ const selectFieldValuesByRecordIdsQueryOrder = `)
 		E_RECORD_ID,
 		DISPLAY_NUMBER
 `
+
+// updateRecordEntryQuery 書誌を1件更新する
+//
+// リクエストの内容でそのまま上書きする(NULL許容カラムはNULLで上書きされる)。
+// 所有権確認を兼ねるため内部用ユーザIDを条件に含め、論理削除済みは対象外とする。
+// M_RECORD_ID はPh0未使用、DEL_FLG は削除APIの責務なので更新対象にしない。
+//
+// WHERE の USER_ID が守るのは「更新される行」の所有権だけで、SET する CONTAINER_ID が
+// 同じユーザの書誌かは検証しない(fk_er_container も e_records への存在しか見ない)。
+// コンテナIDの所有権確認は呼び出し側(usecase)の責務とする。
+// Ph0ではコンテナIDは所有権確認済みの行から読むかサーバ側で生成するかのどちらかで、
+// クライアントから受け取る経路がないため問題にならないが、リクエストでコンテナIDを
+// 受け取る仕様を追加する場合は、usecase側で SelectByPk(id, uid) を通してから渡すこと。
+const updateRecordEntryQuery = `
+	update e_records
+	set
+		TYPE_ID = ?,
+		MAIN_TITLE = ?,
+		SUB_TITLE = ?,
+		PAGE_RANGE = ?,
+		VOLUME = ?,
+		ISSUE = ?,
+		PUBLISHER = ?,
+		PUBLICATION_DATE = ?,
+		DATE_PRECISION = ?,
+		READ_STATUS = ?,
+		CONTAINER_ID = ?,
+		UPD_PG = ?,
+		UPD_ID = 'system',
+		UPD_DT = UTC_TIMESTAMP(6)
+	where
+		ID = ?
+	and
+		USER_ID = ?
+	and
+		DEL_FLG = 0
+`
+
+// 構成要素の物理削除クエリ(更新時の洗い替え用)
+//
+// 子テーブルのUNIQUE制約(E_RECORD_ID + DISPLAY_NUMBER 等)に DEL_FLG が含まれないため、
+// 論理削除して同じ表示順で再INSERTすると重複エラーになる。更新では物理削除する。
+// 貢献(e_record_contributions)は貢献者(e_contributors)より先に消す(FK順)。
+
+const deleteRecordFieldValuesQuery = `
+	delete from e_record_field_values
+	where
+		E_RECORD_ID = ?
+`
+
+const deleteRecordMemosQuery = `
+	delete from e_record_memos
+	where
+		E_RECORD_ID = ?
+`
+
+const deleteRecordUrlsQuery = `
+	delete from e_record_urls
+	where
+		E_RECORD_ID = ?
+`
+
+const deleteRecordContributionsQuery = `
+	delete from e_record_contributions
+	where
+		E_RECORD_ID = ?
+`
+
+// selectContributorIdsByRecordIdQuery 書誌が参照している貢献者IDを取得する
+//
+// 貢献を物理削除すると参照の手がかりが失われるため、削除前に取得しておく。
+const selectContributorIdsByRecordIdQuery = `
+	select
+		E_CONTRIBUTOR_ID
+	from
+		e_record_contributions
+	where
+		E_RECORD_ID = ?
+`
+
+// deleteUnreferencedContributorsQueryBase 他の書誌から参照されていない貢献者を物理削除する
+//
+// Ph0では貢献者と書誌は1対1なので常に削除されるが、Ph1で名寄せ(貢献者の共有)を
+// 導入したときに他の書誌の貢献者を消さないよう、参照の有無を条件に入れている。
+const deleteUnreferencedContributorsQueryBase = `
+	delete from e_contributors
+	where
+		not exists (
+			select
+				1
+			from
+				e_record_contributions
+			where
+				e_record_contributions.E_CONTRIBUTOR_ID = e_contributors.ID
+		)
+	and
+		ID in (`
+
+const deleteUnreferencedContributorsQueryEnd = `)
+`

@@ -25,10 +25,21 @@ func (r *RecordRepositoryImpl) Create(
 	tx repository.DBTX,
 	input record.UserRecordEntry,
 ) error {
-	err := r.insertRecordEntry(ctx, tx, input)
-	if err != nil {
+	if err := r.insertRecordEntry(ctx, tx, input); err != nil {
 		return err
 	}
+
+	return r.insertComponents(ctx, tx, input)
+}
+
+// insertComponents 書誌の構成要素(貢献者/URL/メモ/項目値)を登録する
+//
+// 登録(Create)と更新時の洗い替え(Update)で共用する。
+func (r *RecordRepositoryImpl) insertComponents(
+	ctx context.Context,
+	tx repository.DBTX,
+	input record.UserRecordEntry,
+) error {
 
 	// 貢献者と貢献情報はPh0では純粋な1:1となるため、必要なIDと登録順はここで設定する
 	for i, relation := range input.ContributorRelations {
@@ -50,15 +61,15 @@ func (r *RecordRepositoryImpl) Create(
 		}
 	}
 
-	if err = r.insertURLs(ctx, tx, input.Urls); err != nil {
+	if err := r.insertURLs(ctx, tx, input.Urls); err != nil {
 		return err
 	}
 
-	if err = r.insertMemos(ctx, tx, input.Memos); err != nil {
+	if err := r.insertMemos(ctx, tx, input.Memos); err != nil {
 		return err
 	}
 
-	if err = r.insertOptionValues(ctx, tx, input.OptionValues); err != nil {
+	if err := r.insertOptionValues(ctx, tx, input.OptionValues); err != nil {
 		return err
 	}
 

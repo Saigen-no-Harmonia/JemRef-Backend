@@ -111,7 +111,7 @@ handler (gin) → usecase → repository (interface) → infrastructure/db (実�
 - 各レイヤーに `ErrTestUnexpected` という専用の sentinel error を設置し、「分岐でカバーしていない予期しないエラー」のテストに使う。
 
 ## 守ること
-
+- 実装を進める場合は次のステップで行い、ステップごとに確認を求める。**1. 実装方針と処理ステップの提示** 指示をもとに、既存ドキュメントから実装・修正方針と影響範囲を洗い出した後、推奨度の高い処理ステップ案を提示。**2. テストケースの整理・提示** 修正方針をもとに、handler, usecase, repositoryのユニットテストケースを示す。**3. プログラム実装** 方針に基づきプログラムを実装する。**4.ユニットテスト実装** 先に示したテスト方針に基づき、ユニットテストを実装する。テストはhandler, usecase, repositoryごとに実装し、都度確認を求める。
 - エラーの比較は常に `errors.Is` を使う。テストのエラー検証も `assert.ErrorIs(t, actualErr, tt.expectedErrorBody)`。
 - **DB往復した `time.Time` の比較は `assert.WithinDuration(t, expected, actual, time.Microsecond)` を使う**(`assert.True(t, a.Equal(b))` は不可)。MySQLのカラム精度による丸めで、ローカルでは通ってもCI環境でだけ失敗することがある(実績: コミット `6c571e6`)。DBが生成する `INS_DT`/`UPD_DT` は実行時刻との比較になるため `3*time.Second` を許容する。
 - **日時はUTCで保存する。** `infrastructure.DsnParams` の `loc=UTC` と `time_zone='+00:00'` で接続単位にUTCへ固定しており(サーバの `system_time_zone` がJSTでも上書きされる)、テストも同じパラメータで接続する。SQLでは `now()` ではなく `UTC_TIMESTAMP(6)` を、Goでは `time.Now().UTC()` を使う。

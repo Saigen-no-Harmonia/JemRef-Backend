@@ -40,6 +40,21 @@ type RecordRepository interface {
 		entries []*record.UserRecordEntry,
 	) error
 
+	// Update 書誌を更新する
+	//
+	// リクエストの内容でそのまま上書きし、構成要素(貢献者/URL/メモ/項目値)は洗い替える。
+	// 子テーブルのUNIQUE制約に DEL_FLG が含まれないため、構成要素は物理削除してから再登録する。
+	// 貢献者(e_contributors)は他の書誌から参照されていないものだけを削除する。
+	// 該当なし(他ユーザ・論理削除済み・存在しない)の場合は ErrNotFound を返す。
+	//
+	// 検証するのは更新対象の書誌の所有権だけで、ur.ContainerId が同じユーザの書誌かは見ない。
+	// コンテナIDは所有権を確認してから渡すこと(呼び出し側の責務)。
+	Update(
+		ctx context.Context,
+		tx DBTX,
+		ur record.UserRecordEntry,
+	) error
+
 	// CountActiveArticles 指定した書誌をコンテナとする、論理削除されていない書誌の件数を返す
 	CountActiveArticles(
 		ctx context.Context,

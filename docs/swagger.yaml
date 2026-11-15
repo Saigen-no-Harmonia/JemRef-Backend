@@ -749,7 +749,7 @@ paths:
     delete:
       consumes:
       - application/json
-      description: ユーザに紐づく書誌情報を論理削除する。ユーザ情報はfirebase tokenから取得する。<br>
+      description: ユーザに紐づく書誌情報を論理削除する（ユーザ情報はfirebase tokenから取得する）。コンテナは指定不可<br>
       parameters:
       - description: Bearer <firebase_id_token>
         in: header
@@ -823,7 +823,7 @@ paths:
     put:
       consumes:
       - application/json
-      description: ユーザに紐づく書誌情報を更新する。ユーザ情報はfirebase tokenから取得する。<br>
+      description: ユーザに紐づく書誌情報を更新する（ユーザ情報はfirebase tokenから取得する）。コンテナは指定不可。<br>
       parameters:
       - description: Bearer <firebase_id_token>
         in: header
@@ -850,6 +850,10 @@ paths:
             $ref: '#/definitions/dto.StatusResponse'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
         "500":

@@ -32,6 +32,12 @@ type MockRecordRepository struct {
 		recordId string,
 	) error
 
+	UpdateFunc func(
+		ctx context.Context,
+		tx repository.DBTX,
+		ur record.UserRecordEntry,
+	) error
+
 	SelectComponentsFunc func(
 		ctx context.Context,
 		tx repository.DBTX,
@@ -40,7 +46,10 @@ type MockRecordRepository struct {
 
 	Called         int
 	CreateCalled   int
+	UpdateCalled   int
 	CreatedEntries []record.UserRecordEntry
+	// UpdatedEntries Updateに渡された書誌を呼び出し順に保持する
+	UpdatedEntries []record.UserRecordEntry
 
 	SelectByPkCalled          int
 	CountActiveArticlesCalled int
@@ -125,6 +134,17 @@ func (m *MockRecordRepository) SelectComponents(
 	m.ComponentTargetIds = append(m.ComponentTargetIds, ids)
 
 	return m.SelectComponentsFunc(ctx, tx, entries)
+}
+
+func (m *MockRecordRepository) Update(
+	ctx context.Context,
+	tx repository.DBTX,
+	ur record.UserRecordEntry,
+) error {
+	m.Called++
+	m.UpdateCalled++
+	m.UpdatedEntries = append(m.UpdatedEntries, ur)
+	return m.UpdateFunc(ctx, tx, ur)
 }
 
 var _ repository.RecordRepository = (*MockRecordRepository)(nil)
