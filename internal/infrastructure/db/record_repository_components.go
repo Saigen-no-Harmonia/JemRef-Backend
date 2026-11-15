@@ -17,19 +17,7 @@ func (r *RecordRepositoryImpl) SelectComponents(
 	entries []*record.UserRecordEntry,
 ) error {
 
-	// 収録物を持たない書誌のためにnilを許容する
-	targets := make(map[string]*record.UserRecordEntry, len(entries))
-	ids := make([]any, 0, len(entries))
-
-	for _, entry := range entries {
-		if entry == nil {
-			continue
-		}
-
-		targets[entry.RecordEntryId] = entry
-		ids = append(ids, entry.RecordEntryId)
-	}
-
+	targets, ids := collectTargets(entries)
 	if len(ids) == 0 {
 		return nil
 	}
@@ -51,6 +39,47 @@ func (r *RecordRepositoryImpl) SelectComponents(
 	}
 
 	return nil
+}
+
+// SelectContributorRelations 渡された書誌に、貢献者情報だけを設定する
+//
+// 一覧の表示に必要な構成要素は貢献者だけなので、SelectComponents のうち貢献者の取得だけを行う。
+func (r *RecordRepositoryImpl) SelectContributorRelations(
+	ctx context.Context,
+	tx repository.DBTX,
+	entries []*record.UserRecordEntry,
+) error {
+
+	targets, ids := collectTargets(entries)
+	if len(ids) == 0 {
+		return nil
+	}
+
+	if err := r.selectContributorRelations(ctx, tx, ids, targets); err != nil {
+		return fmt.Errorf("select contributor relations: %w", err)
+	}
+
+	return nil
+}
+
+// collectTargets 構成要素の振り分け先(書誌IDごとのentry)と、IN句に渡す書誌IDを返す
+//
+// 収録物を持たない書誌のためにnilを許容する(読み飛ばす)。
+// 振り分け先は書誌IDをキーにするため、同じ書誌IDの別のentryが渡されると後のものだけが残る。
+func collectTargets(entries []*record.UserRecordEntry) (map[string]*record.UserRecordEntry, []any) {
+	targets := make(map[string]*record.UserRecordEntry, len(entries))
+	ids := make([]any, 0, len(entries))
+
+	for _, entry := range entries {
+		if entry == nil {
+			continue
+		}
+
+		targets[entry.RecordEntryId] = entry
+		ids = append(ids, entry.RecordEntryId)
+	}
+
+	return targets, ids
 }
 
 // selectContributorRelations 貢献と貢献者のペアを取得する

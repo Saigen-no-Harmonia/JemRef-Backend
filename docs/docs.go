@@ -155,7 +155,7 @@ const docTemplate = `{
         },
         "/records": {
             "get": {
-                "description": "ユーザに紐づく書誌情報をリストで返却する。ユーザ情報はfirebase tokenから取得する。",
+                "description": "ユーザに紐づく書誌情報を、検索条件で絞り込んでリストで返却する。ユーザ情報はfirebase tokenから取得する。\u003cbr\u003e\n収録物（雑誌・編著書）は一覧に含めず、各書誌のcontainerとして返す。\u003cbr\u003e\n検索条件は指定されたものをANDで組み合わせる。タイトル・貢献者名は書誌と収録物の両方を部分一致で検索する。\u003cbr\u003e\ncountは検索条件に一致する総件数（limit/offset適用前）。\u003cbr\u003e",
                 "consumes": [
                     "application/json"
                 ],
@@ -176,19 +176,23 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "名前（検索用：部分一致）",
-                        "name": "contributorName",
+                        "example": "木村",
+                        "description": "貢献者名（検索用：書誌または収録物の貢献者名の部分一致）",
+                        "name": "contributor_name",
                         "in": "query"
                     },
                     {
+                        "maximum": 100,
+                        "minimum": 1,
                         "type": "integer",
                         "default": 20,
                         "example": 50,
-                        "description": "リミット",
+                        "description": "リミット（1〜100）",
                         "name": "limit",
                         "in": "query"
                     },
                     {
+                        "minimum": 0,
                         "type": "integer",
                         "default": 0,
                         "example": 20,
@@ -199,11 +203,15 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "example": "2026",
-                        "description": "出版年（検索用）",
+                        "description": "出版年（検索用：西暦4桁）",
                         "name": "publish_year",
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "publish_year",
+                            "insert_date"
+                        ],
                         "type": "string",
                         "default": "publish_year",
                         "example": "insert_date",
@@ -212,6 +220,10 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ],
                         "type": "string",
                         "default": "asc",
                         "example": "desc",
@@ -222,7 +234,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "example": "音楽",
-                        "description": "タイトル（検索用：主題または副題の部分一致）",
+                        "description": "タイトル（検索用：書誌または収録物の主題・副題の部分一致）",
                         "name": "title",
                         "in": "query"
                     }
@@ -1066,11 +1078,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "count": {
-                    "description": "件数",
+                    "description": "検索条件に一致する総件数（limit/offset適用前）",
                     "type": "integer",
                     "example": 1
                 },
                 "records": {
+                    "description": "書誌一覧（該当なしの場合は空配列）",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/dto.RecordListItemResponse"

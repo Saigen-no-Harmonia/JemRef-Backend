@@ -1,27 +1,33 @@
 package dto
 
 // [REF-API-001] 書誌一覧参照 リクエスト
+//
+// クエリパラメータで受け取る。必須項目はない。
+// 検索条件は指定されたものをANDで組み合わせ、空文字(検索語は前後の空白を除いて空)は未指定として扱う。
+// defaultタグはSwaggerの表記用で、実際のデフォルト値はhandlerの定数(defaultRecordsXxx)が正。
+// 値を変える場合は両方をそろえること。
 type GetRecordsRequest struct {
-	// 名前（検索用：部分一致）
-	ContributorName string
-	// タイトル（検索用：主題または副題の部分一致）
-	Title string `json:"title" example:"音楽"`
-	// 出版年（検索用）
-	PublishYear string `json:"publish_year" example:"2026"`
+	// 貢献者名（検索用：書誌または収録物の貢献者名の部分一致）
+	ContributorName string `form:"contributor_name" example:"木村"`
+	// タイトル（検索用：書誌または収録物の主題・副題の部分一致）
+	Title string `form:"title" example:"音楽"`
+	// 出版年（検索用：西暦4桁）
+	PublishYear string `form:"publish_year" example:"2026"`
 	// 並びかえキー (出版年、登録日)
-	SortKey string `json:"sort_key" default:"publish_year" example:"insert_date"`
+	SortKey string `form:"sort_key" enums:"publish_year,insert_date" default:"publish_year" example:"insert_date"`
 	// 並び順（asc または desc）
-	SortType string `json:"sort_type" default:"asc" example:"desc"`
-	// リミット
-	Limit int `json:"limit" default:"20" example:"50"`
+	SortType string `form:"sort_type" enums:"asc,desc" default:"asc" example:"desc"`
+	// リミット（1〜100）
+	Limit *int `form:"limit" minimum:"1" maximum:"100" default:"20" example:"50"`
 	// オフセット
-	Offset int `json:"offset" default:"0" example:"20"`
+	Offset *int `form:"offset" minimum:"0" default:"0" example:"20"`
 }
 
 // [REF-API-001] 書誌一覧参照 レスポンス
 type GetRecordsResponse struct {
-	// 件数
-	Count   int                       `json:"count" binding:"required" example:"1"`
+	// 検索条件に一致する総件数（limit/offset適用前）
+	Count int `json:"count" binding:"required" example:"1"`
+	// 書誌一覧（該当なしの場合は空配列）
 	Records *[]RecordListItemResponse `json:"records" binding:"required"`
 }
 

@@ -267,18 +267,46 @@ func (r *RecordRepositoryImpl) SelectByPk(
 	internalUid int64,
 ) (*record.UserRecordEntry, error) {
 
+	entry, err := scanRecordEntry(
+		tx.QueryRowContext(
+			ctx,
+			selectRecordByPkQuery,
+			recordId,
+			internalUid,
+		),
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf(
+				"書誌情報が存在しません。record id=%s, internal uid=%d :%w",
+				recordId,
+				internalUid,
+				repository.ErrNotFound,
+			)
+		}
+		return nil, fmt.Errorf("select record by pk record id=%s: %w", recordId, err)
+	}
+
+	return entry, nil
+}
+
+// rowScanner *sql.Row と *sql.Rows に共通するScan
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+// scanRecordEntry recordEntryColumns の列順で読んだ1行を書誌に復元する
+//
+// Scanのエラー(sql.ErrNoRows を含む)はそのまま返す。意味づけは呼び出し側で行う。
+func scanRecordEntry(s rowScanner) (*record.UserRecordEntry, error) {
 	var (
 		entry      record.UserRecordEntry
 		typeId     string
 		readStatus *int
 	)
 
-	err := tx.QueryRowContext(
-		ctx,
-		selectRecordByPkQuery,
-		recordId,
-		internalUid,
-	).Scan(
+	if err := s.Scan(
 		&entry.RecordEntryId,
 		&entry.InternalUid,
 		&typeId,
@@ -294,18 +322,8 @@ func (r *RecordRepositoryImpl) SelectByPk(
 		&entry.ContainerId,
 		&entry.MRecordId,
 		&entry.DelFlg,
-	)
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf(
-				"書誌情報が存在しません。record id=%s, internal uid=%d :%w",
-				recordId,
-				internalUid,
-				repository.ErrNotFound,
-			)
-		}
-		return nil, fmt.Errorf("select record by pk record id=%s: %w", recordId, err)
+	); err != nil {
+		return nil, err
 	}
 
 	// IDから値オブジェクトへ復元する(登録時のGetId()の逆変換)。
@@ -319,6 +337,28 @@ func (r *RecordRepositoryImpl) SelectByPk(
 	}
 
 	return &entry, nil
+}
+
+// scanRecordEntries 複数行を書誌に復元する
+//
+// rowsのCloseは呼び出し側で行う。該当なしの場合は空(nil)を返す。
+func scanRecordEntries(rows *sql.Rows) ([]*record.UserRecordEntry, error) {
+	var entries []*record.UserRecordEntry
+
+	for rows.Next() {
+		entry, err := scanRecordEntry(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		entries = append(entries, entry)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return entries, nil
 }
 
 func (r *RecordRepositoryImpl) CountActiveArticles(

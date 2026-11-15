@@ -418,6 +418,131 @@ func (u *RecordUsecaseImpl) Get(
 	return &output, nil
 }
 
+// List 書誌情報を検索条件で絞り込み、一覧で取得する
+//
+// 総件数と一覧を同じスナップショットで読むため、トランザクション内で実行する。
+// 収録物は一覧の対象にせず(repositoryで除外する)、各書誌に付ける情報として取得する。
+// 一覧で表示する構成要素は貢献者だけなので、貢献者だけを取得する。
+func (u *RecordUsecaseImpl) List(
+	ctx context.Context,
+	li dto.GetRecordsInput,
+) (*dto.GetRecordsOutput, error) {
+
+	cond := repository.RecordListCondition{
+		InternalUid:     li.InternalUserId,
+		ContributorName: li.ContributorName,
+		Title:           li.Title,
+		PublishYear:     li.PublishYear,
+		SortKey:         li.SortKey,
+		SortOrder:       li.SortOrder,
+		Limit:           li.Limit,
+		Offset:          li.Offset,
+	}
+
+	var output dto.GetRecordsOutput
+
+	err := u.txManager.WithTransaction(
+		ctx,
+		func(ctx context.Context, tx repository.DBTX) error {
+			total, err := u.recordRepo.CountByCondition(ctx, tx, cond)
+			if err != nil {
+				return fmt.Errorf("count records error: %w", err)
+			}
+
+			output.TotalCount = total
+
+			// 返せる書誌がないため、一覧以降の取得を省く
+			if total == 0 || cond.Offset >= total {
+				return nil
+			}
+
+			articles, err := u.recordRepo.SelectByCondition(ctx, tx, cond)
+			if err != nil {
+				return fmt.Errorf("select records error: %w", err)
+			}
+
+			var containers []*record.UserRecordEntry
+			if containerIds := collectContainerIds(articles); len(containerIds) > 0 {
+				containers, err = u.recordRepo.SelectByPks(ctx, tx, containerIds, li.InternalUserId)
+				if err != nil {
+					return fmt.Errorf("select container records error: %w", err)
+				}
+			}
+
+			// 書誌と収録物の貢献者をまとめて取得する。
+			// 収録物はIDごとに1つのentryだけを渡す(同じIDの別entryを渡すと、貢献者が片方にしか付かない)。
+			targets := make([]*record.UserRecordEntry, 0, len(articles)+len(containers))
+			targets = append(targets, articles...)
+			targets = append(targets, containers...)
+
+			if err := u.recordRepo.SelectContributorRelations(ctx, tx, targets); err != nil {
+				return fmt.Errorf("select contributor relations error: %w", err)
+			}
+
+			output.Records = toRecordListItems(articles, containers)
+
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &output, nil
+}
+
+// collectContainerIds 書誌が参照する収録物のIDを、重複を除いて出現順に返す
+func collectContainerIds(articles []*record.UserRecordEntry) []string {
+	seen := make(map[string]struct{}, len(articles))
+	var ids []string
+
+	for _, article := range articles {
+		if article.ContainerId == nil {
+			continue
+		}
+
+		id := *article.ContainerId
+		if _, ok := seen[id]; ok {
+			continue
+		}
+
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+
+	return ids
+}
+
+// toRecordListItems 書誌ごとに収録物を対応付ける
+//
+// 収録物が見つからない(論理削除済みなど)場合は、収録物を持たない書誌として返す(詳細参照と同じ扱い)。
+// 同じ収録物を持つ書誌には、同じ収録物のentryを付ける。
+func toRecordListItems(
+	articles []*record.UserRecordEntry,
+	containers []*record.UserRecordEntry,
+) []dto.RecordListItem {
+
+	containerById := make(map[string]*record.UserRecordEntry, len(containers))
+	for _, container := range containers {
+		containerById[container.RecordEntryId] = container
+	}
+
+	items := make([]dto.RecordListItem, 0, len(articles))
+	for _, article := range articles {
+		var container *record.UserRecordEntry
+		if article.ContainerId != nil {
+			container = containerById[*article.ContainerId]
+		}
+
+		items = append(items, dto.RecordListItem{
+			Record:    *article,
+			Container: container,
+		})
+	}
+
+	return items
+}
+
 // Update 書誌情報を更新する
 //
 // リクエストの内容でそのまま上書きする(未指定の項目はNULLで上書きされる)。

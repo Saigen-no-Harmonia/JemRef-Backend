@@ -69,6 +69,10 @@ var (
 	// (403と区別すると他ユーザの書誌IDの存在が漏れるため)
 	RecordNotFound = def(KindNotFound, "E0024", "指定された書誌情報が存在しません。")
 
+	// InvalidSearchCondition 書誌一覧の検索条件(出版年・並び替えキー・並び順・limit・offset)の不正
+	// どの項目が不正かはログ用の詳細で区別し、レスポンスは共通化する
+	InvalidSearchCondition = def(KindBadRequest, "E0026", "検索条件の指定が不正です。")
+
 	// 書誌の構成要素
 	InvalidContributorRole  = def(KindBadRequest, "E0015", "貢献者役割が不正です。")
 	ContributorNameRequired = def(KindBadRequest, "E0019", "貢献者の氏名は必須です。")

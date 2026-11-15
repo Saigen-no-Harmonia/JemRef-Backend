@@ -40,3 +40,12 @@ var (
 	ErrMemoContentRequired     = apperr.MemoContentRequired.Err()
 	ErrUrlValueRequired        = apperr.UrlValueRequired.Err()
 )
+
+// 書誌一覧の検索条件の不備。レスポンスは共通のコードに寄せ、どの項目が不正かはログに残す。
+var (
+	ErrInvalidPublishYear = apperr.InvalidSearchCondition.New("出版年の指定が不正です。")
+	ErrInvalidSortKey     = apperr.InvalidSearchCondition.New("並び替えキーの指定が不正です。")
+	ErrInvalidSortOrder   = apperr.InvalidSearchCondition.New("並び順の指定が不正です。")
+	ErrInvalidLimit       = apperr.InvalidSearchCondition.New("取得件数の指定が不正です。")
+	ErrInvalidOffset      = apperr.InvalidSearchCondition.New("取得開始位置の指定が不正です。")
+)

@@ -70,4 +70,74 @@ type RecordRepository interface {
 		tx DBTX,
 		recordId string,
 	) error
+
+	// CountByCondition 一覧の検索条件に一致する書誌の件数を返す
+	//
+	// SelectByCondition と同じ条件で数える。並び順とlimit/offsetは件数に影響しない。
+	CountByCondition(
+		ctx context.Context,
+		tx DBTX,
+		cond RecordListCondition,
+	) (int, error)
+
+	// SelectByCondition 一覧の検索条件に一致する書誌を、並び替えとlimit/offsetを適用して返す
+	//
+	// 自ユーザの論理削除されていない書誌が対象。収録物(論理削除されていない書誌から
+	// CONTAINER_IDで参照されている書誌)は含まない(CountActiveArticles > 0 と同じ定義)。
+	// 構成要素は含まないので、必要な場合は SelectContributorRelations 等を続けて呼ぶ。
+	// 該当なしの場合は空(nil)を返す。
+	SelectByCondition(
+		ctx context.Context,
+		tx DBTX,
+		cond RecordListCondition,
+	) ([]*record.UserRecordEntry, error)
+
+	// SelectByPks 書誌を複数件取得する
+	//
+	// 一覧で表示する収録物をまとめて取得するために使う。
+	// 所有権の確認を兼ねるため内部用ユーザIDも条件に含め、論理削除済みは取得対象外とする。
+	// 該当しないIDは結果に含めない(エラーにしない)。結果の順序は保証しない。
+	// recordIdsが空の場合はクエリを発行せずに空(nil)を返す。
+	SelectByPks(
+		ctx context.Context,
+		tx DBTX,
+		recordIds []string,
+		internalUid int64,
+	) ([]*record.UserRecordEntry, error)
+
+	// SelectContributorRelations 渡された書誌に、貢献者情報だけを設定する
+	//
+	// 一覧の表示に必要な構成要素は貢献者だけなので、URL・メモ・項目値は取得しない。
+	// 取得条件・並び順・nilの扱いは SelectComponents と同じ。
+	// 結果は引数のentryにappendするため、1つのentryに対して1回だけ呼ぶこと。
+	// また同じ書誌IDの別のentryを渡すと、貢献者はどちらか一方にしか設定されない。
+	SelectContributorRelations(
+		ctx context.Context,
+		tx DBTX,
+		entries []*record.UserRecordEntry,
+	) error
+}
+
+// RecordListCondition 書誌一覧の検索条件
+//
+// 検索条件(ContributorName / Title / PublishYear)はnilなら条件に含めず、指定されたものはANDで組み合わせる。
+// 値の妥当性(並び替えキー・並び順・limitの範囲など)は呼び出し側で検証済みであることを前提とする
+// (未知の並び替えキー・並び順はpanicする)。
+type RecordListCondition struct {
+	// 内部用ユーザID。自ユーザの書誌だけを対象にする
+	InternalUid int64
+	// 貢献者名。書誌または収録物の貢献者名の部分一致
+	ContributorName *string
+	// タイトル。書誌または収録物の主題・副題の部分一致
+	Title *string
+	// 出版年。書誌の出版日の年が一致するもの(出版日が未登録の書誌は含まない)
+	PublishYear *int
+	// 並び替えキー
+	SortKey record.SortKey
+	// 並び順
+	SortOrder record.SortOrder
+	// 取得件数
+	Limit int
+	// 取得開始位置
+	Offset int
 }

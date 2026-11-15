@@ -145,12 +145,11 @@ const insertRecordFieldValuesQueryBase = `
 
 const insertRecordFieldValuesQueryValues = "(?, ?, ?, ?, ?, ?,?,'system',?,'system')"
 
-// selectRecordByPkQuery 書誌を1件取得する
+// recordEntryColumns 書誌(e_records)を復元するための取得カラム
 //
-// 所有権確認を兼ねるため内部用ユーザIDを条件に含め、論理削除済みは対象外とする。
-// 詳細参照・削除・更新で共用するため全カラムを取得する(監査列は参照しないので対象外)。
-const selectRecordByPkQuery = `
-	select
+// scanRecordEntry のScan順と一致させる。書誌を返すクエリはすべてこれを使い、列順を1か所に固定する。
+// 監査列は参照しないので対象外。FROMに e_records を1つだけ置くクエリで使う前提で、テーブル名は付けない。
+const recordEntryColumns = `
 		ID,
 		USER_ID,
 		TYPE_ID,
@@ -166,14 +165,181 @@ const selectRecordByPkQuery = `
 		CONTAINER_ID,
 		M_RECORD_ID,
 		DEL_FLG
+`
+
+// selectRecordByPkQuery 書誌を1件取得する
+//
+// 所有権確認を兼ねるため内部用ユーザIDを条件に含め、論理削除済みは対象外とする。
+// 詳細参照・削除・更新で共用するため全カラムを取得する(監査列は参照しないので対象外)。
+const selectRecordByPkQuery = `
+	select` + recordEntryColumns + `
+	from  e_records
+	where ID = ?
+	  and USER_ID = ?
+	  and DEL_FLG = 0
+`
+
+// selectRecordsByPksQueryBase 書誌を複数件取得する(一覧で表示する収録物の一括取得用)
+//
+// 条件は selectRecordByPkQuery と同じ(自ユーザ・論理削除済みは対象外)。
+// プレースホルダは USER_ID が先で、IN句の書誌IDが続く。
+const selectRecordsByPksQueryBase = `
+	select` + recordEntryColumns + `
+	from  e_records
+	where USER_ID = ?
+	  and DEL_FLG = 0
+	  and ID in (`
+
+const selectRecordsByPksQueryEnd = `)
+`
+
+// 書誌一覧の検索クエリ
+//
+// 件数クエリ(Count)と一覧クエリ(Select)は同じWHEREを共有する。
+// WHEREは固定の条件(recordListWhereBase)に、指定された検索条件の断片を連結して組み立てる
+// (buildRecordListWhere)。断片はいずれも外側の書誌を別名 r で参照し、先頭に and を持つ。
+//
+// ユーザの入力はすべてプレースホルダで渡す。SQLに連結してよいのは、ここで定義した断片と
+// ORDER BYのホワイトリスト(recordListOrderBy)から引いた句だけ。
+// LIKEに渡す値はエスケープ済みのパターンとし、エスケープ文字は '!' に固定する
+// (既定の '\' は sql_mode の NO_BACKSLASH_ESCAPES で無効になるため明示する)。
+
+const countRecordListQueryBase = `
+	select
+		COUNT(*)
 	from
-		e_records
-	where
-		ID = ?
+		e_records r
+`
+
+const selectRecordListQueryBase = `
+	select` + recordEntryColumns + `
+	from
+		e_records r
+`
+
+// recordListWhereBase 一覧の対象を自ユーザの論理削除されていない書誌に絞る固定条件
+//
+// 収録物(論理削除されていない書誌からCONTAINER_IDで参照されている書誌)は一覧に出さない。
+// CountActiveArticles > 0 を収録物とみなす詳細参照・削除・更新のガードと同じ定義にしている。
+// プレースホルダは1つ(内部用ユーザID)。
+const recordListWhereBase = `
+	where r.USER_ID = ?
+	  and r.DEL_FLG = 0
+	  and not exists (
+			select 1
+			from  e_records a
+			where a.CONTAINER_ID = r.ID
+			  and a.DEL_FLG = 0
+		)
+`
+
+// recordListWhereContributorName 貢献者名の部分一致
+//
+// 書誌の貢献者、または論理削除されていない収録物の貢献者が対象。
+// 貢献・貢献者本体とも論理削除済みは除外する(SelectComponents の取得条件と同じ)。
+// EXISTSで判定するので、複数の貢献者が一致しても書誌は1件のまま。
+// プレースホルダは2つ(書誌・収録物の順。いずれも同じパターン)。
+const recordListWhereContributorName = `
+	and (
+		exists (
+			select 1
+			from  e_record_contributions c
+			inner join e_contributors co
+			  on  co.ID = c.E_CONTRIBUTOR_ID
+			  and co.DEL_FLG = 0
+			where c.E_RECORD_ID = r.ID
+			  and c.DEL_FLG = 0
+			  and co.RAW_NAME like ? escape '!'
+		)
+		or
+		exists (
+			select 1
+			from  e_records ct
+			inner join e_record_contributions c
+			  on  c.E_RECORD_ID = ct.ID
+			  and c.DEL_FLG = 0
+			inner join e_contributors co
+			  on  co.ID = c.E_CONTRIBUTOR_ID
+			  and co.DEL_FLG = 0
+			where ct.ID = r.CONTAINER_ID
+			  and ct.DEL_FLG = 0
+			  and co.RAW_NAME like ? escape '!'
+		)
+	)
+`
+
+// recordListWhereTitle タイトルの部分一致
+//
+// 書誌の主題・副題、または論理削除されていない収録物の主題・副題が対象。
+// プレースホルダは4つ(書誌の主題・副題、収録物の主題・副題の順。いずれも同じパターン)。
+const recordListWhereTitle = `
+	and (
+		r.MAIN_TITLE like ? escape '!'
+		or
+		r.SUB_TITLE like ? escape '!'
+		or
+		exists (
+			select 1
+			from e_records ct
+			where ct.ID = r.CONTAINER_ID
+			  and ct.DEL_FLG = 0
+			  and (
+				ct.MAIN_TITLE like ? escape '!'
+				or
+				ct.SUB_TITLE like ? escape '!'
+			)
+		)
+	)
+`
+
+// recordListWherePublishYear 出版年の一致
+//
+// カラムに関数(YEAR())をかけず、[その年の1月1日, 翌年の1月1日) の範囲で比較する。
+// 出版日が未登録(NULL)の書誌は含まれない。
+// プレースホルダは2つ(範囲の開始日・終了日)。
+const recordListWherePublishYear = `
 	and
-		USER_ID = ?
+		r.PUBLICATION_DATE >= ?
 	and
-		DEL_FLG = 0
+		r.PUBLICATION_DATE < ?
+`
+
+// 一覧の並び順(ORDER BY)
+//
+// プレースホルダを使えないため、並び替えキー×並び順ごとに固定の句を定義し、
+// recordListOrderBy のホワイトリストから引く。
+// 同順位はIDの昇順で並べ、offsetによるページングで重複・取りこぼしが起きないようにする。
+// 出版日が未登録の書誌は、昇順・降順とも末尾に置く。
+const (
+	recordListOrderByPublishYearAsc = `
+	order by
+		r.PUBLICATION_DATE is null,
+		r.PUBLICATION_DATE asc,
+		r.ID asc
+`
+	recordListOrderByPublishYearDesc = `
+	order by
+		r.PUBLICATION_DATE is null,
+		r.PUBLICATION_DATE desc,
+		r.ID asc
+`
+	recordListOrderByInsertDateAsc = `
+	order by
+		r.INS_DT asc,
+		r.ID asc
+`
+	recordListOrderByInsertDateDesc = `
+	order by
+		r.INS_DT desc,
+		r.ID asc
+`
+)
+
+// recordListQueryLimit 一覧の取得件数と取得開始位置
+// プレースホルダは2つ(limit・offsetの順)。
+const recordListQueryLimit = `
+	limit ?
+	offset ?
 `
 
 // countActiveArticlesQuery 指定した書誌をコンテナとする、論理削除されていない書誌の件数

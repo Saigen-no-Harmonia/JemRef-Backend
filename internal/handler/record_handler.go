@@ -32,17 +32,46 @@ func (h *RecordHandler) RegisterRoutes(r *gin.RouterGroup) {
 }
 
 // @Summary [REF-API-001] 書誌一覧参照
-// @Description ユーザに紐づく書誌情報をリストで返却する。ユーザ情報はfirebase tokenから取得する。
+// @Description ユーザに紐づく書誌情報を、検索条件で絞り込んでリストで返却する。ユーザ情報はfirebase tokenから取得する。<br>
+// @Description 収録物（雑誌・編著書）は一覧に含めず、各書誌のcontainerとして返す。<br>
+// @Description 検索条件は指定されたものをANDで組み合わせる。タイトル・貢献者名は書誌と収録物の両方を部分一致で検索する。<br>
+// @Description countは検索条件に一致する総件数（limit/offset適用前）。<br>
 // @Tags records
 // @Accept json
 // @Produce json
 // @Param Authorization  header string true "Bearer <firebase_id_token>"
-// @Param param query dto.GetRecordsRequest true "書誌一覧取得リクエスト"
+// @Param param query dto.GetRecordsRequest false "書誌一覧取得リクエスト"
 // @Success 200 {object} dto.GetRecordsResponse
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /records [get]
 func (h *RecordHandler) GetRecords(c *gin.Context) {
+	internalUid, ok := ctxutil.GetUserId(c)
+	if !ok {
+		c.Error(ErrInternalUidNotFound)
+		return
+	}
+
+	var req handlerdto.GetRecordsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.Error(toBindingError(err, getRecordsRequiredErrors))
+		return
+	}
+
+	input, err := toGetRecordsInput(internalUid, req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	ctxutil.SetApiId(c, ctxutil.REF_API_001)
+	output, err := h.usecase.List(c, input)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, toGetRecordsResponse(output))
 }
 
 // @Summary [REF-API-002] 書誌詳細参照

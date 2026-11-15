@@ -5,6 +5,9 @@ import (
 	"jemref_go/internal/domain/record"
 	"jemref_go/internal/handler/dto"
 	usecasedto "jemref_go/internal/usecase/dto"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 func toCreateRecordInput(internalUid int64, req dto.CreateRecordRequest) (usecasedto.CreateRecordInput, error) {
@@ -387,6 +390,202 @@ func toUpdateRecordInput(
 		RecordInput:    recordInput,
 		ContainerInput: containerInput,
 	}, nil
+}
+
+// 書誌一覧の検索条件のデフォルト値と上限
+// GetRecordsRequestのdefaultタグ(Swagger用)と値をそろえること。
+const (
+	defaultRecordsSortKey   = record.SortKeyPublishYear
+	defaultRecordsSortOrder = record.SortOrderAsc
+	defaultRecordsLimit     = 20
+	defaultRecordsOffset    = 0
+	maxRecordsLimit         = 100
+)
+
+// publishYearPattern 検索条件の出版年(西暦4桁)
+var publishYearPattern = regexp.MustCompile(`^\d{4}$`)
+
+// getRecordsRequiredErrors 一覧参照エンドポイントのbinding:"required"違反に対応するエラー
+// 必須項目はないため空。bindエラー(limitが数値でない等)はすべてErrInvalidRequestBodyになる。
+var getRecordsRequiredErrors = map[string]error{}
+
+// toGetRecordsInput 一覧参照のクエリパラメータを検証し、usecaseの入力へ変換する
+//
+// 未指定(空文字)の検索条件はnil、並び替えとlimit/offsetはデフォルト値にする。
+// 項目はリクエストDTOの宣言順に検証し、最初に見つかった不正を返す。
+func toGetRecordsInput(internalUid int64, req dto.GetRecordsRequest) (usecasedto.GetRecordsInput, error) {
+
+	publishYear, err := toPublishYear(req.PublishYear)
+	if err != nil {
+		return usecasedto.GetRecordsInput{}, err
+	}
+
+	sortKey, err := toSortKey(req.SortKey)
+	if err != nil {
+		return usecasedto.GetRecordsInput{}, err
+	}
+
+	sortOrder, err := toSortOrder(req.SortType)
+	if err != nil {
+		return usecasedto.GetRecordsInput{}, err
+	}
+
+	limit, err := toLimit(req.Limit)
+	if err != nil {
+		return usecasedto.GetRecordsInput{}, err
+	}
+
+	offset, err := toOffset(req.Offset)
+	if err != nil {
+		return usecasedto.GetRecordsInput{}, err
+	}
+
+	return usecasedto.GetRecordsInput{
+		InternalUserId:  internalUid,
+		ContributorName: toSearchWord(req.ContributorName),
+		Title:           toSearchWord(req.Title),
+		PublishYear:     publishYear,
+		SortKey:         sortKey,
+		SortOrder:       sortOrder,
+		Limit:           limit,
+		Offset:          offset,
+	}, nil
+}
+
+// toSearchWord 検索語の前後の空白(全角空白を含む)を除き、空ならnil(条件なし)を返す
+func toSearchWord(s string) *string {
+	word := strings.TrimSpace(s)
+	if word == "" {
+		return nil
+	}
+
+	return &word
+}
+
+// toPublishYear 検索条件の出版年を変換する。未指定(空文字)ならnilを返す
+func toPublishYear(s string) (*int, error) {
+	if s == "" {
+		return nil, nil
+	}
+
+	if !publishYearPattern.MatchString(s) {
+		return nil, fmt.Errorf("publish year=%s: %w", s, ErrInvalidPublishYear)
+	}
+
+	year, err := strconv.Atoi(s)
+	if err != nil {
+		return nil, fmt.Errorf("publish year=%s: %v: %w", s, err, ErrInvalidPublishYear)
+	}
+
+	return &year, nil
+}
+
+// toSortKey 並び替えキーを変換する。未指定(空文字)ならデフォルト値を返す
+func toSortKey(s string) (record.SortKey, error) {
+	if s == "" {
+		return defaultRecordsSortKey, nil
+	}
+
+	key := record.SortKey(s)
+	if !key.IsValid() {
+		return "", fmt.Errorf("sort key=%s: %w", s, ErrInvalidSortKey)
+	}
+
+	return key, nil
+}
+
+// toSortOrder 並び順を変換する。未指定(空文字)ならデフォルト値を返す
+func toSortOrder(s string) (record.SortOrder, error) {
+	if s == "" {
+		return defaultRecordsSortOrder, nil
+	}
+
+	order := record.SortOrder(s)
+	if !order.IsValid() {
+		return "", fmt.Errorf("sort type=%s: %w", s, ErrInvalidSortOrder)
+	}
+
+	return order, nil
+}
+
+// toLimit 取得件数を検証する。未指定ならデフォルト値を返す
+//
+// "?limit=" (空文字)はginのbindで0になるため、範囲外として扱われる。
+func toLimit(l *int) (int, error) {
+	if l == nil {
+		return defaultRecordsLimit, nil
+	}
+
+	if *l < 1 || *l > maxRecordsLimit {
+		return 0, fmt.Errorf("limit=%d: %w", *l, ErrInvalidLimit)
+	}
+
+	return *l, nil
+}
+
+// toOffset 取得開始位置を検証する。未指定ならデフォルト値を返す
+func toOffset(o *int) (int, error) {
+	if o == nil {
+		return defaultRecordsOffset, nil
+	}
+
+	if *o < 0 {
+		return 0, fmt.Errorf("offset=%d: %w", *o, ErrInvalidOffset)
+	}
+
+	return *o, nil
+}
+
+// toGetRecordsResponse 書誌一覧参照のレスポンスを組み立てる
+//
+// 該当なしの場合も、recordsはnullではなく空配列で返す。
+func toGetRecordsResponse(output *usecasedto.GetRecordsOutput) dto.GetRecordsResponse {
+	records := make([]dto.RecordListItemResponse, 0, len(output.Records))
+	for _, item := range output.Records {
+		records = append(records, toRecordListItemResponse(item))
+	}
+
+	return dto.GetRecordsResponse{
+		Count:   output.TotalCount,
+		Records: &records,
+	}
+}
+
+// toRecordListItemResponse 書誌一覧の1件を組み立てる
+//
+// 詳細参照(toRecordDetailItem)と同じく、露出してよい項目だけを明示的に詰め替える。
+func toRecordListItemResponse(item usecasedto.RecordListItem) dto.RecordListItemResponse {
+	e := item.Record
+
+	return dto.RecordListItemResponse{
+		RecordId:          e.RecordEntryId,
+		Type:              string(e.RecordType),
+		MainTitle:         e.MainTitle,
+		SubTitle:          nilIfEmpty(e.SubTitle),
+		PageRange:         nilIfEmpty(e.PageRange),
+		Publisher:         nilIfEmpty(e.Publisher),
+		PublicationDate:   record.FormatPublicationDate(e.PublicationDate, e.DatePrecision),
+		ReadStatus:        toReadStatusString(e.ReadStatus),
+		Contributors:      toContributorInfos(e.ContributorRelations),
+		ContainerListItem: toContainerListItem(item.Container),
+	}
+}
+
+// toContainerListItem 書誌一覧用の収録物情報を組み立てる
+//
+// 収録物のIDは露出しない(詳細参照の toContainerDetailItem と同じ)。
+func toContainerListItem(e *record.UserRecordEntry) *dto.ContainerListItemResponse {
+	if e == nil {
+		return nil
+	}
+
+	return &dto.ContainerListItemResponse{
+		MainTitle:    e.MainTitle,
+		SubTitle:     nilIfEmpty(e.SubTitle),
+		Volume:       nilIfEmpty(e.Volume),
+		Issue:        nilIfEmpty(e.Issue),
+		Contributors: toContributorInfos(e.ContributorRelations),
+	}
 }
 
 // chkUpdateParam 更新APIのうち、bindingタグで表現できないバリデーションを行う

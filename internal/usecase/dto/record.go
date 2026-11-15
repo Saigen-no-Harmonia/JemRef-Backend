@@ -92,3 +92,39 @@ type GetRecordOutput struct {
 	// 収録物。持たない場合と、収録物が論理削除済みの場合はnil
 	Container *record.UserRecordEntry
 }
+
+// [REF-API-001] 書誌一覧参照
+//
+// 検索条件(ContributorName / Title / PublishYear)はnilなら条件に含めない。
+// 値の妥当性(並び替えキー・並び順・limitの範囲など)はhandlerで検証済み。
+type GetRecordsInput struct {
+	InternalUserId int64
+	// 貢献者名。書誌または収録物の貢献者名の部分一致
+	ContributorName *string
+	// タイトル。書誌または収録物の主題・副題の部分一致
+	Title *string
+	// 出版年
+	PublishYear *int
+	SortKey     record.SortKey
+	SortOrder   record.SortOrder
+	Limit       int
+	Offset      int
+}
+
+// GetRecordsOutput 書誌一覧参照の結果
+type GetRecordsOutput struct {
+	// 検索条件に一致する総件数(limit/offset適用前)
+	TotalCount int
+	// 並び替えとlimit/offsetを適用した書誌。該当なしの場合は空(nil)
+	Records []RecordListItem
+}
+
+// RecordListItem 書誌一覧の1件
+//
+// 構成要素は貢献者だけを持つ(URL・メモ・項目値は取得しない)。
+type RecordListItem struct {
+	// 書誌本体
+	Record record.UserRecordEntry
+	// 収録物。持たない場合と、収録物が論理削除済みの場合はnil
+	Container *record.UserRecordEntry
+}
