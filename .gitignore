@@ -11,3 +11,6 @@ firebase-adminsdk-*.json
 # Firebase Agent Skills
 .agents/
 skills-lock.json
+# 結合テスト関係
+/test
+/test/api/**/state.json

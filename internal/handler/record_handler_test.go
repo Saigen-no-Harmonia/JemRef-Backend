@@ -11,6 +11,7 @@ import (
 	usecaseDto "jemref_go/internal/usecase/dto"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -1827,6 +1828,689 @@ func TestRecordHandler_UpdateRecord(t *testing.T) {
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.Equal(t, ctxutil.REF_API_004, ctxutil.GetApiId(tt.mockUsecase.LastCtx))
 			testutil.AssertResponse(t, rec, tt.expectedBody)
+		})
+	}
+}
+
+// -------------GetRecords(*gin.Context)のテスト-------------
+
+const (
+	// recordListArticleId1〜3 usecaseが返す書誌のID
+	recordListArticleId1 = "LISTARTICLE000000000000001"
+	recordListArticleId2 = "LISTARTICLE000000000000002"
+	recordListArticleId3 = "LISTARTICLE000000000000003"
+	// recordListContainerId 収録物の書誌ID。レスポンスには露出しない。
+	recordListContainerId = "LISTCONTAINER0000000000001"
+)
+
+// recordIntPtr int型のポインタを返却する
+func recordIntPtr(i int) *int {
+	return &i
+}
+
+// newRecordListUsecaseMock 指定したOutputを返すMockRecordUsecaseを返す
+func newRecordListUsecaseMock(output *usecaseDto.GetRecordsOutput) *mock.MockRecordUsecase {
+	return &mock.MockRecordUsecase{
+		ListFunc: func(
+			ctx context.Context,
+			li usecaseDto.GetRecordsInput,
+		) (*usecaseDto.GetRecordsOutput, error) {
+			return output, nil
+		},
+	}
+}
+
+// newRecordListUsecaseErrMock 指定したエラーを返すMockRecordUsecaseを返す
+func newRecordListUsecaseErrMock(err error) *mock.MockRecordUsecase {
+	return &mock.MockRecordUsecase{
+		ListFunc: func(
+			ctx context.Context,
+			li usecaseDto.GetRecordsInput,
+		) (*usecaseDto.GetRecordsOutput, error) {
+			return nil, err
+		},
+	}
+}
+
+func TestRecordHandler_GetRecords(t *testing.T) {
+
+	const basePath = "/api/v0/records"
+
+	dayDate := time.Date(2022, 11, 30, 0, 0, 0, 0, time.UTC)
+	monthDate := time.Date(2022, 11, 1, 0, 0, 0, 0, time.UTC)
+	yearDate := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
+	precisionDay := record.DatePrecisionDay
+	precisionMonth := record.DatePrecisionMonth
+	precisionYear := record.DatePrecisionYear
+	readStatusReading := record.ReadStatusReading
+
+	// withInput デフォルト値の入力を書き換えたusecase入力を返す
+	// パラメータ未指定時は publish_year / asc / 20 / 0 になる。
+	withInput := func(modify func(in *usecaseDto.GetRecordsInput)) *usecaseDto.GetRecordsInput {
+		in := usecaseDto.GetRecordsInput{
+			InternalUserId: recordTestInternalUid,
+			SortKey:        record.SortKeyPublishYear,
+			SortOrder:      record.SortOrderAsc,
+			Limit:          20,
+			Offset:         0,
+		}
+		if modify != nil {
+			modify(&in)
+		}
+		return &in
+	}
+	defaultInput := withInput(nil)
+
+	// newOutput 指定した総件数と書誌からusecaseの出力を組み立てる
+	newOutput := func(total int, items ...usecaseDto.RecordListItem) *usecaseDto.GetRecordsOutput {
+		return &usecaseDto.GetRecordsOutput{TotalCount: total, Records: items}
+	}
+
+	// newResponse 指定した件数と書誌からレスポンスを組み立てる(書誌なしは空配列)
+	newResponse := func(count int, items ...handlerDto.RecordListItemResponse) handlerDto.GetRecordsResponse {
+		records := []handlerDto.RecordListItemResponse{}
+		records = append(records, items...)
+		return handlerDto.GetRecordsResponse{Count: count, Records: &records}
+	}
+
+	// minimalItem 必須項目のみを持つ、収録物なしの書誌を返す
+	minimalItem := func(recordId string) usecaseDto.RecordListItem {
+		return usecaseDto.RecordListItem{
+			Record: record.UserRecordEntry{
+				RecordEntryId: recordId,
+				InternalUid:   recordTestInternalUid,
+				RecordType:    record.RecordTypeAuthoredBook,
+				MainTitle:     "単著書のタイトル",
+			},
+		}
+	}
+
+	// minimalResponseItem minimalItemに対応するレスポンスを返す
+	minimalResponseItem := func(recordId string) handlerDto.RecordListItemResponse {
+		return handlerDto.RecordListItemResponse{
+			RecordId:  recordId,
+			Type:      "authored_book",
+			MainTitle: "単著書のタイトル",
+		}
+	}
+
+	// withPublicationDate 出版日と精度を設定した書誌を返す
+	withPublicationDate := func(date *time.Time, precision *record.DatePrecision) usecaseDto.RecordListItem {
+		item := minimalItem(recordListArticleId1)
+		item.Record.PublicationDate = date
+		item.Record.DatePrecision = precision
+		return item
+	}
+
+	// withPublicationDateResponse 出版日を設定したレスポンスを返す
+	withPublicationDateResponse := func(publicationDate *string) handlerDto.GetRecordsResponse {
+		item := minimalResponseItem(recordListArticleId1)
+		item.PublicationDate = publicationDate
+		return newResponse(1, item)
+	}
+
+	// 全項目と貢献者を持つ、収録物ありの書誌
+	fullItem := usecaseDto.RecordListItem{
+		Record: record.UserRecordEntry{
+			RecordEntryId:   recordListArticleId1,
+			InternalUid:     recordTestInternalUid,
+			RecordType:      record.RecordTypeJournalArticle,
+			MainTitle:       "第1章 「学校」制度の境界線",
+			SubTitle:        recordStrPtr("その形成と展開"),
+			PageRange:       recordStrPtr("15-46"),
+			Publisher:       recordStrPtr("東京大学出版会"),
+			PublicationDate: &dayDate,
+			DatePrecision:   &precisionDay,
+			ReadStatus:      &readStatusReading,
+			ContainerId:     recordStrPtr(recordListContainerId),
+			ContributorRelations: []record.ContributorRelation{
+				{
+					Contributor:  record.ContributorEntry{RawName: "木村元"},
+					Contribution: record.ContributionEntry{Role: record.ContributorRoleAuthor},
+				},
+				{
+					Contributor:  record.ContributorEntry{RawName: "訳者B"},
+					Contribution: record.ContributionEntry{Role: record.ContributorRoleInterpreter},
+				},
+			},
+		},
+		Container: &record.UserRecordEntry{
+			RecordEntryId: recordListContainerId,
+			InternalUid:   recordTestInternalUid,
+			RecordType:    record.RecordTypeJournal,
+			MainTitle:     "境界線の学校史",
+			SubTitle:      recordStrPtr("収録物の副題"),
+			Volume:        recordStrPtr("第1巻"),
+			Issue:         recordStrPtr("第11号"),
+			ContributorRelations: []record.ContributorRelation{
+				{
+					Contributor:  record.ContributorEntry{RawName: "編者A"},
+					Contribution: record.ContributionEntry{Role: record.ContributorRoleCompiler},
+				},
+			},
+		},
+	}
+
+	fullResponseItem := handlerDto.RecordListItemResponse{
+		RecordId:        recordListArticleId1,
+		Type:            "journal_article",
+		MainTitle:       "第1章 「学校」制度の境界線",
+		SubTitle:        recordStrPtr("その形成と展開"),
+		PageRange:       recordStrPtr("15-46"),
+		Publisher:       recordStrPtr("東京大学出版会"),
+		PublicationDate: recordStrPtr("2022-11-30"),
+		ReadStatus:      recordStrPtr("reading"),
+		Contributors: []handlerDto.ContributorInfo{
+			{Name: "木村元", Role: "author"},
+			{Name: "訳者B", Role: "interpreter"},
+		},
+		ContainerListItem: &handlerDto.ContainerListItemResponse{
+			MainTitle: "境界線の学校史",
+			SubTitle:  recordStrPtr("収録物の副題"),
+			Volume:    recordStrPtr("第1巻"),
+			Issue:     recordStrPtr("第11号"),
+			Contributors: []handlerDto.ContributorInfo{
+				{Name: "編者A", Role: "compiler"},
+			},
+		},
+	}
+
+	// 任意項目が空文字の書誌と収録物(NULL化の検証用)
+	emptyStrItem := usecaseDto.RecordListItem{
+		Record: record.UserRecordEntry{
+			RecordEntryId: recordListArticleId1,
+			RecordType:    record.RecordTypeJournalArticle,
+			MainTitle:     "論文のタイトル",
+			SubTitle:      recordStrPtr(""),
+			PageRange:     recordStrPtr(""),
+			Publisher:     recordStrPtr(""),
+			ContainerId:   recordStrPtr(recordListContainerId),
+		},
+		Container: &record.UserRecordEntry{
+			RecordEntryId: recordListContainerId,
+			RecordType:    record.RecordTypeJournal,
+			MainTitle:     "雑誌のタイトル",
+			SubTitle:      recordStrPtr(""),
+			Volume:        recordStrPtr(""),
+			Issue:         recordStrPtr(""),
+		},
+	}
+
+	tests := []struct {
+		name string
+		// ctxInternalUid 0の場合はcontextから取得できない状態を表す
+		ctxInternalUid int64
+		// query URLのクエリ文字列("?"は含めない)
+		query       string
+		mockUsecase *mock.MockRecordUsecase
+		// expectedInput usecaseへ渡される入力(nilの場合は検証しない)
+		expectedInput *usecaseDto.GetRecordsInput
+		usecaseCalled bool
+		expectedBody  handlerDto.GetRecordsResponse
+		// bodyContains / notContains レスポンスのJSONに含まれる/含まれてはいけない文字列
+		bodyContains      []string
+		notContains       []string
+		expectError       bool
+		expectedErrorBody error
+	}{
+		// ---- 入力の変換 ----
+		{
+			name:           "正常_パラメータ未指定はデフォルト値",
+			ctxInternalUid: recordTestInternalUid,
+			query:          "",
+			mockUsecase:    newRecordListUsecaseMock(newOutput(0)),
+			expectedInput:  defaultInput,
+			usecaseCalled:  true,
+			expectedBody:   newResponse(0),
+		},
+		{
+			name:           "正常_全パラメータを指定",
+			ctxInternalUid: recordTestInternalUid,
+			query: "contributor_name=" + url.QueryEscape("木村") +
+				"&title=" + url.QueryEscape("学校") +
+				"&publish_year=2022&sort_key=insert_date&sort_type=desc&limit=50&offset=20",
+			mockUsecase: newRecordListUsecaseMock(newOutput(0)),
+			expectedInput: withInput(func(in *usecaseDto.GetRecordsInput) {
+				in.ContributorName = recordStrPtr("木村")
+				in.Title = recordStrPtr("学校")
+				in.PublishYear = recordIntPtr(2022)
+				in.SortKey = record.SortKeyInsertDate
+				in.SortOrder = record.SortOrderDesc
+				in.Limit = 50
+				in.Offset = 20
+			}),
+			usecaseCalled: true,
+			expectedBody:  newResponse(0),
+		},
+		{
+			name:           "正常_空文字の検索条件は未指定扱い",
+			ctxInternalUid: recordTestInternalUid,
+			query:          "contributor_name=&title=&publish_year=&sort_key=&sort_type=",
+			mockUsecase:    newRecordListUsecaseMock(newOutput(0)),
+			expectedInput:  defaultInput,
+			usecaseCalled:  true,
+			expectedBody:   newResponse(0),
+		},
+		{
+			name:           "正常_検索語の前後空白を除去",
+			ctxInternalUid: recordTestInternalUid,
+			// 貢献者名は半角空白、タイトルは全角空白で囲む
+			query: "contributor_name=" + url.QueryEscape(" 木村 ") +
+				"&title=" + url.QueryEscape("　学校　"),
+			mockUsecase: newRecordListUsecaseMock(newOutput(0)),
+			expectedInput: withInput(func(in *usecaseDto.GetRecordsInput) {
+				in.ContributorName = recordStrPtr("木村")
+				in.Title = recordStrPtr("学校")
+			}),
+			usecaseCalled: true,
+			expectedBody:  newResponse(0),
+		},
+		{
+			name:           "正常_空白のみの検索語は未指定扱い",
+			ctxInternalUid: recordTestInternalUid,
+			query: "contributor_name=" + url.QueryEscape("  ") +
+				"&title=" + url.QueryEscape(" 　"),
+			mockUsecase:   newRecordListUsecaseMock(newOutput(0)),
+			expectedInput: defaultInput,
+			usecaseCalled: true,
+			expectedBody:  newResponse(0),
+		},
+		{
+			name:           "正常_語中の空白は残す",
+			ctxInternalUid: recordTestInternalUid,
+			query:          "title=" + url.QueryEscape("学校 教育"),
+			mockUsecase:    newRecordListUsecaseMock(newOutput(0)),
+			expectedInput: withInput(func(in *usecaseDto.GetRecordsInput) {
+				in.Title = recordStrPtr("学校 教育")
+			}),
+			usecaseCalled: true,
+			expectedBody:  newResponse(0),
+		},
+		{
+			name:           "正常_limitの下限",
+			ctxInternalUid: recordTestInternalUid,
+			query:          "limit=1",
+			mockUsecase:    newRecordListUsecaseMock(newOutput(0)),
+			expectedInput: withInput(func(in *usecaseDto.GetRecordsInput) {
+				in.Limit = 1
+			}),
+			usecaseCalled: true,
+			expectedBody:  newResponse(0),
+		},
+		{
+			name:           "正常_limitの上限",
+			ctxInternalUid: recordTestInternalUid,
+			query:          "limit=100",
+			mockUsecase:    newRecordListUsecaseMock(newOutput(0)),
+			expectedInput: withInput(func(in *usecaseDto.GetRecordsInput) {
+				in.Limit = 100
+			}),
+			usecaseCalled: true,
+			expectedBody:  newResponse(0),
+		},
+		{
+			// 明示した0はデフォルト値の0と区別されず、そのまま渡る
+			name:           "正常_offsetが0",
+			ctxInternalUid: recordTestInternalUid,
+			query:          "offset=0",
+			mockUsecase:    newRecordListUsecaseMock(newOutput(0)),
+			expectedInput:  defaultInput,
+			usecaseCalled:  true,
+			expectedBody:   newResponse(0),
+		},
+		{
+			name:           "正常_sort_keyとsort_typeの各値",
+			ctxInternalUid: recordTestInternalUid,
+			query:          "sort_key=publish_year&sort_type=desc",
+			mockUsecase:    newRecordListUsecaseMock(newOutput(0)),
+			expectedInput: withInput(func(in *usecaseDto.GetRecordsInput) {
+				in.SortKey = record.SortKeyPublishYear
+				in.SortOrder = record.SortOrderDesc
+			}),
+			usecaseCalled: true,
+			expectedBody:  newResponse(0),
+		},
+
+		// ---- レスポンスの組み立て ----
+		{
+			name:           "正常_全項目を含む書誌一覧",
+			ctxInternalUid: recordTestInternalUid,
+			mockUsecase: newRecordListUsecaseMock(newOutput(2,
+				fullItem,
+				minimalItem(recordListArticleId2),
+			)),
+			expectedInput: defaultInput,
+			usecaseCalled: true,
+			expectedBody: newResponse(2,
+				fullResponseItem,
+				minimalResponseItem(recordListArticleId2),
+			),
+		},
+		{
+			name:           "正常_収録物なしはcontainerがnull",
+			ctxInternalUid: recordTestInternalUid,
+			mockUsecase:    newRecordListUsecaseMock(newOutput(1, minimalItem(recordListArticleId1))),
+			expectedInput:  defaultInput,
+			usecaseCalled:  true,
+			expectedBody:   newResponse(1, minimalResponseItem(recordListArticleId1)),
+			bodyContains:   []string{`"container":null`},
+		},
+		{
+			name:           "正常_任意項目がnil",
+			ctxInternalUid: recordTestInternalUid,
+			mockUsecase:    newRecordListUsecaseMock(newOutput(1, minimalItem(recordListArticleId1))),
+			expectedInput:  defaultInput,
+			usecaseCalled:  true,
+			expectedBody: newResponse(1, handlerDto.RecordListItemResponse{
+				RecordId:  recordListArticleId1,
+				Type:      "authored_book",
+				MainTitle: "単著書のタイトル",
+				// 任意項目と貢献者はすべてnil(空スライスではない)
+				SubTitle:          nil,
+				PageRange:         nil,
+				Publisher:         nil,
+				PublicationDate:   nil,
+				ReadStatus:        nil,
+				Contributors:      nil,
+				ContainerListItem: nil,
+			}),
+		},
+		{
+			name:           "正常_任意項目の空文字はnull",
+			ctxInternalUid: recordTestInternalUid,
+			mockUsecase:    newRecordListUsecaseMock(newOutput(1, emptyStrItem)),
+			expectedInput:  defaultInput,
+			usecaseCalled:  true,
+			expectedBody: newResponse(1, handlerDto.RecordListItemResponse{
+				RecordId:  recordListArticleId1,
+				Type:      "journal_article",
+				MainTitle: "論文のタイトル",
+				SubTitle:  nil,
+				PageRange: nil,
+				Publisher: nil,
+				ContainerListItem: &handlerDto.ContainerListItemResponse{
+					MainTitle: "雑誌のタイトル",
+					SubTitle:  nil,
+					Volume:    nil,
+					Issue:     nil,
+				},
+			}),
+		},
+		{
+			name:           "正常_出版日が日精度",
+			ctxInternalUid: recordTestInternalUid,
+			mockUsecase:    newRecordListUsecaseMock(newOutput(1, withPublicationDate(&dayDate, &precisionDay))),
+			expectedInput:  defaultInput,
+			usecaseCalled:  true,
+			expectedBody:   withPublicationDateResponse(recordStrPtr("2022-11-30")),
+		},
+		{
+			name:           "正常_出版日が月精度",
+			ctxInternalUid: recordTestInternalUid,
+			mockUsecase:    newRecordListUsecaseMock(newOutput(1, withPublicationDate(&monthDate, &precisionMonth))),
+			expectedInput:  defaultInput,
+			usecaseCalled:  true,
+			expectedBody:   withPublicationDateResponse(recordStrPtr("2022-11")),
+		},
+		{
+			name:           "正常_出版日が年精度",
+			ctxInternalUid: recordTestInternalUid,
+			mockUsecase:    newRecordListUsecaseMock(newOutput(1, withPublicationDate(&yearDate, &precisionYear))),
+			expectedInput:  defaultInput,
+			usecaseCalled:  true,
+			expectedBody:   withPublicationDateResponse(recordStrPtr("2022")),
+		},
+		{
+			// 精度が不明なまま日付を出すと月日を捏造することになるためnullを返す
+			name:           "正常_出版日の精度がnil",
+			ctxInternalUid: recordTestInternalUid,
+			mockUsecase:    newRecordListUsecaseMock(newOutput(1, withPublicationDate(&dayDate, nil))),
+			expectedInput:  defaultInput,
+			usecaseCalled:  true,
+			expectedBody:   withPublicationDateResponse(nil),
+		},
+		{
+			// countはrecordsの件数ではなく、limit/offset適用前の総件数
+			name:           "正常_countは総件数",
+			ctxInternalUid: recordTestInternalUid,
+			mockUsecase: newRecordListUsecaseMock(newOutput(25,
+				minimalItem(recordListArticleId1),
+				minimalItem(recordListArticleId2),
+			)),
+			expectedInput: defaultInput,
+			usecaseCalled: true,
+			expectedBody: newResponse(25,
+				minimalResponseItem(recordListArticleId1),
+				minimalResponseItem(recordListArticleId2),
+			),
+		},
+		{
+			// usecaseは該当なしの場合にRecordsをnilで返すが、レスポンスはnullにしない
+			name:           "正常_0件はrecordsが空配列",
+			ctxInternalUid: recordTestInternalUid,
+			mockUsecase:    newRecordListUsecaseMock(&usecaseDto.GetRecordsOutput{TotalCount: 0, Records: nil}),
+			expectedInput:  defaultInput,
+			usecaseCalled:  true,
+			expectedBody:   newResponse(0),
+			bodyContains:   []string{`"records":[]`},
+		},
+		{
+			name:           "正常_一覧の順序を保つ",
+			ctxInternalUid: recordTestInternalUid,
+			mockUsecase: newRecordListUsecaseMock(newOutput(3,
+				minimalItem(recordListArticleId3),
+				minimalItem(recordListArticleId1),
+				minimalItem(recordListArticleId2),
+			)),
+			expectedInput: defaultInput,
+			usecaseCalled: true,
+			expectedBody: newResponse(3,
+				minimalResponseItem(recordListArticleId3),
+				minimalResponseItem(recordListArticleId1),
+				minimalResponseItem(recordListArticleId2),
+			),
+		},
+		{
+			// 収録物のIDは参照・削除のガードの前提となるため露出させない
+			name:           "正常_収録物IDを露出しない",
+			ctxInternalUid: recordTestInternalUid,
+			mockUsecase:    newRecordListUsecaseMock(newOutput(1, fullItem)),
+			expectedInput:  defaultInput,
+			usecaseCalled:  true,
+			expectedBody:   newResponse(1, fullResponseItem),
+			notContains:    []string{recordListContainerId},
+		},
+
+		// ---- 異常系(usecaseを呼ばずにエラーとなる) ----
+		{
+			name:              "異常_internalUid取得失敗",
+			ctxInternalUid:    0,
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInternalUidNotFound,
+		},
+		{
+			name:              "異常_limitが数値でない",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "limit=abc",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidRequestBody,
+		},
+		{
+			name:              "異常_offsetが数値でない",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "offset=abc",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidRequestBody,
+		},
+		{
+			name:              "異常_publish_yearが数字以外を含む",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "publish_year=20xx",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidPublishYear,
+		},
+		{
+			name:              "異常_publish_yearが3桁",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "publish_year=202",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidPublishYear,
+		},
+		{
+			name:              "異常_publish_yearが5桁",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "publish_year=20201",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidPublishYear,
+		},
+		{
+			// \d は半角数字にのみ一致する
+			name:              "異常_publish_yearが全角数字",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "publish_year=" + url.QueryEscape("２０２２"),
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidPublishYear,
+		},
+		{
+			name:              "異常_sort_keyが不正",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "sort_key=title",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidSortKey,
+		},
+		{
+			// 大文字小文字は区別する
+			name:              "異常_sort_typeが不正",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "sort_type=ASC",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidSortOrder,
+		},
+		{
+			name:              "異常_limitが0",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "limit=0",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidLimit,
+		},
+		{
+			name:              "異常_limitが上限超過",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "limit=101",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidLimit,
+		},
+		{
+			name:              "異常_limitが負",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "limit=-1",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidLimit,
+		},
+		{
+			// キーがあるためginのbindで0になり、未指定(デフォルト値)にはならない
+			name:              "異常_limitが空文字",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "limit=",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidLimit,
+		},
+		{
+			name:              "異常_offsetが負",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "offset=-1",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidOffset,
+		},
+		{
+			// DTOの宣言順(publish_year → sort_key)で先の項目のエラーを返す
+			name:              "異常_複数項目が不正なら宣言順で先の項目",
+			ctxInternalUid:    recordTestInternalUid,
+			query:             "sort_key=title&publish_year=20xx",
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			usecaseCalled:     false,
+			expectError:       true,
+			expectedErrorBody: ErrInvalidPublishYear,
+		},
+
+		// ---- 異常系(usecaseのエラー) ----
+		{
+			name:              "異常_usecaseが予期しないエラー",
+			ctxInternalUid:    recordTestInternalUid,
+			mockUsecase:       newRecordListUsecaseErrMock(ErrTestUnexpected),
+			expectedInput:     defaultInput,
+			usecaseCalled:     true,
+			expectError:       true,
+			expectedErrorBody: ErrTestUnexpected,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			rec := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(rec)
+			c.Set(ctxutil.CtxKeyUid, tt.ctxInternalUid)
+			c.Request = httptest.NewRequest(http.MethodGet, basePath+"?"+tt.query, nil)
+
+			h := NewRecordHandler(tt.mockUsecase)
+			h.GetRecords(c)
+
+			// 呼び出しチェック
+			assert.Equal(t, tt.usecaseCalled, tt.mockUsecase.ListCalled)
+			if tt.expectedInput != nil {
+				assert.Equal(t, *tt.expectedInput, tt.mockUsecase.LastListInput)
+			}
+
+			// 異常系の場合のassertion
+			if tt.expectError {
+				require.Len(t, c.Errors, 1)
+				assert.ErrorIs(t, c.Errors.Last().Err, tt.expectedErrorBody)
+				return
+			}
+
+			// 正常系の場合のassertion
+			require.Len(t, c.Errors, 0)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, ctxutil.REF_API_001, ctxutil.GetApiId(tt.mockUsecase.LastCtx))
+			testutil.AssertResponse(t, rec, tt.expectedBody)
+
+			for _, s := range tt.bodyContains {
+				assert.Contains(t, rec.Body.String(), s)
+			}
+
+			// 露出してはいけない値が含まれないこと
+			for _, ng := range tt.notContains {
+				assert.NotContains(t, rec.Body.String(), ng)
+			}
 		})
 	}
 }
