@@ -75,7 +75,7 @@ func TestAuthUsecaseImpl_Authenticate(t *testing.T) {
 						InternalUserId: int64(2001),
 						PublicUserId:   "_public_uid_",
 						FirebaseUserId: "_firebase_uid",
-						DeletedAt:      testutil.TimePtr(time.Now()),
+						DeletedAt:      testutil.Ptr(time.Now()),
 					}, nil
 				},
 			},

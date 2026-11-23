@@ -79,14 +79,14 @@ func withComponents(e record.UserRecordEntry, count int, prefix string) record.U
 		e.Urls = append(e.Urls, record.UrlEntry{
 			RecordEntryId: e.RecordEntryId,
 			DisplayNumber: i,
-			Label:         strPtr(fmt.Sprintf("%sラベル%d", prefix, i)),
+			Label:         testutil.Ptr(fmt.Sprintf("%sラベル%d", prefix, i)),
 			Url:           fmt.Sprintf("https://example.com/%s/%d", prefix, i),
 			InternalUid:   testUid,
 		})
 		e.Memos = append(e.Memos, record.MemoEntry{
 			RecordEntryId: e.RecordEntryId,
 			DisplayNumber: i,
-			Title:         strPtr(fmt.Sprintf("%s見出し%d", prefix, i)),
+			Title:         testutil.Ptr(fmt.Sprintf("%s見出し%d", prefix, i)),
 			Content:       fmt.Sprintf("%s内容%d", prefix, i),
 			InternalUid:   testUid,
 		})
@@ -190,15 +190,15 @@ func TestRecordRepository_Update_正常_本体の全カラムが上書きされ�
 	readStatus := record.ReadStatusReading
 
 	input := newUpdateEntry(updFullId, record.RecordTypeContributedBookArticle, "更新後の主題")
-	input.SubTitle = strPtr("更新後の副題")
-	input.PageRange = strPtr("100-200")
-	input.Volume = strPtr("更新後の巻")
-	input.Issue = strPtr("更新後の号")
-	input.Publisher = strPtr("更新後の出版者")
+	input.SubTitle = testutil.Ptr("更新後の副題")
+	input.PageRange = testutil.Ptr("100-200")
+	input.Volume = testutil.Ptr("更新後の巻")
+	input.Issue = testutil.Ptr("更新後の号")
+	input.Publisher = testutil.Ptr("更新後の出版者")
 	input.PublicationDate = &publicationDate
 	input.DatePrecision = &datePrecision
 	input.ReadStatus = &readStatus
-	input.ContainerId = strPtr(updFreeContainerId)
+	input.ContainerId = testutil.Ptr(updFreeContainerId)
 
 	err = repo.Update(newRecordUpdateTestCtx(), testDb, input)
 	require.NoError(t, err)
@@ -262,15 +262,15 @@ func TestRecordRepository_Update_正常_任意カラムのNULLと値が双方向
 	readStatus := record.ReadStatusUnread
 
 	filled := newUpdateEntry(updMinimalId, record.RecordTypeAuthoredBook, "値を入れた主題")
-	filled.SubTitle = strPtr("入れた副題")
-	filled.PageRange = strPtr("1-2")
-	filled.Volume = strPtr("入れた巻")
-	filled.Issue = strPtr("入れた号")
-	filled.Publisher = strPtr("入れた出版者")
+	filled.SubTitle = testutil.Ptr("入れた副題")
+	filled.PageRange = testutil.Ptr("1-2")
+	filled.Volume = testutil.Ptr("入れた巻")
+	filled.Issue = testutil.Ptr("入れた号")
+	filled.Publisher = testutil.Ptr("入れた出版者")
 	filled.PublicationDate = &publicationDate
 	filled.DatePrecision = &datePrecision
 	filled.ReadStatus = &readStatus
-	filled.ContainerId = strPtr(updFreeContainerId)
+	filled.ContainerId = testutil.Ptr(updFreeContainerId)
 
 	err = repo.Update(ctx, testDb, filled)
 	require.NoError(t, err)
@@ -450,7 +450,7 @@ func TestRecordRepository_Update_正常_コンテナIDの付け外しができ�
 
 	// なし -> あり
 	attach := newUpdateEntry(updMinimalId, record.RecordTypeAuthoredBook, "コンテナを付けた主題")
-	attach.ContainerId = strPtr(updFreeContainerId)
+	attach.ContainerId = testutil.Ptr(updFreeContainerId)
 	require.NoError(t, repo.Update(ctx, testDb, attach))
 
 	actual, err := testutil.SelectRecordByPk(t, testDb, updMinimalId)
@@ -459,7 +459,7 @@ func TestRecordRepository_Update_正常_コンテナIDの付け外しができ�
 
 	// あり -> 別のコンテナ
 	swap := newUpdateEntry(updFullId, record.RecordTypeJournalArticle, "コンテナを付け替えた主題")
-	swap.ContainerId = strPtr(updFreeContainerId)
+	swap.ContainerId = testutil.Ptr(updFreeContainerId)
 	require.NoError(t, repo.Update(ctx, testDb, swap))
 
 	actual, err = testutil.SelectRecordByPk(t, testDb, updFullId)
@@ -581,7 +581,7 @@ func TestRecordRepository_Update_異常_存在しないコンテナIDはFK違反
 	repo := testRecordsSetup(t, recordUpdateFixture)
 
 	input := newUpdateEntry(updMinimalId, record.RecordTypeAuthoredBook, "FK違反の主題")
-	input.ContainerId = strPtr("UPD_NOTEXISTS_CONTAINER01")
+	input.ContainerId = testutil.Ptr("UPD_NOTEXISTS_CONTAINER01")
 
 	// コンテナの存在はusecaseが保証するが、fk_er_containerが最後の防波堤として効くこと。
 	// 該当行はあるため ErrNotFound ではなく、生のDBエラーが返る。

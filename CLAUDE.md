@@ -102,13 +102,48 @@ handler (gin) → usecase → repository (interface) → infrastructure/db (実�
 
 ## テストの型
 
-- **handler / usecase / middleware / domain**: テーブル駆動テスト + `t.Run`(サブテスト名は日本語で `正常_xxx` / `異常_xxx`)。
-- **internal/infrastructure/db**: モックを使わず testcontainers-go で実MySQLを起動する統合テスト。テーブル駆動にせず、`TestUserRepository_Create_正常` のように**1ケース1関数**でケース名を関数名に含める。メソッド群ごとにファイルを分け(`record_repository_create_test.go` / `_delete_test.go`)、共通のセットアップ・ヘルパ・定数は `<実装>_test.go` に置く。
-- DB統合テストは `sql/seed.sql`(マスタ。本番と同じものを使う) → `testdata/*.sql`(フィクスチャ)の順に読み込む。repositoryは `ctxutil.GetApiId` でAPI IDを取り出すため、**ctxにAPI IDを入れないとpanicする**(`newRecordTestCtx(apiId)` を使う)。検証はDBの生値を保持する行構造体(`testutil/record_db_helper.go`)で行う(NULLと空文字を区別するため)。「更新されないこと」を検証する行は、フィクスチャで `UPD_PG='already_deleted'` のように判別できる値にしておく。
+### ファイルの分け方(全レイヤー共通)
+
+- メソッドごとに `<実装>_<メソッド>_test.go` に分ける(`record_handler_create_test.go` / `record_usecase_list_test.go` / `record_repository_delete_test.go`)。共通の定数・ヘルパ(handlerは `RegisterRoutes` のテストも)は `<実装>_test.go` に置く。
+- 目安は1ファイル500行以内。超えるときは観点で分ける(`record_handler_create_error_test.go` / `record_handler_list_response_test.go` / `record_repository_list_order_test.go`)。ただし、ケースのデータが大半でフィクスチャを正常系・異常系で共有する usecase のファイル(`record_usecase_{create,update,list}_test.go`)は分けない。
+
+### 表とサブテスト(handler / usecase / middleware / domain)
+
+- テーブル駆動 + `t.Run`。サブテスト名は日本語で `正常_xxx` / `異常_xxx` だけを使う。
+  - 「準正常」は使わない。エラーを返さないなら `正常_` にし、何が特殊かを名前とコメントに書く(`正常_Firebaseユーザ削除に失敗しても成功を返す`)。
+  - メソッド名は関数名にあるので、サブテスト名に `CreateUser_` のような接頭辞を付けない。
+- テスト関数は観点ごとに分け(`Test<型>_<メソッド>_<観点>`)、表には観点に必要なフィールドだけを置く。
+- `expectError bool` は置かない。異常系かどうかは `expectedErrorBody != nil` で判定する。
+- ポインタの期待値は `testutil.Ptr(v)` で作る(型ごとのヘルパや、`&x` を取るためだけのローカル変数を作らない)。
+- 異常系が「どの repository 呼び出しが失敗するか」で分かれるときは、正常系と同じ準備に失敗を1つ注入するフィールド(`selectErr` / `termsErr`、呼び出し順に返す `createErrs []error` 等)で表す。
+
+### handler
+
+- 観点は `_正常`(リクエスト→usecase入力の変換、レスポンスの組み立て)/ `_異常`(入力不正。usecaseを呼ばない)/ `_usecaseエラー`(usecaseのエラーを包み直さずに伝播する)。「usecaseが呼ばれたか」は観点で決まるため、表のフィールドにせず実行部で検証する。
+- gin.Context の組み立てと実行は `serveRecord` / `serveUser` に任せる(土台は `helper_test.go` の `newTestContext` / `newJsonRequest` / `assertHandlerError`)。contextの値は既定で正しく入り、取得失敗のケースだけ `recordCtx{omitInternalUid: true}` のように明示する(ゼロ値を「取得失敗」の意味に使わない)。
+- json tag と binding の挙動を検証するテストでは、リクエストボディを生のJSON文字列で渡す。
+
+### usecase
+
+- 観点は `_正常` / `_異常`。
+- record は、ケースの型 `recordXxxCase`、ケースの定義 `recordXxxCases() (normal, abnormal)`(フィクスチャを両方で共有する)、実行部 `runRecordXxxCase` の3つで構成する。
+- user は、mockを `newGeneralRepoMock` / `newSelectUserRepoMock` 等のビルダで作り、ケースごとに直書きしない。
+
+### infrastructure/db
+
+- モックを使わず testcontainers-go で実MySQLを起動する統合テスト。テーブル駆動にせず、`TestUserRepository_Create_正常` のように**1ケース1関数**でケース名を関数名に含める。
+- `sql/seed.sql`(マスタ。本番と同じものを使う) → `testdata/*.sql`(フィクスチャ)の順に読み込む。repositoryは `ctxutil.GetApiId` でAPI IDを取り出すため、**ctxにAPI IDを入れないとpanicする**(`newRecordTestCtx(apiId)` を使う)。検証はDBの生値を保持する行構造体(`testutil/record_db_helper.go`)で行う(NULLと空文字を区別するため)。「更新されないこと」を検証する行は、フィクスチャで `UPD_PG='already_deleted'` のように判別できる値にしておく。
 - `testutil.CleanUpTables` は `e_records` が `CONTAINER_ID` で自己参照FKを持つため、**単一コネクション上で `FOREIGN_KEY_CHECKS` を一時解除**して削除する(セッション単位の設定なのでプール越しの `db.Exec` では効かない)。
+
+### モックと sentinel error
+
 - モック(`internal/testutil/mock`)は `MockXxx` に `XxxFunc func(...) (...)` を持たせ、呼び出し記録を残してから `XxxFunc` に委譲する。**repository系**は1リクエストで複数回呼ばれうるためカウンタを `int` とし、引数は `CreatedEntries` / `DeletedRecordIds` のように呼び出し順のスライスで保持する。**usecase系**は1リクエスト1回なのでカウンタは `bool`、引数は `LastXxxInput` と、handlerが渡したcontextを検証する `LastCtx`。
 - `var _ repository.Xxx = (*MockXxx)(nil)` でインターフェース適合を固定できるのはrepository系のみ(usecase系は `internal/usecase` のテストが `internal/testutil/mock` をimportしているためimport cycleになる)。
 - 各レイヤーに `ErrTestUnexpected` という専用の sentinel error を設置し、「分岐でカバーしていない予期しないエラー」のテストに使う。
+
+### 結合テスト(実機確認)
+
+- 起動中のサーバと Auth Emulator に対して API を呼ぶスクリプトを `test/api/<API ID>/` に置く(`setup.py` でデータ作成、`cases.py` で実行、手順とデータは `README.md`)。DBは直接触らず、登録系のAPIでデータを作る。
 
 ## 守ること
 - 実装を進める場合は次のステップで行い、ステップごとに確認を求める。**1. 実装方針と処理ステップの提示** 指示をもとに、既存ドキュメントから実装・修正方針と影響範囲を洗い出した後、推奨度の高い処理ステップ案を提示。**2. テストケースの整理・提示** 修正方針をもとに、handler, usecase, repositoryのユニットテストケースを示す。**3. プログラム実装** 方針に基づきプログラムを実装する。**4.ユニットテスト実装** 先に示したテスト方針に基づき、ユニットテストを実装する。テストはhandler, usecase, repositoryごとに実装し、都度確認を求める。

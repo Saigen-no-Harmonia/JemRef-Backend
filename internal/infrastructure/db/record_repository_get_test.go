@@ -8,6 +8,7 @@ import (
 	ctxutil "jemref_go/internal/context"
 	"jemref_go/internal/domain/record"
 	"jemref_go/internal/repository"
+	"jemref_go/internal/testutil"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,11 +52,11 @@ func TestRecordRepository_SelectByPk_正常_全カラムを取得(t *testing.T) 
 	assert.Equal(t, getFullId, actual.RecordEntryId)
 	assert.Equal(t, testUid, actual.InternalUid)
 	assert.Equal(t, "第1章 「学校」制度の境界線", actual.MainTitle)
-	assert.Equal(t, strPtr("その形成と展開"), actual.SubTitle)
-	assert.Equal(t, strPtr("15-46"), actual.PageRange)
-	assert.Equal(t, strPtr("第1巻"), actual.Volume)
-	assert.Equal(t, strPtr("第11号"), actual.Issue)
-	assert.Equal(t, strPtr("東京大学出版会"), actual.Publisher)
+	assert.Equal(t, testutil.Ptr("その形成と展開"), actual.SubTitle)
+	assert.Equal(t, testutil.Ptr("15-46"), actual.PageRange)
+	assert.Equal(t, testutil.Ptr("第1巻"), actual.Volume)
+	assert.Equal(t, testutil.Ptr("第11号"), actual.Issue)
+	assert.Equal(t, testutil.Ptr("東京大学出版会"), actual.Publisher)
 	assert.Equal(t, 0, actual.DelFlg)
 
 	// 書誌マスタ(m_records)はseedに存在しないためNULL固定
@@ -125,11 +126,11 @@ func TestRecordRepository_SelectByPk_正常_任意項目が空文字(t *testing.
 	)
 	require.NoError(t, err)
 
-	assert.Equal(t, strPtr(""), actual.SubTitle)
-	assert.Equal(t, strPtr(""), actual.PageRange)
-	assert.Equal(t, strPtr(""), actual.Volume)
-	assert.Equal(t, strPtr(""), actual.Issue)
-	assert.Equal(t, strPtr(""), actual.Publisher)
+	assert.Equal(t, testutil.Ptr(""), actual.SubTitle)
+	assert.Equal(t, testutil.Ptr(""), actual.PageRange)
+	assert.Equal(t, testutil.Ptr(""), actual.Volume)
+	assert.Equal(t, testutil.Ptr(""), actual.Issue)
+	assert.Equal(t, testutil.Ptr(""), actual.Publisher)
 }
 
 // TestRecordRepository_SelectByPk_正常_構成要素は取得しない
@@ -226,23 +227,23 @@ func TestRecordRepository_SelectComponents_正常_全種類の構成要素を取
 	// URL
 	require.Len(t, target.Urls, 2)
 	assert.Equal(t, getFullId, target.Urls[0].RecordEntryId)
-	assert.Equal(t, strPtr("オンラインPDF"), target.Urls[0].Label)
+	assert.Equal(t, testutil.Ptr("オンラインPDF"), target.Urls[0].Label)
 	assert.Equal(t, "https://example.com/pdf", target.Urls[0].Url)
 	assert.Equal(t, 0, target.Urls[0].DisplayNumber)
 	assert.Equal(t, testUid, target.Urls[0].InternalUid)
 	assert.NotZero(t, target.Urls[0].UrlEntryId)
-	assert.Equal(t, strPtr("書誌情報"), target.Urls[1].Label)
+	assert.Equal(t, testutil.Ptr("書誌情報"), target.Urls[1].Label)
 
 	// メモ
 	require.Len(t, target.Memos, 2)
 	assert.Equal(t, getFullId, target.Memos[0].RecordEntryId)
-	assert.Equal(t, strPtr("要約"), target.Memos[0].Title)
+	assert.Equal(t, testutil.Ptr("要約"), target.Memos[0].Title)
 	assert.Equal(t, "学校の戦後史。", target.Memos[0].Content)
 	assert.Equal(t, 0, target.Memos[0].DisplayNumber)
 	assert.Equal(t, 0, target.Memos[0].ShareLevel)
 	assert.Equal(t, testUid, target.Memos[0].InternalUid)
 	assert.NotZero(t, target.Memos[0].MemoEntryId)
-	assert.Equal(t, strPtr("感想"), target.Memos[1].Title)
+	assert.Equal(t, testutil.Ptr("感想"), target.Memos[1].Title)
 
 	// 項目値: RECORD_FIELD_IDから入力項目へ復元されること(3種類すべて)
 	require.Len(t, target.OptionValues, 3)
@@ -275,14 +276,14 @@ func TestRecordRepository_SelectComponents_正常_表示順で並ぶ(t *testing.
 	assert.Equal(t, "三番目の貢献者", target.ContributorRelations[2].Contributor.RawName)
 
 	require.Len(t, target.Urls, 3)
-	assert.Equal(t, strPtr("一番目のURL"), target.Urls[0].Label)
-	assert.Equal(t, strPtr("二番目のURL"), target.Urls[1].Label)
-	assert.Equal(t, strPtr("三番目のURL"), target.Urls[2].Label)
+	assert.Equal(t, testutil.Ptr("一番目のURL"), target.Urls[0].Label)
+	assert.Equal(t, testutil.Ptr("二番目のURL"), target.Urls[1].Label)
+	assert.Equal(t, testutil.Ptr("三番目のURL"), target.Urls[2].Label)
 
 	require.Len(t, target.Memos, 3)
-	assert.Equal(t, strPtr("一番目のメモ"), target.Memos[0].Title)
-	assert.Equal(t, strPtr("二番目のメモ"), target.Memos[1].Title)
-	assert.Equal(t, strPtr("三番目のメモ"), target.Memos[2].Title)
+	assert.Equal(t, testutil.Ptr("一番目のメモ"), target.Memos[0].Title)
+	assert.Equal(t, testutil.Ptr("二番目のメモ"), target.Memos[1].Title)
+	assert.Equal(t, testutil.Ptr("三番目のメモ"), target.Memos[2].Title)
 
 	require.Len(t, target.OptionValues, 3)
 	assert.Equal(t, "一番目の項目値", target.OptionValues[0].RawValue)
@@ -303,10 +304,10 @@ func TestRecordRepository_SelectComponents_正常_論理削除済みの構成要
 	assert.Equal(t, "生存の貢献者", target.ContributorRelations[0].Contributor.RawName)
 
 	require.Len(t, target.Urls, 1)
-	assert.Equal(t, strPtr("生存のURL"), target.Urls[0].Label)
+	assert.Equal(t, testutil.Ptr("生存のURL"), target.Urls[0].Label)
 
 	require.Len(t, target.Memos, 1)
-	assert.Equal(t, strPtr("生存のメモ"), target.Memos[0].Title)
+	assert.Equal(t, testutil.Ptr("生存のメモ"), target.Memos[0].Title)
 
 	require.Len(t, target.OptionValues, 1)
 	assert.Equal(t, "生存の項目値", target.OptionValues[0].RawValue)

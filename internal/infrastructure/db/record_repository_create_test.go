@@ -77,27 +77,27 @@ func TestRecordRepository_Create_正常_全項目設定(t *testing.T) {
 		InternalUid:     testUid,
 		RecordType:      record.RecordTypeJournalArticle,
 		MainTitle:       "第1章 「学校」制度の境界線",
-		SubTitle:        strPtr("その形成と展開"),
-		PageRange:       strPtr("15-46"),
-		Volume:          strPtr("日本教育史講座第1巻"),
-		Issue:           strPtr("第11号"),
-		Publisher:       strPtr("東京大学出版会"),
+		SubTitle:        testutil.Ptr("その形成と展開"),
+		PageRange:       testutil.Ptr("15-46"),
+		Volume:          testutil.Ptr("日本教育史講座第1巻"),
+		Issue:           testutil.Ptr("第11号"),
+		Publisher:       testutil.Ptr("東京大学出版会"),
 		PublicationDate: &publicationDate,
 		DatePrecision:   &datePrecision,
 		ReadStatus:      &readStatus,
-		ContainerId:     strPtr(testExistingContainerId),
+		ContainerId:     testutil.Ptr(testExistingContainerId),
 		DelFlg:          0,
 		ContributorRelations: []record.ContributorRelation{
 			newMinimalRelation("木村元", record.ContributorRoleAuthor),
 			newMinimalRelation("山田太郎", record.ContributorRoleCompiler),
 		},
 		Urls: []record.UrlEntry{
-			{RecordEntryId: testRecordId, DisplayNumber: 0, Label: strPtr("PDF"), Url: "https://example.com/1", InternalUid: testUid, DelFlg: 0},
-			{RecordEntryId: testRecordId, DisplayNumber: 1, Label: strPtr("書影"), Url: "https://example.com/2", InternalUid: testUid, DelFlg: 0},
+			{RecordEntryId: testRecordId, DisplayNumber: 0, Label: testutil.Ptr("PDF"), Url: "https://example.com/1", InternalUid: testUid, DelFlg: 0},
+			{RecordEntryId: testRecordId, DisplayNumber: 1, Label: testutil.Ptr("書影"), Url: "https://example.com/2", InternalUid: testUid, DelFlg: 0},
 		},
 		Memos: []record.MemoEntry{
-			{RecordEntryId: testRecordId, DisplayNumber: 0, Title: strPtr("要約"), Content: "学校の戦後史。", InternalUid: testUid, DelFlg: 0},
-			{RecordEntryId: testRecordId, DisplayNumber: 1, Title: strPtr("所感"), Content: "少し難しい。", InternalUid: testUid, DelFlg: 0},
+			{RecordEntryId: testRecordId, DisplayNumber: 0, Title: testutil.Ptr("要約"), Content: "学校の戦後史。", InternalUid: testUid, DelFlg: 0},
+			{RecordEntryId: testRecordId, DisplayNumber: 1, Title: testutil.Ptr("所感"), Content: "少し難しい。", InternalUid: testUid, DelFlg: 0},
 		},
 		OptionValues: []record.OptionValue{
 			{RecordEntryId: testRecordId, RecordField: record.RecordFieldIsbn, DisplayNumber: 10, RawValue: "9784130513555", InternalUid: testUid, DelFlg: 0},
@@ -288,7 +288,7 @@ func TestRecordRepository_Create_正常_URLのラベルあり無し混在(t *tes
 
 	input := newMinimalRecordEntry(testRecordId)
 	input.Urls = []record.UrlEntry{
-		{RecordEntryId: testRecordId, DisplayNumber: 0, Label: strPtr("オンラインPDF"), Url: "https://example.com/1", InternalUid: testUid, DelFlg: 0},
+		{RecordEntryId: testRecordId, DisplayNumber: 0, Label: testutil.Ptr("オンラインPDF"), Url: "https://example.com/1", InternalUid: testUid, DelFlg: 0},
 		{RecordEntryId: testRecordId, DisplayNumber: 1, Label: nil, Url: "https://example.com/2", InternalUid: testUid, DelFlg: 0},
 	}
 
@@ -318,7 +318,7 @@ func TestRecordRepository_Create_正常_メモのラベルあり無し混在(t *
 
 	input := newMinimalRecordEntry(testRecordId)
 	input.Memos = []record.MemoEntry{
-		{RecordEntryId: testRecordId, DisplayNumber: 0, Title: strPtr("要約"), Content: "学校の戦後史。", InternalUid: testUid, DelFlg: 0},
+		{RecordEntryId: testRecordId, DisplayNumber: 0, Title: testutil.Ptr("要約"), Content: "学校の戦後史。", InternalUid: testUid, DelFlg: 0},
 		{RecordEntryId: testRecordId, DisplayNumber: 1, Title: nil, Content: "ラベルなしのメモ。", InternalUid: testUid, DelFlg: 0},
 	}
 
@@ -380,7 +380,7 @@ func TestRecordRepository_Create_正常_コンテナと書誌(t *testing.T) {
 		InternalUid:   testUid,
 		RecordType:    record.RecordTypeJournalArticle,
 		MainTitle:     "第1章 「学校」制度の境界線",
-		ContainerId:   strPtr(testContainerId),
+		ContainerId:   testutil.Ptr(testContainerId),
 		DelFlg:        0,
 	}
 
@@ -462,7 +462,7 @@ func TestRecordRepository_Create_異常_存在しないコンテナID(t *testing
 
 	input := newMinimalRecordEntry(testRecordId)
 	input.RecordType = record.RecordTypeJournalArticle
-	input.ContainerId = strPtr("NOTEXISTSCONTAINER00000001")
+	input.ContainerId = testutil.Ptr("NOTEXISTSCONTAINER00000001")
 
 	beforeCnt := testutil.CountRecords(t, testDb)
 	err := repo.Create(newRecordTestCtx(ctxutil.REF_API_003), testDb, input)

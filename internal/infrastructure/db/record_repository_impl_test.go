@@ -57,11 +57,6 @@ func newRecordTestCtx(apiId string) context.Context {
 	)
 }
 
-// strPtr string型のポインタを返却する
-func strPtr(s string) *string {
-	return &s
-}
-
 // newMinimalRelation 貢献者と貢献のペアを生成する
 // 書誌ID・内部用ユーザID・表示順はrepositoryが収録物と登録順から設定する。Ph0では氏名と役割のみを指定。
 func newMinimalRelation(rawName string, role record.ContributorRole) record.ContributorRelation {
